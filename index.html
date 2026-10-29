@@ -7,6 +7,9 @@
   
   <meta name="description" content="Tựa game khám phá thế giới mở 3D không gian hoài niệm Hà Nội thập niên 80-90 giao thoa đương đại, vận hành trực tiếp trên trình duyệt Web.">
   <meta name="theme-color" content="#121417">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 
   <!-- Phông chữ Google Fonts tiếng Việt hoài niệm -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -141,10 +144,10 @@
   <div id="audioControllerContainer"></div>
   <div id="toastNotificationContainer" class="toast-notification-container"></div>
 
-  <!-- Nạp scripts ES Modules -->
-  <script type="module" src="src/bridge/GameEvents.js"></script>
-  <script type="module" src="src/bridge/GameAPI.js"></script>
-  <script type="module" src="src/core/GameEngine.js"></script>
-  <script type="module" src="src/ui/UIManager.js"></script>
+  <!-- Nạp scripts ES Modules (Cache-busted v=3.0) -->
+  <script type="module" src="src/bridge/GameEvents.js?v=3.0"></script>
+  <script type="module" src="src/bridge/GameAPI.js?v=3.0"></script>
+  <script type="module" src="src/core/GameEngine.js?v=3.0"></script>
+  <script type="module" src="src/ui/UIManager.js?v=3.0"></script>
 </body>
 </html>

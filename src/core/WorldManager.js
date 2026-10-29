@@ -1014,13 +1014,20 @@ export class WorldManager {
     grassMesh.position.set(80, 1.55, -80);
     zoneGroup.add(grassMesh);
 
-    // Lối đi dốc đá cổ nối liền từ đầu Cầu Kim Quy (68, 0.80, -68) lên sân Đảo Rùa (76, 1.55, -76)
-    const islandWalkway = new THREE.Mesh(new THREE.BoxGeometry(11.5, 0.35, 4.2), this.materials.mossStone);
-    islandWalkway.position.set(72, 1.18, -72);
-    islandWalkway.rotation.y = -Math.PI / 4;
-    islandWalkway.receiveShadow = true;
-    zoneGroup.add(islandWalkway);
-    this.colliders.push(islandWalkway);
+    // DỐC ĐÁ TAM CẤP CỔ NỐI LIỀN TỪ CẦU KIM QUY LÊN THẲNG SÂN THÁP RÙA (KHÔNG CÓ GỜ CAO)
+    // 8 bậc đá rộng thênh thang 4.6m, mỗi bậc chỉ cao 0.09m (9cm) bước đi siêu êm ái!
+    for (let st = 0; st < 8; st++) {
+      const stepT = st / 7;
+      const stepX = 66.0 + stepT * 10.0;
+      const stepZ = -66.0 - stepT * 10.0;
+      const stepY = 0.85 + stepT * 0.70;
+      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.22, 4.6), this.materials.mossStone);
+      stepMesh.position.set(stepX, stepY - 0.05, stepZ);
+      stepMesh.rotation.y = -Math.PI / 4;
+      stepMesh.receiveShadow = true;
+      zoneGroup.add(stepMesh);
+      this.colliders.push(stepMesh);
+    }
 
     // Sân lát đá xanh cổ nguyên khối xung quanh chân Tháp Rùa
     const islandCourtyard = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.25, 15.0), this.materials.mossStone);
@@ -1392,7 +1399,7 @@ export class WorldManager {
 
     // 3. QUẢNG TRƯỜNG ĐÁ TIẾP ĐẢO (ISLAND LANDING PLAZA) TẠI (68, 0.85, -68)
     const islandLandingPlaza = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.30, 6.0), this.materials.mossStone);
-    islandLandingPlaza.position.set(68, 0.80, -68);
+    islandLandingPlaza.position.set(67.5, 0.70, -67.5);
     islandLandingPlaza.receiveShadow = true;
     zoneGroup.add(islandLandingPlaza);
     this.colliders.push(islandLandingPlaza);
