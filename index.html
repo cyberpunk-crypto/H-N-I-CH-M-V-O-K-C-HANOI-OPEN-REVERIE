@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HÀ NỘI: CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)</title>
+  
+  <meta name="description" content="Tựa game khám phá thế giới mở 3D không gian hoài niệm Hà Nội thập niên 80-90 giao thoa đương đại, vận hành trực tiếp trên trình duyệt Web.">
+  <meta name="theme-color" content="#121417">
+
+  <!-- Phông chữ Google Fonts tiếng Việt hoài niệm -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,900;1,400;1,600&display=swap" rel="stylesheet">
+
+  <!-- Hệ thống Stylesheets hoàn chỉnh -->
+  <link rel="stylesheet" href="styles/reset.css">
+  <link rel="stylesheet" href="styles/retro_theme.css">
+  <link rel="stylesheet" href="styles/onboarding.css">
+  <link rel="stylesheet" href="styles/hud.css">
+  <link rel="stylesheet" href="styles/viewfinder.css">
+</head>
+<body>
+
+  <!-- Khung WebGL Canvas cho Three.js Core Engine -->
+  <div id="webglContainer" style="position:fixed;inset:0;width:100%;height:100%;z-index:1;background:#0d0f12;"></div>
+
+  <!-- Lớp phủ hiệu ứng hạt Film Grain & Vignette cổ điển -->
+  <div class="film-grain-overlay"></div>
+  <div class="vignette-overlay"></div>
+
+  <!-- ==========================================================================
+       GIAO DIỆN ONBOARDING 3 BƯỚC (AGE GATE -> AUTH -> CHARACTER CREATOR)
+       ========================================================================== -->
+  <div id="onboardingContainer" class="onboarding-screen"></div>
+
+  <!-- ==========================================================================
+       HUD CHÍNH TRONG THẾ GIỚI 3D (STATUS BAR, MINIMAP, HINTS)
+       ========================================================================== -->
+  <div id="gameHudLayer" class="game-hud-layer hidden">
+    <!-- Thanh trạng thái góc trên -->
+    <header class="hud-top-bar hud-interactive">
+      <div class="player-zone-badge">
+        <div class="zone-emblem">
+          <svg style="width:20px;height:20px;fill:currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </div>
+        <div class="zone-details">
+          <span id="hudCurrentZoneName" class="current-zone-name">Hồ Gươm & Tháp Rùa</span>
+          <span id="hudCurrentPlayerName" class="current-player-name">Lãng tử: Kẻ Mộng Mơ</span>
+        </div>
+      </div>
+
+      <div class="hud-top-actions">
+        <button type="button" id="btnToggleCameraHud" class="btn-hud-tool" title="Chuyển góc nhìn máy ảnh">
+          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+            <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+          </svg>
+          <span>Máy Ảnh</span>
+          <span class="hotkey-chip">V</span>
+        </button>
+
+        <button type="button" id="btnOpenMapHud" class="btn-hud-tool" title="Mở bản đồ du lịch Hà Nội">
+          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+          </svg>
+          <span>Bản Đồ</span>
+          <span class="hotkey-chip">Tab / M</span>
+        </button>
+
+        <button type="button" id="btnOpenScrapbookHud" class="btn-hud-tool" title="Mở Cuốn Album Ký Ức">
+          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+            <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
+          </svg>
+          <span>Album Ký Ức</span>
+          <span class="hotkey-chip">B</span>
+        </button>
+
+        <button type="button" id="btnRecreateCharacterHud" class="btn-hud-tool" title="Đổi Nhân Vật hoặc Tạo Lại Tài Khoản">
+          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+          <span>Đổi Nhân Vật</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Khung gợi ý tương tác gần vật thể -->
+    <div id="interactionPromptContainer" class="interaction-prompt-container" style="display: none;">
+      <div class="interaction-prompt-box">
+        <span id="interactionPromptText"><span class="keycap">E</span> Tương tác</span>
+      </div>
+    </div>
+
+    <!-- Thanh phím tắt góc dưới -->
+    <footer class="hud-bottom-bar hud-interactive">
+      <div class="control-hints-row">
+        <div class="control-hint-item">
+          <span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span>
+          <span>Dạo phố</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">Shift</span>
+          <span>Chạy nhanh</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">Space</span>
+          <span>Nhảy / Shutter</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">V / Chuột Phải</span>
+          <span>Khung ngắm máy ảnh 35mm</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">Tab / M</span>
+          <span>Bản đồ cổ điển</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">E</span>
+          <span>Tương tác / Mua hàng / Mở cửa</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">Enter</span>
+          <span>Kênh Chat Lãng Tử</span>
+        </div>
+        <div class="control-hint-item">
+          <span class="keycap">B</span>
+          <span>Album Ký Ức</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Các Containers cho các Modals & Widgets -->
+  <div id="minimapContainer"></div>
+  <div id="scrapbookContainer"></div>
+  <div id="dialogueContainer"></div>
+  <div id="chatboxContainer"></div>
+  <div id="viewfinderContainer"></div>
+  <div id="audioControllerContainer"></div>
+  <div id="toastNotificationContainer" class="toast-notification-container"></div>
+
+  <!-- Nạp scripts ES Modules -->
+  <script type="module" src="src/bridge/GameEvents.js"></script>
+  <script type="module" src="src/bridge/GameAPI.js"></script>
+  <script type="module" src="src/core/GameEngine.js"></script>
+  <script type="module" src="src/ui/UIManager.js"></script>
+</body>
+</html>

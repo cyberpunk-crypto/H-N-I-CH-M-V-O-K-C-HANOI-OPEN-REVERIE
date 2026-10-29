@@ -1,0 +1,781 @@
+/* ==========================================================================
+   ONBOARDING STYLES: AGE GATE, AUTH, & CHARACTER CREATION
+   Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
+   ========================================================================== */
+
+/* Lớp nền toàn màn hình Onboarding */
+.onboarding-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  background: 
+    radial-gradient(circle at 50% 35%, rgba(139, 38, 53, 0.25), transparent 60%),
+    radial-gradient(circle at 80% 80%, rgba(42, 72, 54, 0.35), transparent 55%),
+    linear-gradient(180deg, rgba(14, 15, 18, 0.88) 0%, rgba(10, 8, 6, 0.96) 100%),
+    url('../assets/photos/memory_turtle_mist.jpg') center/cover no-repeat;
+  transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.8s;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.onboarding-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Thẻ Modal chính - Phong cách giấy dó nẹp viền đồng */
+.retro-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  background: var(--card-bg-gradient);
+  border: var(--border-vintage);
+  box-shadow: var(--shadow-card), 0 0 35px rgba(212, 175, 55, 0.12);
+  border-radius: 8px;
+  padding: 40px 36px 36px 36px;
+  background-color: rgba(26, 21, 16, 0.98);
+  animation: cinematicFadeIn 0.5s ease-out;
+  color: var(--c-paper-do);
+  box-sizing: border-box;
+}
+
+/* Hoa văn 4 góc nẹp đồng cổ điển */
+.retro-modal-card::before,
+.retro-modal-card::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  border-color: var(--c-gold-royal);
+  border-style: solid;
+}
+.retro-modal-card::before {
+  top: 6px;
+  left: 6px;
+  border-width: 2px 0 0 2px;
+}
+.retro-modal-card::after {
+  bottom: 6px;
+  right: 6px;
+  border-width: 0 2px 2px 0;
+}
+
+.card-corner-tr {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  border-top: 2px solid var(--c-gold-royal);
+  border-right: 2px solid var(--c-gold-royal);
+}
+
+.card-corner-bl {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  border-bottom: 2px solid var(--c-gold-royal);
+  border-left: 2px solid var(--c-gold-royal);
+}
+
+/* Header thương hiệu */
+.brand-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.brand-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--c-yellow-cuc);
+  padding: 4px 14px;
+  border: 1px solid rgba(233, 196, 106, 0.4);
+  border-radius: 20px;
+  background: rgba(183, 121, 31, 0.12);
+  margin-bottom: 12px;
+}
+
+.brand-title {
+  font-family: var(--font-title);
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--c-paper-do);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  margin-bottom: 6px;
+}
+
+.brand-title span {
+  color: var(--c-yellow-cuc);
+}
+
+.brand-subtitle {
+  font-family: var(--font-poem);
+  font-size: 0.98rem;
+  font-style: italic;
+  color: var(--c-paper-aged);
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   BƯỚC 1: AGE GATE MODAL
+   ========================================================================== */
+.age-gate-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.warning-box {
+  background: rgba(139, 38, 53, 0.22);
+  border-left: 3px solid var(--c-red-ba-trau);
+  padding: 14px 18px;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #f7dede;
+}
+
+.warning-box strong {
+  color: var(--c-yellow-cuc);
+  font-family: var(--font-title);
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1rem;
+}
+
+.date-selector-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-input-group label {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--c-yellow-cuc);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.retro-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(20, 16, 12, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 4px;
+  color: var(--c-paper-do);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d4af37'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 18px;
+}
+
+.retro-select:focus {
+  border-color: var(--c-gold-royal);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.retro-select option {
+  background: #191410;
+  color: var(--c-paper-do);
+}
+
+.age-status-message {
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 0.88rem;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s;
+}
+
+.age-status-message.error {
+  background: rgba(231, 76, 60, 0.18);
+  border: 1px solid var(--c-danger);
+  color: #ff9f96;
+}
+
+.age-status-message.success {
+  background: rgba(46, 204, 113, 0.16);
+  border: 1px solid var(--c-success);
+  color: #a3f7c4;
+}
+
+/* Nút bấm chủ đạo vàng đồng hoàng gia */
+.btn-primary-retro {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #d4af37 0%, #b8860b 50%, #996515 100%);
+  color: #121008;
+  font-family: var(--font-title);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  border: 1px solid #ffd700;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+  margin-top: 10px;
+}
+
+.btn-primary-retro:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(243, 156, 18, 0.6);
+  background: linear-gradient(135deg, #f5d76e 0%, #d4af37 50%, #b8860b 100%);
+}
+
+.btn-primary-retro:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary-retro::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-150%) skewX(-25deg);
+}
+
+.btn-primary-retro:hover:not(:disabled)::after {
+  animation: shimmerPass 1.2s infinite;
+}
+
+/* ==========================================================================
+   BƯỚC 2: AUTH MODAL
+   ========================================================================== */
+.auth-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  margin-bottom: 4px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  color: var(--c-paper-aged);
+  border-bottom: 2px solid transparent;
+  transition: all 0.25s;
+}
+
+.auth-tab-btn.active {
+  color: var(--c-yellow-cuc);
+  border-bottom-color: var(--c-gold-royal);
+  font-weight: 600;
+}
+
+.btn-google-sso {
+  width: 100%;
+  padding: 12px 18px;
+  background: #ffffff;
+  color: #3c4043;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+  border: 1px solid #dadce0;
+}
+
+.btn-google-sso:hover {
+  background: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.divider-retro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--c-paper-dark);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.divider-retro::before,
+.divider-retro::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(212, 175, 55, 0.25);
+}
+
+.vintage-id-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: rgba(26, 21, 16, 0.65);
+  padding: 18px;
+  border-radius: 6px;
+  border: 1px dashed rgba(212, 175, 55, 0.35);
+}
+
+.form-group-retro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group-retro label {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--c-yellow-cuc);
+  letter-spacing: 0.05em;
+}
+
+.retro-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(14, 12, 9, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 4px;
+  color: var(--c-paper-do);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  transition: all 0.25s;
+}
+
+.retro-input:focus {
+  border-color: var(--c-gold-royal);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+}
+
+.btn-guest-retro {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--c-paper-aged);
+  font-size: 0.88rem;
+  font-style: italic;
+  font-family: var(--font-poem);
+  opacity: 0.8;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.btn-guest-retro:hover {
+  color: var(--c-yellow-cuc);
+  opacity: 1;
+  border-bottom: 1px dashed var(--c-yellow-cuc);
+}
+
+/* ==========================================================================
+   BƯỚC 3: CHARACTER CREATION (TRƯỚC GƯƠNG TẬP THỂ CŨ)
+   ========================================================================== */
+.character-creator-card {
+  max-width: 780px;
+}
+
+.creator-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 26px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 720px) {
+  .creator-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Khung gương phòng tập thể */
+.vintage-mirror-frame {
+  position: relative;
+  height: 320px;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 230, 160, 0.08), rgba(15, 12, 10, 0.95));
+  border: 4px solid #4a3525;
+  outline: 2px solid var(--c-gold-royal);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+.mirror-reflection {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.88;
+  transition: all 0.3s;
+}
+
+.avatar-silhouette {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 2px dashed rgba(212, 175, 55, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: rgba(30, 24, 18, 0.5);
+  position: relative;
+}
+
+.avatar-silhouette svg {
+  width: 80px;
+  height: 80px;
+  fill: var(--c-yellow-cuc);
+  opacity: 0.9;
+}
+
+.mirror-overlay-dust {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(255, 255, 255, 0.02) 15px, rgba(255, 255, 255, 0.02) 16px);
+}
+
+.mirror-caption {
+  font-family: var(--font-poem);
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--c-paper-aged);
+  text-align: center;
+  padding: 0 10px;
+}
+
+/* Phần nhập tên & chọn trang phục */
+.character-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Input Tên với Debounce & Trạng thái */
+.name-input-wrapper {
+  position: relative;
+}
+
+.name-input {
+  width: 100%;
+  padding: 12px 42px 12px 14px;
+  background: rgba(14, 12, 9, 0.9);
+  border: 2px solid rgba(212, 175, 55, 0.4);
+  border-radius: 6px;
+  color: var(--c-paper-do);
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  letter-spacing: 0.03em;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.name-input:focus {
+  border-color: var(--c-gold-royal);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+}
+
+/* Khi tên hợp lệ */
+.name-input.is-valid {
+  border-color: var(--c-success);
+  box-shadow: 0 0 14px var(--c-success-glow);
+}
+
+/* Khi tên bị trùng hoặc không hợp lệ */
+.name-input.is-invalid {
+  border-color: var(--c-danger);
+  box-shadow: 0 0 14px var(--c-danger-glow);
+}
+
+.input-status-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.name-validation-msg {
+  font-size: 0.85rem;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+}
+
+.name-validation-msg.error {
+  color: #ff8578;
+}
+
+.name-validation-msg.success {
+  color: #58d68d;
+}
+
+/* Badge gợi ý tên khi trùng */
+.name-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(40, 20, 20, 0.5);
+  border-radius: 4px;
+  border-left: 3px solid var(--c-danger);
+}
+
+.suggestions-label {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--c-paper-aged);
+  width: 100%;
+}
+
+.suggestion-chip {
+  padding: 4px 12px;
+  background: rgba(233, 196, 106, 0.15);
+  border: 1px solid var(--c-yellow-cuc);
+  color: var(--c-yellow-cuc);
+  border-radius: 14px;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion-chip:hover {
+  background: var(--c-yellow-cuc);
+  color: #121008;
+  transform: translateY(-1px);
+}
+
+/* Bộ chọn 4 bộ trang phục hoài niệm */
+.outfit-selector-title {
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  color: var(--c-yellow-cuc);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+.outfit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.outfit-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(22, 18, 14, 0.7);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.outfit-card:hover {
+  background: rgba(45, 34, 25, 0.85);
+  border-color: var(--c-gold-royal);
+  transform: translateY(-1px);
+}
+
+.outfit-card.active {
+  background: rgba(183, 121, 31, 0.22);
+  border: 2px solid var(--c-gold-royal);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+}
+
+.outfit-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--c-yellow-cuc);
+}
+
+.outfit-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.outfit-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--c-paper-do);
+}
+
+.outfit-desc {
+  font-size: 0.74rem;
+  color: var(--c-paper-dark);
+}
+
+/* Nút BƯỚC VÀO KÝ ỨC kích hoạt rực sáng */
+.btn-enter-reverie {
+  position: relative;
+  width: 100%;
+  padding: 16px 28px;
+  margin-top: 14px;
+  font-size: 1.15rem;
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 6px;
+  transition: all 0.35s ease;
+}
+
+.btn-enter-reverie:not(:disabled) {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 50%, #d35400 100%);
+  color: #ffffff;
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 25px rgba(243, 156, 18, 0.65), 0 4px 15px rgba(0, 0, 0, 0.6);
+  animation: pulseGlowGold 2s infinite ease-in-out;
+}
+
+.btn-enter-reverie:not(:disabled):hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 0 35px rgba(243, 156, 18, 0.9);
+}
+
+/* ==========================================================================
+   RETRO LOADING PROGRESS SCREEN
+   ========================================================================== */
+.retro-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0d0e11;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.retro-loading-overlay.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loading-stamp-box {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 24px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner-retro {
+  width: 80px;
+  height: 80px;
+  border: 3px solid rgba(212, 175, 55, 0.2);
+  border-top-color: var(--c-gold-royal);
+  border-radius: 50%;
+  animation: spin 1.2s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-caption-title {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  color: var(--c-yellow-cuc);
+  margin-bottom: 8px;
+}
+
+.loading-poem-text {
+  font-family: var(--font-poem);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--c-paper-aged);
+  max-width: 480px;
+  text-align: center;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.retro-progress-track {
+  width: 100%;
+  max-width: 440px;
+  height: 10px;
+  background: rgba(40, 32, 24, 0.8);
+  border: 1px solid var(--c-gold-royal);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+
+.retro-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--c-yellow-cuc), var(--c-gold-royal), var(--c-red-ba-trau));
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px var(--c-gold-royal);
+}
+
+.retro-progress-percent {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--c-yellow-cuc);
+  margin-top: 10px;
+}

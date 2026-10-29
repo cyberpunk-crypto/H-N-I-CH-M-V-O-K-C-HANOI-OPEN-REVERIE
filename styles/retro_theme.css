@@ -1,0 +1,134 @@
+/* ==========================================================================
+   RETRO THEME - MÀU SẮC & PHONG CÁCH HOÀI NIỆM HÀ NỘI
+   Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,900;1,400;1,600&display=swap');
+
+:root {
+  /* Bảng màu hoài niệm Hà Nội */
+  --c-yellow-cuc: #e9c46a;         /* Vàng hoàng cúc */
+  --c-yellow-wall: #d4a373;        /* Vàng vôi tường cũ */
+  --c-yellow-amber: #b7791f;       /* Hổ phách hoàng hôn */
+  --c-red-the-huc: #8b2635;        /* Đỏ son Thê Húc */
+  --c-red-ba-trau: #9e2a2b;        /* Đỏ bã trầu truyền thống */
+  --c-red-deep: #54171e;           /* Đỏ thẫm đình chùa */
+  --c-moss-green: #2a4836;         /* Xanh rêu Tháp Rùa */
+  --c-moss-deep: #192e22;          /* Xanh rêu ngõ sâu */
+  --c-moss-light: #43694f;         /* Xanh rêu non ven hồ */
+  --c-paper-do: #f4ebd9;           /* Giấy dó Hà Nội xưa */
+  --c-paper-aged: #e8dcc4;         /* Giấy ngả vàng cổ thư */
+  --c-paper-dark: #ccbc9d;         /* Giấy kraft nâu mộc */
+  --c-ink-black: #121417;          /* Mực tàu thư pháp */
+  --c-rust-steel: #3a2218;         /* Dầm thép Long Biên rỉ sét */
+  --c-gold-royal: #d4af37;         /* Vàng đồng hoàng gia */
+  --c-gold-glow: #f39c12;          /* Vàng ánh kim phát sáng */
+
+  /* Trạng thái UI */
+  --c-success: #2ecc71;
+  --c-success-glow: rgba(46, 204, 113, 0.4);
+  --c-danger: #e74c3c;
+  --c-danger-glow: rgba(231, 76, 60, 0.4);
+  --c-info: #3498db;
+
+  /* Typography */
+  --font-title: 'Playfair Display', Georgia, serif;
+  --font-poem: 'Lora', Georgia, serif;
+  --font-ui: 'Be Vietnam Pro', sans-serif;
+  --font-mono: 'Courier Prime', monospace;
+
+  /* Bóng & Viền hoài niệm */
+  --border-vintage: 1px solid rgba(212, 175, 55, 0.35);
+  --border-vintage-bold: 2px solid rgba(212, 175, 55, 0.6);
+  --shadow-retro: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(212, 175, 55, 0.15);
+  --shadow-card: 0 16px 40px rgba(10, 8, 6, 0.75);
+  --card-bg-gradient: linear-gradient(145deg, rgba(30, 24, 18, 0.94), rgba(18, 14, 10, 0.97));
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+/* Rung lắc khi nhập sai hoặc trùng tên */
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.shake-animation {
+  animation: errorShake 0.4s ease-in-out;
+}
+
+/* Hiệu ứng thở phát sáng */
+@keyframes pulseGlowGold {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(243, 156, 18, 0.4), inset 0 0 8px rgba(243, 156, 18, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(243, 156, 18, 0.8), inset 0 0 14px rgba(243, 156, 18, 0.4);
+  }
+}
+
+@keyframes pulseGlowGreen {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.7);
+  }
+}
+
+/* Ánh sáng quét qua nút bấm (Shimmer) */
+@keyframes shimmerPass {
+  0% { transform: translateX(-150%) skewX(-20deg); }
+  100% { transform: translateX(150%) skewX(-20deg); }
+}
+
+/* Màn trập máy ảnh nháy đen */
+@keyframes shutterBlink {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  60% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* Hiện dần điện ảnh */
+@keyframes cinematicFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hiệu ứng hạt film noise - Tối ưu 60 FPS: Vô hiệu hóa sub-pixel gradient gây nghẽn GPU Compositor */
+.film-grain-overlay {
+  display: none;
+}
+
+/* Vignette tối góc cổ điển */
+.vignette-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9989;
+  background: radial-gradient(circle, transparent 55%, rgba(10, 8, 6, 0.65) 90%, rgba(5, 4, 3, 0.88) 100%);
+}

@@ -1,0 +1,1130 @@
+/* ==========================================================================
+   HUD STYLES: MINIMAP, TOASTS, SCRAPBOOK, STATUS BAR, CHATBOX & DIALOGUE
+   Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
+   Bố cục cân bằng điện ảnh: Tránh 100% hiện tượng chồng chéo giữa HUD, Chat và Gợi ý tương tác
+   ========================================================================== */
+
+/* Lớp HUD chính bao phủ toàn màn hình */
+.game-hud-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 24px;
+  transition: opacity 0.4s ease;
+}
+
+.game-hud-layer.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Cho phép click vào các phần tử con có tương tác */
+.hud-interactive {
+  pointer-events: auto;
+}
+
+/* ==========================================================================
+   THANH TRẠNG THÁI GÓC TRÊN (TOP STATUS BAR)
+   ========================================================================== */
+.hud-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.player-zone-badge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(18, 14, 11, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  padding: 8px 18px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.zone-emblem {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 38, 53, 0.45);
+  border: 1px solid var(--c-yellow-cuc);
+  border-radius: 4px;
+  color: var(--c-yellow-cuc);
+}
+
+.zone-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.current-zone-name {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--c-paper-do);
+  letter-spacing: 0.03em;
+}
+
+.current-player-name {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--c-yellow-cuc);
+  opacity: 0.88;
+}
+
+/* Các nút công cụ góc trên bên phải */
+.hud-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-hud-tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(18, 14, 11, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  border-radius: 4px;
+  color: var(--c-paper-aged);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-hud-tool:hover {
+  background: rgba(45, 34, 25, 0.95);
+  border-color: var(--c-gold-royal);
+  color: var(--c-yellow-cuc);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
+}
+
+.btn-hud-tool .hotkey-chip {
+  padding: 2px 6px;
+  background: rgba(212, 175, 55, 0.22);
+  border-radius: 3px;
+  font-size: 0.72rem;
+  color: var(--c-yellow-cuc);
+}
+
+/* ==========================================================================
+   HÀNG PHÍM GỢI Ý ĐIỀU KHIỂN (CĂN GIỮA ĐÁY MÀN HÌNH - KHÔNG CHỒNG LÊN CHAT & MINIMAP)
+   ========================================================================== */
+.hud-bottom-bar {
+  display: flex;
+  justify-content: center; /* Căn giữa để chừa khoảng trống bên trái cho Chat và bên phải cho Minimap */
+  align-items: flex-end;
+  width: 100%;
+  padding-bottom: 4px;
+  pointer-events: none;
+}
+
+.control-hints-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 12, 9, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.32);
+  padding: 7px 18px;
+  border-radius: 20px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  max-width: 60vw;
+}
+
+.control-hint-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--c-paper-aged);
+  white-space: nowrap;
+}
+
+.keycap {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 3px;
+  color: var(--c-yellow-cuc);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   BẢNG GỢI Ý TƯƠNG TÁC (INTERACTION PROMPT)
+   Đặt tại trục giữa phía trên thanh phím tắt (bottom: 95px), không che tầm nhìn
+   ========================================================================== */
+.interaction-prompt-container {
+  position: fixed;
+  bottom: 95px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 650;
+  pointer-events: none;
+  animation: slideUpFade 0.25s ease;
+}
+
+.interaction-prompt-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: rgba(18, 14, 11, 0.94);
+  border: 1px solid var(--c-gold-royal);
+  border-radius: 24px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.75), 0 0 16px rgba(243, 156, 18, 0.45);
+  color: var(--c-paper-do);
+  font-size: 0.98rem;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   KÊNH CHAT TRỰC TUYẾN & GIAO TIẾP CỘNG ĐỒNG (CHATBOX HUD - GÓC DƯỚI BÊN TRÁI)
+   ========================================================================== */
+.chatbox-hud-container {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 600;
+  width: 350px;
+  max-width: calc(100vw - 48px);
+  pointer-events: auto;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.chat-messages-area {
+  max-height: 155px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(18, 14, 11, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.chat-msg-row {
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.chat-msg-row.fade-in-msg {
+  animation: fadeInChat 0.3s ease;
+}
+
+@keyframes fadeInChat {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-sender-badge {
+  font-weight: 700;
+  color: #ffdf99;
+  margin-right: 6px;
+}
+
+.chat-msg-text {
+  color: #f0e6d6;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 8px;
+  transition: all 0.25s ease;
+}
+
+.chat-input-form.collapsed {
+  opacity: 0.88;
+}
+
+.chat-text-input {
+  flex: 1;
+  background: rgba(26, 20, 16, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.chat-text-input:focus {
+  border-color: #ffd700;
+  background: rgba(36, 28, 22, 0.98);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
+}
+
+.btn-send-chat {
+  background: #8c261e;
+  border: 1px solid #d4af37;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-send-chat:hover {
+  background: #a92f25;
+}
+
+/* ==========================================================================
+   MINIMAP HUD (GÓC DƯỚI BÊN PHẢI)
+   ========================================================================== */
+.minimap-compact-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  border: 3px solid #3d2b1f;
+  outline: 2px solid var(--c-gold-royal);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65), 0 0 15px rgba(212, 175, 55, 0.2);
+  overflow: hidden;
+  background: #1b1612;
+  cursor: pointer;
+  transition: transform 0.25s, box-shadow 0.25s;
+  z-index: 550;
+}
+
+.minimap-compact-container:hover {
+  transform: scale(1.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
+}
+
+.minimap-canvas-layer {
+  width: 100%;
+  height: 100%;
+}
+
+.compass-needle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compass-rose {
+  width: 32px;
+  height: 32px;
+  transition: transform 0.1s linear;
+}
+
+/* ==========================================================================
+   TOAST NOTIFICATIONS (ĐẶT Ở TOP: 85px; RIGHT: 24px - KHÔNG CHE TOP BAR ACTIONS)
+   ========================================================================== */
+.toast-notification-container {
+  position: fixed;
+  top: 85px; /* Nằm ngay dưới Top Bar (top: 20px), không che nút Bản Đồ / Album */
+  right: 24px;
+  z-index: 2500;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.retro-toast-card {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 310px;
+  max-width: 420px;
+  padding: 12px 18px 14px 18px;
+  background: rgba(22, 18, 14, 0.98);
+  border: 1px solid var(--c-gold-royal);
+  border-radius: 6px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.75), 0 0 14px rgba(212, 175, 55, 0.25);
+  animation: slideInRight 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: all 0.3s;
+}
+
+.retro-toast-card.fade-out {
+  opacity: 0;
+  transform: translateX(35px);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(45px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-stamp-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--c-yellow-cuc);
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
+.toast-main-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.toast-icon-wrapper {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.18);
+  border: 1px solid var(--c-gold-royal);
+  color: var(--c-yellow-cuc);
+  flex-shrink: 0;
+}
+
+.toast-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast-title {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--c-yellow-cuc);
+}
+
+.toast-body {
+  font-family: var(--font-poem);
+  font-size: 0.86rem;
+  color: var(--c-paper-aged);
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   AUDIO BGM CONTROLLER (GÓC TRÊN BÊN TRÁI)
+   ========================================================================== */
+.audio-controller-widget {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 550;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-vinyl-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #191410;
+  border: 2px solid var(--c-gold-royal);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-yellow-cuc);
+  transition: all 0.25s;
+}
+
+.btn-vinyl-toggle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 16px rgba(243, 156, 18, 0.5);
+}
+
+.btn-vinyl-toggle.playing svg {
+  animation: rotateVinyl 4s linear infinite;
+}
+
+@keyframes rotateVinyl {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.audio-volume-popover {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(22, 18, 14, 0.96);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 20px;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.audio-volume-popover.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-10px);
+}
+
+.vintage-volume-slider {
+  width: 80px;
+  height: 4px;
+  appearance: none;
+  background: rgba(212, 175, 55, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.vintage-volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c-gold-royal);
+  border: 1px solid #fff;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   HỘP THOẠI & THUYẾT MINH LỊCH SỬ & QUẦY HÀNG XƯA (DIALOGUE MODAL)
+   ========================================================================== */
+.dialogue-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 40px;
+  background: rgba(14, 11, 9, 0.88);
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+
+.dialogue-modal-backdrop.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dialogue-card-retro {
+  position: relative;
+  width: 90%;
+  max-width: 760px;
+  max-height: 80vh;
+  background: #fbf7ed;
+  border: 2px solid #b3883b;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(179, 136, 59, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  color: #2b221a;
+  animation: dialogueSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dialogueSlideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #2b1f18 0%, #3e2b20 100%);
+  border-bottom: 2px solid #b3883b;
+  color: #f7e6c4;
+}
+
+.npc-avatar-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #4a3427;
+  border: 2px solid #d4af37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.npc-avatar-graphic {
+  font-size: 28px;
+}
+
+.npc-meta {
+  flex: 1;
+}
+
+.npc-name {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffdf99;
+}
+
+.npc-role {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #c9b49e;
+  font-style: italic;
+}
+
+.btn-close-dialogue {
+  background: none;
+  border: none;
+  color: #ffdf99;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 8px;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.btn-close-dialogue:hover {
+  transform: scale(1.15);
+  color: #ffffff;
+}
+
+.dialogue-nav-tabs {
+  display: flex;
+  background: #f0e6d2;
+  border-bottom: 1px solid #d4c0a1;
+}
+
+.dialogue-nav-tabs .tab-btn {
+  flex: 1;
+  padding: 11px 16px;
+  border: none;
+  background: none;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #634b35;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 3px solid transparent;
+}
+
+.dialogue-nav-tabs .tab-btn:hover {
+  background: #e8dbbe;
+  color: #24160e;
+}
+
+.dialogue-nav-tabs .tab-btn.active {
+  background: #fbf7ed;
+  color: #8c261e;
+  border-bottom-color: #8c261e;
+}
+
+.dialogue-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 48vh;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* 1. Tab Trò chuyện */
+.dialogue-bubble {
+  background: #ffffff;
+  border: 1px solid #dfd1b8;
+  border-left: 4px solid #8c261e;
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.dialogue-speech-text {
+  margin: 0;
+  font-family: 'Lora', serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #291c14;
+}
+
+.dialogue-quick-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-dialogue-option {
+  text-align: left;
+  background: #f5ede0;
+  border: 1px solid #d2be9e;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 14px;
+  color: #3b281d;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dialogue-option:hover {
+  background: #edd8be;
+  border-color: #8c261e;
+  transform: translateX(4px);
+  color: #8c261e;
+}
+
+/* 2. Tab Thuyết minh Lịch sử */
+.history-content-box {
+  background: #fff;
+  border: 1px solid #d8caa7;
+  border-radius: 6px;
+  padding: 18px;
+}
+
+.history-monument-badge {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #8c261e;
+  border-bottom: 1px dashed #d8caa7;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.history-scroll-text {
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #33241b;
+}
+
+.history-scroll-text p {
+  margin: 0 0 12px;
+}
+
+.history-scroll-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* 3. Tab Cửa hàng xưa */
+.shop-inventory-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.shop-item-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid #ded0ba;
+  border-radius: 6px;
+  padding: 12px 16px;
+  transition: all 0.2s;
+}
+
+.shop-item-card:hover {
+  border-color: #b3883b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.item-icon {
+  font-size: 30px;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b1f18;
+}
+
+.item-desc {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #7a6350;
+}
+
+.btn-buy-item {
+  background: #8c261e;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-buy-item:hover {
+  background: #a92f25;
+  transform: scale(1.05);
+}
+
+.shop-footer {
+  text-align: right;
+  padding-top: 8px;
+  border-top: 1px solid #e2d3be;
+}
+
+.player-wallet-badge {
+  font-size: 14px;
+  color: #634b35;
+}
+
+.player-wallet-badge strong {
+  color: #b3883b;
+}
+
+/* ==========================================================================
+   MODAL BẢN ĐỒ TOÀN CẢNH (EXPANDED TOURIST MAP)
+   ========================================================================== */
+.tourist-map-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.95);
+  padding: 30px;
+  transition: opacity 0.3s;
+}
+
+.tourist-map-modal.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.vintage-map-frame {
+  position: relative;
+  width: 100%;
+  max-width: 920px;
+  background: #f4ebd9;
+  color: #2b1f14;
+  border: 8px solid #3e2723;
+  outline: 2px solid var(--c-gold-royal);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  border-radius: 6px;
+  padding: 30px;
+}
+
+.map-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px dashed #8d6e63;
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.map-modal-title {
+  font-family: var(--font-title);
+  font-size: 1.8rem;
+  color: #3e2723;
+  letter-spacing: 0.05em;
+}
+
+.map-modal-subtitle {
+  font-family: var(--font-poem);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: #5d4037;
+}
+
+.map-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.zone-teleport-card {
+  position: relative;
+  padding: 16px;
+  border: 2px solid #bcaaa4;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.zone-teleport-card:hover {
+  border-color: #8b2635;
+  background: #fff8e7;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.zone-card-title {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #8b2635;
+  margin-bottom: 4px;
+}
+
+.zone-card-desc {
+  font-size: 0.85rem;
+  color: #4e342e;
+  line-height: 1.5;
+}
+
+.btn-close-modal {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #3e2723;
+  color: #f4ebd9;
+  font-size: 1.2rem;
+  border: 1px solid var(--c-gold-royal);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.btn-close-modal:hover {
+  background: #8b2635;
+  transform: rotate(90deg);
+}
+
+/* ==========================================================================
+   ALBUM KÝ ỨC (SCRAPBOOK MODAL)
+   ========================================================================== */
+.scrapbook-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 5, 0.96);
+  padding: 24px;
+  transition: opacity 0.3s;
+}
+
+.scrapbook-modal.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.leather-album-binder {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  height: 85vh;
+  max-height: 680px;
+  background: #231913;
+  border: 8px solid #160e0a;
+  border-radius: 12px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), inset 0 0 50px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  color: var(--c-paper-do);
+  overflow: hidden;
+}
+
+.album-spine-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  background: linear-gradient(180deg, #100a07, #3e2723, #100a07);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.album-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.album-title-text {
+  font-family: var(--font-title);
+  font-size: 1.8rem;
+  color: var(--c-yellow-cuc);
+  letter-spacing: 0.04em;
+}
+
+.album-subtitle-text {
+  font-family: var(--font-poem);
+  font-style: italic;
+  font-size: 0.92rem;
+  color: var(--c-paper-aged);
+}
+
+.album-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+  overflow-y: auto;
+  padding-right: 8px;
+  flex: 1;
+}
+
+.polaroid-photo-card {
+  position: relative;
+  background: #ffffff;
+  color: #1a1a1a;
+  padding: 12px 12px 20px 12px;
+  border-radius: 2px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  transform: rotate(var(--rot, 0deg));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.polaroid-photo-card:hover {
+  transform: scale(1.03) rotate(0deg) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7);
+  z-index: 5;
+}
+
+.polaroid-photo-card::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 20px;
+  background: rgba(220, 200, 160, 0.6);
+  border: 1px dashed rgba(160, 140, 100, 0.5);
+}
+
+.polaroid-img-frame {
+  width: 100%;
+  height: 190px;
+  background: #111;
+  overflow: hidden;
+  border-radius: 2px;
+  position: relative;
+}
+
+.polaroid-img-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.polaroid-stamp {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  background: url('../assets/ui/stamp_hanoi.png') center/contain no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  pointer-events: none;
+}
+
+.polaroid-caption {
+  font-family: var(--font-poem);
+  font-style: italic;
+  font-size: 0.84rem;
+  color: #333333;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.polaroid-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #777777;
+  border-top: 1px dotted #ccc;
+  padding-top: 6px;
+}
+
+.btn-download-photo {
+  padding: 4px 8px;
+  background: #2a4836;
+  color: #f4ebd9;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.btn-download-photo:hover {
+  background: #3e5c48;
+}
+
+.empty-album-msg {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  opacity: 0.7;
+}
+
+.empty-album-msg p {
+  font-family: var(--font-poem);
+  font-style: italic;
+  font-size: 1.1rem;
+  margin-top: 10px;
+}

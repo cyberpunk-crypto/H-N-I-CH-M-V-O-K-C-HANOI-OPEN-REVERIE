@@ -1,0 +1,12 @@
+{
+  "name": "hanoi-open-reverie",
+  "version": "1.0.0",
+  "description": "Hà Nội: Chạm Vào Ký Ức (Hanoi: Open Reverie) 3D Game",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": ["game", "threejs", "hanoi", "vietnam", "open-world", "retro"],
+  "author": "Game Studio AI",
+  "license": "MIT"
+}
