@@ -31,10 +31,10 @@ export class PerspectivePuzzle {
         puzzleName: 'Văn Miếu Ký Ức',
         title: 'Khuê Văn Các Soi Bóng',
         zoneId: 'ho_guom',
-        targetPosition: new THREE.Vector3(55, 0.5, -55),
+        targetPosition: new THREE.Vector3(17, 0.5, -17),
         // Hướng nhìn thẳng ra Tháp Rùa giữa hồ
         targetDirection: new THREE.Vector3(0.707, 0.04, -0.707).normalize(),
-        maxDistance: 2.5,
+        maxDistance: 3.5,
         solved: false,
         quote: 'Hồ Gươm soi bóng nghìn năm, nét Khuê Văn Các thâm nghiêm giữa lòng Hà Nội.',
         unlockedShortcut: 'Lối rẽ hoa liễu dẫn sang Phố Cổ',

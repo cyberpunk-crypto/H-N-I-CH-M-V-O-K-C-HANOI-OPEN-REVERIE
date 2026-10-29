@@ -368,8 +368,8 @@ export class PlayerController {
     blobShadow.position.y = 0.03;
     this.characterGroup.add(blobShadow);
 
-    // Vị trí xuất phát ven hồ Gươm thông thoáng
-    this.characterGroup.position.set(45, 0.5, -45);
+    // Vị trí xuất phát trên đường dạo ven hồ Gươm dẫn thẳng lên Cầu Tháp Rùa
+    this.characterGroup.position.set(17, 0.5, -17);
     this.scene.add(this.characterGroup);
   }
 
@@ -526,8 +526,12 @@ export class PlayerController {
 
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
-      // Bộ lọc không gian siêu tốc (Spatial Distance Culling) - Bỏ qua các vật cản cách xa nhân vật > 14m
-      if (Math.abs(pos.x - (obs.minX + obs.maxX) * 0.5) > 14 || Math.abs(pos.z - (obs.minZ + obs.maxZ) * 0.5) > 14) {
+      // Bộ lọc không gian chuẩn xác theo AABB (Spatial Distance Culling) - hoạt động tốt cả với vật cản dài
+      const halfX = (obs.maxX - obs.minX) * 0.5;
+      const halfZ = (obs.maxZ - obs.minZ) * 0.5;
+      const centerX = (obs.minX + obs.maxX) * 0.5;
+      const centerZ = (obs.minZ + obs.maxZ) * 0.5;
+      if (Math.abs(pos.x - centerX) > (halfX + 14) || Math.abs(pos.z - centerZ) > (halfZ + 14)) {
         continue;
       }
       // Bỏ qua nếu không trùng độ cao nhân vật
@@ -560,6 +564,18 @@ export class PlayerController {
         } else {
           pos.z = obs.maxZ + r + margin;
         }
+      }
+    }
+
+    // Đẩy ngược lại nếu vi phạm ranh giới mặt nước (bảo đảm 100% không chạm nước)
+    if (this.worldManager.isWaterAt && this.worldManager.isWaterAt(pos.x, pos.y, pos.z)) {
+      const dx = pos.x - 80;
+      const dz = pos.z - (-80);
+      const dist = Math.hypot(dx, dz);
+      if (dist < 85.0 && dist > 0.001) {
+        pos.x = 80 + (dx / dist) * 86.5;
+        pos.z = -80 + (dz / dist) * 86.5;
+        pos.y = Math.max(pos.y, 0.45);
       }
     }
 
@@ -685,13 +701,22 @@ export class PlayerController {
     const r = this.playerRadius;
     const pY = testPos.y;
 
+    // 0. Cấm tuyệt đối không cho bước xuống nước / chạm nước theo sắc lệnh
+    if (this.worldManager.isWaterAt && this.worldManager.isWaterAt(testPos.x, testPos.y, testPos.z)) {
+      return true; // Chặn ngang ngay lập tức, không cho phép xuống nước!
+    }
+
     // 1. Kiểm tra va chạm kiến trúc
     const obstacles = this.worldManager.getObstacles();
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
 
-      // Bộ lọc không gian siêu tốc (Spatial Culling - giảm 95% CPU bottleneck)
-      if (Math.abs(testPos.x - (obs.minX + obs.maxX) * 0.5) > 16 || Math.abs(testPos.z - (obs.minZ + obs.maxZ) * 0.5) > 16) {
+      // Bộ lọc không gian chuẩn xác theo AABB (Spatial Culling) - bảo vệ trọn vẹn cả cầu dài và tường dài
+      const halfX = (obs.maxX - obs.minX) * 0.5;
+      const halfZ = (obs.maxZ - obs.minZ) * 0.5;
+      const centerX = (obs.minX + obs.maxX) * 0.5;
+      const centerZ = (obs.minZ + obs.maxZ) * 0.5;
+      if (Math.abs(testPos.x - centerX) > (halfX + 16) || Math.abs(testPos.z - centerZ) > (halfZ + 16)) {
         continue;
       }
 
@@ -859,17 +884,9 @@ export class PlayerController {
     this._resolvePenetrations(currentPos);
 
     // 4. KIỂM TRA ĐỘ CAO MẶT ĐẤT VÀ BƯỚC LÊN GỜ VỈA HÈ (STEP-UP GROUND SNAP)
-    const allColliders = this.worldManager.getColliders();
-    const nearColliders = [];
+    // Toàn bộ mảng colliders (~30 meshes) được raycast trực tiếp - không dùng culling khoảng cách sai lệch gây rơi khỏi cầu Long Biên!
+    const colliders = this.worldManager.getColliders();
     const charPos = this.characterGroup.position;
-    for (let c = 0; c < allColliders.length; c++) {
-      const col = allColliders[c];
-      if (col.position && Math.hypot(col.position.x - charPos.x, col.position.z - charPos.z) > 42) {
-        continue;
-      }
-      nearColliders.push(col);
-    }
-    const colliders = nearColliders.length > 0 ? nearColliders : allColliders;
 
     this._rayOrigin.copy(charPos);
     this._rayOrigin.y += 1.4;

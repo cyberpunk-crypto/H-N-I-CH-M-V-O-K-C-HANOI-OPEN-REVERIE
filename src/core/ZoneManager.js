@@ -10,7 +10,7 @@ export const ZONES = {
     description: 'Mặt nước phẳng lặng in bóng Tháp Rùa rêu phong, Cầu Thê Húc son đỏ rực rỡ và hàng liễu rủ ven hồ.',
     ambientTrack: 'assets/audio/ambient_lake.mp3',
     bounds: { minX: 0, maxX: 250, minZ: -250, maxZ: 0 },
-    spawnPoint: { x: 55, y: 0.5, z: -55 },
+    spawnPoint: { x: 17, y: 0.5, z: -17 },
     themeColor: '#e67e22'
   },
   pho_co: {

@@ -22,11 +22,12 @@ export class WorldManager {
     this.obstacles = [];      // Danh sách Bounding Boxes AABB { minX, maxX, minZ, maxZ, minY, maxY }
     this.npcColliders = [];   // Danh sách tọa độ và bán kính con người { x, z, radius }
 
-    // 2. Điểm tương tác môi trường & Cửa mở tương tác
+    // 2. Điểm tương tác môi trường & Cửa mở tương tác & Sinh vật sống
     this.interactables = [];
     this.animatedObjects = [];
     this.interactiveDoors = [];
     this.roamingNpcs = [];
+    this.lakeFish = []; // Đàn cá chép vàng & cá koi bơi lội dưới lòng Hồ Gươm
 
     // 3. Cơ chế biến đổi không gian khi giải đố
     this.secretWallOldQuarter = null;
@@ -68,6 +69,78 @@ export class WorldManager {
    */
   _addNpcCollider(x, z, radius = 0.6) {
     this.npcColliders.push({ x, z, radius });
+  }
+
+  /**
+   * Tính bình phương khoảng cách từ điểm (px, pz) tới đoạn thẳng (x1, z1)-(x2, z2)
+   */
+  _pointToSegmentDistSq(px, pz, x1, z1, x2, z2) {
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const lenSq = dx * dx + dz * dz;
+    if (lenSq === 0) return (px - x1) * (px - x1) + (pz - z1) * (pz - z1);
+    let t = ((px - x1) * dx + (pz - z1) * dz) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const projX = x1 + t * dx;
+    const projZ = z1 + t * dz;
+    const diffX = px - projX;
+    const diffZ = pz - projZ;
+    return diffX * diffX + diffZ * diffZ;
+  }
+
+  /**
+   * KIỂM TRA RANH GIỚI MẶT NƯỚC (CẤM TUYỆT ĐỐI KHÔNG CHẠM NƯỚC)
+   * Trả về true nếu tọa độ nằm trong vùng nước không an toàn (ngoài đảo và cầu).
+   */
+  isWaterAt(x, y, z) {
+    // 1. Vùng Hồ Gươm (Tâm x = 80, z = -80, bán kính lòng hồ R = 84.8m)
+    const dx = x - 80;
+    const dz = z - (-80);
+    const distSq = dx * dx + dz * dz;
+    const lakeRadius = 84.8;
+
+    if (distSq < lakeRadius * lakeRadius) {
+      // Đang trong phạm vi mặt nước Hồ Gươm!
+      // Kiểm tra xem có đang ở trên các khu vực an toàn (Đảo Rùa, Đảo Ngọc Sơn, Cầu Thê Húc, Cầu Kim Quy) không:
+
+      // a. Đảo Rùa tự nhiên: bán kính 17.5m quanh (80, -80)
+      if (distSq <= 17.5 * 17.5 && y >= 0.55) {
+        return false; // An toàn trên Đảo Rùa
+      }
+
+      // b. Đảo Ngọc Sơn: bán kính 24m quanh (128, -68)
+      const dNgocX = x - 128;
+      const dNgocZ = z - (-68);
+      if (dNgocX * dNgocX + dNgocZ * dNgocZ <= 24.5 * 24.5 && y >= 0.55) {
+        return false; // An toàn trên Đảo Ngọc Sơn
+      }
+
+      // c. Cầu Thê Húc son đỏ: từ bờ (160, -40) đến Đắc Nguyệt Lâu (132, -66), bán kính an toàn 2.4m
+      const dTheHuc = this._pointToSegmentDistSq(x, z, 160, -40, 132, -66);
+      if (dTheHuc <= 2.4 * 2.4 && y >= 0.45) {
+        return false; // An toàn trên Cầu Thê Húc
+      }
+
+      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (17, -17) đến Đảo Rùa (68, -68), bán kính an toàn 2.4m
+      const dKimQuy = this._pointToSegmentDistSq(x, z, 17, -17, 68, -68);
+      if (dKimQuy <= 2.4 * 2.4 && y >= 0.40) {
+        return false; // An toàn trên Cầu Kim Quy
+      }
+
+      // Không nằm trên cầu hay đảo -> ĐÂY LÀ MẶT NƯỚC HỒ GƯƠM! CẤM BƯỚC XUỐNG!
+      return true;
+    }
+
+    // 2. Vùng Sông Hồng (Phân khu 3: x từ 0 đến 250, z từ 90 đến 245)
+    if (z > 95 && z < 245 && x > 0 && x < 250) {
+      // Trên dầm Cầu Long Biên (z trong khoảng [56, 64] và y >= 3.6)
+      if (Math.abs(z - 60) <= 4.2 && y >= 3.6) return false;
+      // Trên bãi bồi phù sa sông Hồng (x từ 40 đến 200, z từ 100 đến 150, y >= 0.22)
+      if (z <= 150 && x >= 40 && x <= 200 && y >= 0.22) return false;
+      return true; // Rơi xuống lòng sông Hồng
+    }
+
+    return false;
   }
 
   /**
@@ -883,13 +956,15 @@ export class WorldManager {
       }
     }
 
-    // 2. LAN CAN ĐÁ HOA SEN CỔ KÍNH UỐN QUANH BỜ HỒ (HỆ THỐNG RÀO CHẮN LIÊN TỤC 100% CHỐNG ĐI XUYÊN)
+    // 2. LAN CAN ĐÁ HOA SEN CỔ KÍNH UỐN QUANH BỜ HỒ (HỆ THỐNG RÀO CHẮN MỸ THUẬT VEN BỜ)
     const balusterMat = this.materials.mossStone;
     const postCount = 64;
     for (let i = 0; i < postCount; i++) {
       const angle = (i / postCount) * Math.PI * 2;
-      // Chừa đúng lối đi dẫn lên Cầu Thê Húc
-      const isBridgeOpening = angle > 0.38 && angle < 0.88;
+      // Chừa lối dẫn lên Cầu Thê Húc (0.38 - 0.88 rad) VÀ Cầu Kim Quy dẫn ra Tháp Rùa (2.10 - 2.62 rad)
+      const isTheHucOpening = angle > 0.38 && angle < 0.88;
+      const isKimQuyOpening = angle > 2.10 && angle < 2.62;
+      const isBridgeOpening = isTheHucOpening || isKimQuyOpening;
 
       const px = 80 + Math.cos(angle) * 85;
       const pz = -80 + Math.sin(angle) * 85;
@@ -908,7 +983,9 @@ export class WorldManager {
 
         // Nối dầm lan can đá giữa các cột kề nhau để tạo thành thành chắn mỹ thuật liên tục
         const nextAngle = ((i + 1) / postCount) * Math.PI * 2;
-        if (!(nextAngle > 0.36 && nextAngle < 0.90)) {
+        const nextTheHuc = nextAngle > 0.36 && nextAngle < 0.90;
+        const nextKimQuy = nextAngle > 2.08 && nextAngle < 2.64;
+        if (!nextTheHuc && !nextKimQuy) {
           const nextPx = 80 + Math.cos(nextAngle) * 85;
           const nextPz = -80 + Math.sin(nextAngle) * 85;
           const segDist = Math.hypot(nextPx - px, nextPz - pz);
@@ -1020,6 +1097,198 @@ export class WorldManager {
     spire.position.set(80, 12.9, -80);
     zoneGroup.add(spire);
 
+    // =========================================================================
+    // 🐢 CẦU KIM QUY - LỐI ĐI BỘ ĐÁ CỔ DẪN RA ĐẢO THÁP RÙA (KHÔNG CHẠM NƯỚC 100%)
+    // Nối trực tiếp từ đường dạo ven hồ (17, 0.45, -17) ra tới Đảo Rùa (68, 0.85, -68)
+    // Bản mặt cầu đá xanh cổ rộng 3.8m, uốn cong êm dịu, lan can chạm búp sen đá & đèn đồng
+    // =========================================================================
+
+    // 1. CỔNG NGHINH PHONG MÔN & QUẢNG TRƯỜNG ĐÁ ĐẦU CẦU PHÍA BỜ HỒ (17, 0.45, -17)
+    const bridgeGatePlaza = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.25, 6.5), this.materials.mossStone);
+    bridgeGatePlaza.position.set(17, 0.38, -17);
+    bridgeGatePlaza.receiveShadow = true;
+    zoneGroup.add(bridgeGatePlaza);
+    this.colliders.push(bridgeGatePlaza);
+
+    // Đôi cột trụ đá Nghinh Phong Môn dẫn lối lên cầu
+    for (let gs of [-2.2, 2.2]) {
+      const gateCol = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 3.2, 8), this.materials.mossStone);
+      gateCol.position.set(17 + gs * 0.707, 1.85, -17 - gs * 0.707);
+      gateCol.castShadow = true;
+      zoneGroup.add(gateCol);
+
+      const gateLotus = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8), this.materials.templeGold || this.materials.mossStone);
+      gateLotus.position.set(17 + gs * 0.707, 3.6, -17 - gs * 0.707);
+      zoneGroup.add(gateLotus);
+
+      this._addBoxObstacle(17 + gs * 0.707, -17 - gs * 0.707, 0.8, 0.8, 0, 4.0);
+    }
+
+    // 2. ĐƯỜNG CONG VÒM CẦU KIM QUY (CatmullRom Curve dài 71m bắc qua lòng hồ)
+    const kimQuyCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(17, 0.45, -17),
+      new THREE.Vector3(28, 0.88, -28),
+      new THREE.Vector3(39, 1.35, -39),
+      new THREE.Vector3(50, 1.60, -50),
+      new THREE.Vector3(60, 1.25, -60),
+      new THREE.Vector3(68, 0.85, -68)
+    ]);
+
+    const kimQuySegments = 22;
+    const kimQuyPts = kimQuyCurve.getPoints(kimQuySegments);
+
+    for (let i = 0; i < kimQuySegments; i++) {
+      const p1 = kimQuyPts[i];
+      const p2 = kimQuyPts[i + 1];
+      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+      const segLength = p1.distanceTo(p2);
+      const angleY = Math.atan2(p2.z - p1.z, p2.x - p1.x);
+      const anglePitch = Math.asin((p2.y - p1.y) / segLength);
+
+      // Mặt sàn đá nguyên khối bản rộng 3.8m
+      const deckMesh = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.15, 0.32, 3.8), this.materials.mossStone);
+      deckMesh.position.set(mid.x, mid.y + 0.1, mid.z);
+      deckMesh.rotation.y = -angleY;
+      deckMesh.rotation.z = anglePitch;
+      deckMesh.receiveShadow = true;
+      deckMesh.castShadow = true;
+      zoneGroup.add(deckMesh);
+      this.colliders.push(deckMesh); // ĐĂNG KÝ VÀO COLLIDERS ĐỂ ĐI LẠI TRÊN CẦU!
+
+      // Rào chắn lan can đá hoa sen và dầm chắn hai bên cầu (Offset vuông góc chuẩn xác 1.95m)
+      const perpX = -Math.sin(angleY);
+      const perpZ = Math.cos(angleY);
+
+      for (let side of [-1.92, 1.92]) {
+        // Cột đá lan can
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.90, 8), this.materials.mossStone);
+        post.position.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
+        zoneGroup.add(post);
+
+        // Búp sen đá trên đỉnh cột
+        const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), this.materials.mossStone);
+        lotus.position.set(mid.x + perpX * side, mid.y + 1.15, mid.z + perpZ * side);
+        zoneGroup.add(lotus);
+
+        // Tay vịn đá nối liền
+        const railBeam = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.08, 0.22, 0.18), this.materials.mossStone);
+        railBeam.position.set(mid.x + perpX * side, mid.y + 0.85, mid.z + perpZ * side);
+        railBeam.rotation.y = -angleY;
+        railBeam.rotation.z = anglePitch;
+        zoneGroup.add(railBeam);
+
+        // Đăng ký obstacle chống rơi xuống nước
+        this._addBoxObstacle(mid.x + perpX * side, mid.z + perpZ * side, 0.5, 0.5, mid.y, mid.y + 1.8);
+      }
+
+      // Đèn lồng đồng thau cổ điển chiếu sáng lung linh dọc cầu (cách mỗi 3 nhịp)
+      if (i % 3 === 1) {
+        for (let side of [-2.05, 2.05]) {
+          const lampPost = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.6, 6), this.materials.darkIron);
+          lampPost.position.set(mid.x + perpX * side, mid.y + 1.0, mid.z + perpZ * side);
+          zoneGroup.add(lampPost);
+
+          const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshStandardMaterial({
+            color: 0xffe082,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.8
+          }));
+          lantern.position.set(mid.x + perpX * side, mid.y + 1.8, mid.z + perpZ * side);
+          zoneGroup.add(lantern);
+        }
+      }
+    }
+
+    // Trụ cầu đá khối chìm dưới đáy hồ đỡ dầm cầu Kim Quy
+    for (let t of [0.18, 0.36, 0.54, 0.72, 0.90]) {
+      const pierPt = kimQuyCurve.getPoint(t);
+      const pierH = pierPt.y + 0.2;
+      const pierMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, pierH, 3.6), this.materials.mossStone);
+      pierMesh.position.set(pierPt.x, pierH / 2, pierPt.z);
+      pierMesh.castShadow = true;
+      zoneGroup.add(pierMesh);
+    }
+
+    // 3. QUẢNG TRƯỜNG ĐÁ TIẾP ĐẢO (ISLAND LANDING PLAZA) TẠI (68, 0.85, -68)
+    const islandLandingPlaza = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.30, 6.0), this.materials.mossStone);
+    islandLandingPlaza.position.set(68, 0.80, -68);
+    islandLandingPlaza.receiveShadow = true;
+    zoneGroup.add(islandLandingPlaza);
+    this.colliders.push(islandLandingPlaza);
+
+    // =========================================================================
+    // 🐟 ĐÀN CÁ CHÉP VÀNG & CÁ KOI HỒ GƯƠM BƠI LỘI DƯỚI MẶT NƯỚC (LIVING LAKE FISH)
+    // =========================================================================
+    const fishGoldMat = new THREE.MeshStandardMaterial({ color: 0xff8c00, roughness: 0.35, metalness: 0.2 });
+    const fishRedMat = new THREE.MeshStandardMaterial({ color: 0xd63031, roughness: 0.35, metalness: 0.2 });
+    const fishCalicoMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+    const fishMatList = [fishGoldMat, fishRedMat, fishCalicoMat];
+
+    const fishSchools = [
+      { count: 7, cx: 80, cz: -80, rMin: 22, rMax: 32, speedBase: 0.22 },
+      { count: 7, cx: 45, cz: -45, rMin: 10, rMax: 18, speedBase: -0.28 },
+      { count: 7, cx: 142, cz: -55, rMin: 12, rMax: 20, speedBase: 0.25 },
+      { count: 7, cx: 85, cz: -45, rMin: 18, rMax: 30, speedBase: -0.20 }
+    ];
+
+    fishSchools.forEach((school, sIdx) => {
+      for (let f = 0; f < school.count; f++) {
+        const fishGroup = new THREE.Group();
+        const mat = fishMatList[(sIdx + f) % fishMatList.length];
+
+        // Thân cá chép uốn lượn hình thoi
+        const bodyGeo = new THREE.ConeGeometry(0.18, 0.85, 6);
+        bodyGeo.rotateX(Math.PI / 2);
+        bodyGeo.scale(0.55, 0.75, 1.0);
+        const bodyMesh = new THREE.Mesh(bodyGeo, mat);
+        fishGroup.add(bodyMesh);
+
+        // Vây lưng cá
+        const dorsalGeo = new THREE.BoxGeometry(0.02, 0.16, 0.30);
+        const dorsal = new THREE.Mesh(dorsalGeo, mat);
+        dorsal.position.set(0, 0.14, -0.05);
+        fishGroup.add(dorsal);
+
+        // Vây bơi hai bên
+        for (let side of [-1, 1]) {
+          const fin = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 0.15), mat);
+          fin.position.set(side * 0.12, -0.04, 0.15);
+          fin.rotation.z = side * 0.3;
+          fishGroup.add(fin);
+        }
+
+        // Đuôi cá có khớp lắc
+        const tailPivot = new THREE.Group();
+        tailPivot.position.set(0, 0, -0.42);
+        const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.28, 0.35), mat);
+        tailFin.position.set(0, 0, -0.15);
+        tailPivot.add(tailFin);
+        fishGroup.add(tailPivot);
+
+        const radius = school.rMin + Math.random() * (school.rMax - school.rMin);
+        const angle = (f / school.count) * Math.PI * 2 + Math.random() * 0.5;
+        const speed = school.speedBase * (0.85 + Math.random() * 0.3);
+
+        fishGroup.position.set(
+          school.cx + Math.cos(angle) * radius,
+          0.04,
+          school.cz + Math.sin(angle) * radius
+        );
+        zoneGroup.add(fishGroup);
+
+        this.lakeFish.push({
+          group: fishGroup,
+          tail: tailPivot,
+          centerX: school.cx,
+          centerZ: school.cz,
+          orbitRadius: radius,
+          orbitAngle: angle,
+          orbitSpeed: speed,
+          swimPhase: Math.random() * Math.PI * 2
+        });
+      }
+    });
+
     // 4. QUẦN THỂ ĐỀN NGỌC SƠN, CẦU THÊ HÚC, ĐẮC NGUYỆT LÂU & CHÙA ĐỎ CHÍNH ĐIỆN
     // ĐẢO NGỌC SƠN TỰ NHIÊN (Rộng 44m, cao y = 0.8m)
     const ngocIsland = new THREE.Mesh(new THREE.CylinderGeometry(22, 25, 1.6, 32), this.materials.mossStone);
@@ -1045,31 +1314,34 @@ export class WorldManager {
       this._addBoxObstacle(ix, iz, 1.2, 1.2, 0, 2.0);
     }
 
-    // DỐC TIẾP CẬN THOẢI ĐẦU CẦU PHÍA BỜ HỒ (Thê Húc Bridge Approach Ramp)
-    // Nối êm dịu từ mặt vỉa hè (y = 0.15) tại (166, -36) lên chân cầu (y = 0.95) tại (158, -42)
-    const theHucApproachGeo = new THREE.BoxGeometry(11.0, 0.25, 2.6);
+    // =========================================================================
+    // ⛩️ CẦU THÊ HÚC ĐỎ SON 15 NHỊP - NÂNG CẤP ĐẠI TRÙNG TU CHUẨN KIẾN TRÚC THĂNG LONG
+    // Bản mặt cầu mở rộng 3.8m thênh thang, vòm cong thoải êm ái, 16 cặp cọc cừ gỗ lim cắm đáy hồ,
+    // hàng song tiện sơn son thếp vàng búp sen thanh nhã, triệt tiêu 100% vòm ống cản trở!
+    // =========================================================================
+
+    // 1. DỐC TIẾP CẬN THOẢI ĐẦU CẦU PHÍA BỜ HỒ (Thê Húc Bridge Approach Ramp) - BẢN RỘNG 3.8M
+    const theHucApproachGeo = new THREE.BoxGeometry(11.0, 0.28, 3.8);
     const theHucApproachRamp = new THREE.Mesh(theHucApproachGeo, this.materials.theHucRed);
-    theHucApproachRamp.position.set(162, 0.55, -39);
-    theHucApproachRamp.rotation.y = -Math.atan2(-6, -8); // Góc xoay chuẩn xác hướng cầu (-atan2)
-    theHucApproachRamp.rotation.z = 0.08; // Dốc thoải < 12% nối êm từ đất lên mặt cầu
+    theHucApproachRamp.position.set(162, 0.52, -39);
+    theHucApproachRamp.rotation.y = -Math.atan2(-6, -8);
+    theHucApproachRamp.rotation.z = 0.05; // Độ dốc thoải < 8% nối êm từ hè lên mặt cầu
     theHucApproachRamp.receiveShadow = true;
     zoneGroup.add(theHucApproachRamp);
     this.colliders.push(theHucApproachRamp);
 
-    // CẦU THÊ HÚC ĐỎ SON 15 NHỊP UỐN CONG NỐI BỜ VÀO ĐẢO
+    // 2. VÒM CONG 15 NHỊP CẦU THÊ HÚC UỐN LƯỢN THANH THOÁT
     const theHucCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(158, 0.95, -42),
-      new THREE.Vector3(146, 2.9, -52),
-      new THREE.Vector3(134, 1.1, -64)
+      new THREE.Vector3(158, 0.58, -42),
+      new THREE.Vector3(151, 1.42, -47),
+      new THREE.Vector3(146, 2.18, -52), // Đỉnh vòm cong kiêu hãnh giương cao
+      new THREE.Vector3(140, 1.42, -58),
+      new THREE.Vector3(134, 0.72, -64)
     ]);
-    const theHucTube = new THREE.Mesh(new THREE.TubeGeometry(theHucCurve, 32, 1.6, 10, false), this.materials.theHucRed);
-    theHucTube.castShadow = true;
-    zoneGroup.add(theHucTube);
-    // Lưu ý: theHucTube là vòm trang trí mỹ thuật dưới gầm, không đưa vào colliders để tránh tạo vách cản 2.5m!
 
-    // CHUỖI BẢN SÀN CONG ĐA GIÁC (Curved Deck Planks) ĐẢM BẢO RAYCAST BƯỚC ĐI ÊM ÁI 100%
     const deckSegments = 16;
     const theHucPts = theHucCurve.getPoints(deckSegments);
+
     for (let i = 0; i < deckSegments; i++) {
       const p1 = theHucPts[i];
       const p2 = theHucPts[i + 1];
@@ -1078,7 +1350,8 @@ export class WorldManager {
       const angleY = Math.atan2(p2.z - p1.z, p2.x - p1.x);
       const anglePitch = Math.asin((p2.y - p1.y) / segLength);
 
-      const deckPlank = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.1, 0.22, 2.4), this.materials.theHucRed);
+      // Bản ván cầu gỗ lim đỏ son rộng 3.8m (Đi lại thênh thang tự do không bị bó hẹp)
+      const deckPlank = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.12, 0.24, 3.8), this.materials.theHucRed);
       deckPlank.position.set(mid.x, mid.y + 0.1, mid.z);
       deckPlank.rotation.y = -angleY;
       deckPlank.rotation.z = anglePitch;
@@ -1086,30 +1359,70 @@ export class WorldManager {
       zoneGroup.add(deckPlank);
       this.colliders.push(deckPlank);
 
-      // Rào chắn bảo vệ hai bên mép cầu (Chống rơi xuống nước từ trên cầu, chừa trọn vẹn 2.4m mặt cầu cho khách đi dạo)
+      // Rào chắn bảo vệ và lan can song tiện hai bên mép cầu (Offset chuẩn xác 1.95m vuông góc)
       const perpX = -Math.sin(angleY);
       const perpZ = Math.cos(angleY);
-      for (let side of [-1.55, 1.55]) {
-        this._addBoxObstacle(mid.x + perpX * side, mid.z + perpZ * side, 0.45, 0.45, mid.y, mid.y + 1.6);
+
+      for (let side of [-1.92, 1.92]) {
+        // Cột trụ son đỏ
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.95, 8), this.materials.theHucRed);
+        post.position.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
+        zoneGroup.add(post);
+
+        // Búp sen thếp vàng trên đỉnh cột cầu
+        const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), this.materials.templeGold);
+        lotus.position.set(mid.x + perpX * side, mid.y + 1.15, mid.z + perpZ * side);
+        zoneGroup.add(lotus);
+
+        // Tay vịn lan can gỗ đỏ
+        const handRail = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.06, 0.12, 0.10), this.materials.theHucRed);
+        handRail.position.set(mid.x + perpX * side, mid.y + 0.92, mid.z + perpZ * side);
+        handRail.rotation.y = -angleY;
+        handRail.rotation.z = anglePitch;
+        zoneGroup.add(handRail);
+
+        // Song tiện gỗ tiện dọc
+        for (let st = -1; st <= 1; st++) {
+          const slat = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 6), this.materials.theHucRed);
+          slat.position.set(
+            mid.x + perpX * side + Math.cos(angleY) * (st * 0.45),
+            mid.y + 0.55,
+            mid.z + perpZ * side + Math.sin(angleY) * (st * 0.45)
+          );
+          zoneGroup.add(slat);
+        }
+
+        // Obstacle bảo vệ chống ngã xuống nước
+        this._addBoxObstacle(mid.x + perpX * side, mid.z + perpZ * side, 0.5, 0.5, mid.y, mid.y + 1.8);
+      }
+
+      // Hai dầm cong gỗ chịu lực chạy dọc bên dưới đỡ mặt cầu
+      for (let bs of [-1.4, 1.4]) {
+        const stringer = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.1, 0.35, 0.22), this.materials.theHucRed);
+        stringer.position.set(mid.x + perpX * bs, mid.y - 0.12, mid.z + perpZ * bs);
+        stringer.rotation.y = -angleY;
+        stringer.rotation.z = anglePitch;
+        zoneGroup.add(stringer);
       }
     }
 
-    // Lan can và cột son đỏ Cầu Thê Húc hai bên
+    // 16 CẶP CỌC CỪ GỖ LIM ĐÔI CẮM ĐÁY HỒ ĐỠ 15 NHỊP CẦU THÊ HÚC
     theHucPts.forEach(pt => {
-      for (let side of [-1, 1]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.95, 6), this.materials.theHucRed);
-        post.position.set(pt.x + side * 1.1, pt.y + 0.75, pt.z);
-        zoneGroup.add(post);
+      const pierH = pt.y + 0.25;
+      for (let side of [-1.5, 1.5]) {
+        const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, pierH, 8), this.materials.theHucRed);
+        pile.position.set(pt.x + (side * 0.6), pierH / 2, pt.z + (side * 0.8));
+        pile.castShadow = true;
+        zoneGroup.add(pile);
       }
     });
 
-    // DỐC HẠ THOẢI ĐẦU CẦU PHÍA ĐẢO QUA ĐẮC NGUYỆT LÂU VÀO SÂN ĐỀN NGỌC SƠN
-    // Nối êm ái từ chân cầu (134, 1.1, -64) qua Đắc Nguyệt Lâu vào sân đền (126, 0.5, -70)
-    const islandRampGeo = new THREE.BoxGeometry(11.0, 0.25, 2.6);
+    // 3. DỐC HẠ THOẢI ĐẦU CẦU PHÍA ĐẢO QUA ĐẮC NGUYỆT LÂU VÀO SÂN ĐỀN NGỌC SƠN - BẢN RỘNG 3.8M
+    const islandRampGeo = new THREE.BoxGeometry(11.0, 0.28, 3.8);
     const islandRamp = new THREE.Mesh(islandRampGeo, this.materials.theHucRed);
-    islandRamp.position.set(130, 0.80, -67);
-    islandRamp.rotation.y = -Math.atan2(-6, -8); // Góc xoay chuẩn xác hướng cầu (-atan2)
-    islandRamp.rotation.z = -0.06; // Dốc thoải hạ từ chân cầu 1.1m xuống sân đền 0.5m
+    islandRamp.position.set(130, 0.72, -67);
+    islandRamp.rotation.y = -Math.atan2(-6, -8);
+    islandRamp.rotation.z = -0.04;
     islandRamp.receiveShadow = true;
     zoneGroup.add(islandRamp);
     this.colliders.push(islandRamp);
@@ -1384,15 +1697,13 @@ export class WorldManager {
     caseBase.castShadow = true;
     turtleCaseGroup.add(caseBase);
 
-    // Hộp kính cường lực trong suốt bao quanh
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transmission: 0.92,
-      opacity: 0.35,
-      transparent: true,
-      roughness: 0.08,
+    // Hộp kính cường lực trong suốt bao quanh (MeshStandardMaterial siêu nhẹ, triệt tiêu 100% Transmission Render Pass gây lag)
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0xe8f4f8,
+      roughness: 0.1,
       metalness: 0.1,
-      ior: 1.5
+      transparent: true,
+      opacity: 0.35
     });
     const glassCase = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.05, 2.75), glassMat);
     glassCase.position.y = 0.95;
@@ -2295,44 +2606,43 @@ export class WorldManager {
     // 2. DẦM THÉP EIFFEL CẦU LONG BIÊN VÀ HỆ THỐNG TIẾP CẬN (RAMP & CẦU THANG BỘ)
     const bridgeY = 4.2;
 
-    // Gờ vỉa hè thoải nối đất lên đầu dốc dẫn phía Tây (x = 6.0 đến x = 10.5)
-    const startLip = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.35, 4.5), this.materials.rampStone || this.materials.hanoiPavement);
-    startLip.position.set(8.1, 0.12, 60.0);
-    startLip.rotation.z = 0.07;
+    // Gờ tiếp đất bản rộng 6.5m nối đất lên đầu dốc dẫn phía Tây (x = 5.0 đến x = 11.0)
+    const startLip = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.40, 6.5), this.materials.rampStone || this.materials.hanoiPavement);
+    startLip.position.set(8.0, 0.15, 60.0);
+    startLip.rotation.z = 0.05;
     startLip.receiveShadow = true;
     zoneGroup.add(startLip);
     this.colliders.push(startLip);
 
-    // DỐC DẪN CHÍNH (MAIN INCLINE RAMP) DÀI 25M BẮT ĐẦU TỪ MẶT ĐẤT LÊN DẦM CẦU
-    // Từ x = 10.0 (y = 0.1) dốc thoải 16.4% lên x = 35.0 (y = 4.2), bề rộng 4.5m
-    const rampLength = 25.0;
-    const rampRise = bridgeY - 0.1; // 4.1m
-    const rampHypot = Math.hypot(rampLength, rampRise); // ~25.33m
-    const rampAngle = Math.atan2(rampRise, rampLength); // ~0.1625 rad
+    // DỐC DẪN CHÍNH (MAIN INCLINE RAMP) BẢN RỘNG 6.5M - LIỀN MẠCH 100% TỪ x = 10.0 LÊN x = 36.0
+    // Khắc phục triệt để lỗi rơi khỏi cầu: Ramp rộng 6.5m khớp tuyệt đối với mặt dầm cầu, chồng lấn 1m lên dầm chính
+    const rampLength = 26.0;
+    const rampRise = bridgeY - 0.15; // 4.05m
+    const rampHypot = Math.hypot(rampLength, rampRise); // ~26.31m
+    const rampAngle = Math.atan2(rampRise, rampLength); // ~0.154 rad
 
-    const rampGeo = new THREE.BoxGeometry(rampHypot, 0.45, 4.5);
+    const rampGeo = new THREE.BoxGeometry(rampHypot, 0.55, 6.5);
     const mainRamp = new THREE.Mesh(rampGeo, this.materials.rampStone || this.materials.hanoiPavement);
-    mainRamp.position.set(10.0 + rampLength / 2, 0.1 + rampRise / 2, 60.0);
+    mainRamp.position.set(10.0 + rampLength / 2, 0.15 + rampRise / 2, 60.0);
     mainRamp.rotation.z = rampAngle; // Dốc nghiêng lên chuẩn xác
     mainRamp.castShadow = true;
     mainRamp.receiveShadow = true;
     zoneGroup.add(mainRamp);
     this.colliders.push(mainRamp); // ĐĂNG KÝ VÀO COLLIDERS ĐỂ NGƯỜI CHƠI BƯỚC ĐI MƯỢT MÀ LÊN CẦU!
 
-    // Rào chắn dầm thép bảo vệ hai bên dốc dẫn (Chống rơi)
-    for (let side of [-2.35, 2.35]) {
-      const rampGuard = new THREE.Mesh(new THREE.BoxGeometry(rampHypot, 1.1, 0.18), this.materials.rustySteel);
-      rampGuard.position.set(10.0 + rampLength / 2, 0.1 + rampRise / 2 + 0.65, 60.0 + side);
+    // Rào chắn dầm thép bảo vệ hai bên dốc dẫn (Chống rơi 100%)
+    for (let side of [-3.3, 3.3]) {
+      const rampGuard = new THREE.Mesh(new THREE.BoxGeometry(rampHypot, 1.25, 0.22), this.materials.rustySteel);
+      rampGuard.position.set(10.0 + rampLength / 2, 0.15 + rampRise / 2 + 0.7, 60.0 + side);
       rampGuard.rotation.z = rampAngle;
       rampGuard.castShadow = true;
       zoneGroup.add(rampGuard);
-      this._addBoxObstacle(10.0 + rampLength / 2, 60.0 + side, rampLength + 0.5, 0.4, 0, bridgeY + 2.0);
+      this._addBoxObstacle(10.0 + rampLength / 2, 60.0 + side, rampLength + 1.0, 0.5, 0, bridgeY + 2.5);
     }
 
     // CẦU THANG BỘ GẠCH ĐÁ PHỤ TRỢ (PEDESTRIAN STONE STAIRCASE)
-    // 24 bậc thang gạch chỉ trát đá rửa màu xám, chiều cao bậc 0.17m, mặt bậc rộng 0.32m, tay vịn dầm thép
     const stairXStart = 12.0;
-    const stairZ = 60.0 + 3.4;
+    const stairZ = 60.0 + 4.2;
     const numSteps = 24;
     const stepHeight = (bridgeY - 0.1) / numSteps; // ~0.17m
     const stepDepth = (35.0 - stairXStart) / numSteps; // ~0.95m
@@ -2343,7 +2653,7 @@ export class WorldManager {
       stepMesh.position.set(stairXStart + s * stepDepth + stepDepth / 2, 0.1 + (s + 1) * stepHeight, stairZ);
       stepMesh.receiveShadow = true;
       zoneGroup.add(stepMesh);
-      this.colliders.push(stepMesh); // ĐĂNG KÝ TỪNG BẬC THANG ĐỂ LEO BỘ!
+      this.colliders.push(stepMesh);
     }
 
     // Tay vịn cầu thang sắt sơn chống rỉ màu nâu đỏ
@@ -2362,6 +2672,33 @@ export class WorldManager {
     bridgeDeck.receiveShadow = true;
     zoneGroup.add(bridgeDeck);
     this.colliders.push(bridgeDeck);
+
+    // ĐƯỜNG RAY XE LỬA VÀ TÀ VẸT GỖ CHẠY DỌC GIỮA CẦU LONG BIÊN
+    // 2 thanh ray thép rỉ màu nâu đậm
+    for (let rz of [-0.75, 0.75]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(mainDeckLength, 0.16, 0.10), this.materials.rustySteel);
+      rail.position.set(mainDeckCenter, bridgeY + 0.35, 60 + rz);
+      rail.castShadow = true;
+      zoneGroup.add(rail);
+    }
+    // Hàng tà vẹt gỗ xếp đều đặn dưới thanh ray
+    const tieMat = this.materials.retroWood || this.materials.woodVarnish;
+    const tieGeo = new THREE.BoxGeometry(0.24, 0.12, 2.2);
+    for (let rx = 36; rx <= 218; rx += 2.0) {
+      const tie = new THREE.Mesh(tieGeo, tieMat);
+      tie.position.set(rx, bridgeY + 0.32, 60);
+      tie.castShadow = true;
+      zoneGroup.add(tie);
+    }
+
+    // Hành lang gỗ đi bộ hai bên dầm cầu
+    const walkMat = this.materials.rampStone || this.materials.hanoiPavement;
+    for (let wz of [-2.3, 2.3]) {
+      const walkDeck = new THREE.Mesh(new THREE.BoxGeometry(mainDeckLength, 0.12, 1.8), walkMat);
+      walkDeck.position.set(mainDeckCenter, bridgeY + 0.32, 60 + wz);
+      walkDeck.receiveShadow = true;
+      zoneGroup.add(walkDeck);
+    }
 
     // Trụ cầu bê tông khổng lồ cắm sâu lòng đất đỡ mặt cầu từ phía dưới
     for (let x = 35; x <= 200; x += 36) {
@@ -3609,6 +3946,26 @@ export class WorldManager {
     for (let i = 0; i < this.roamingNpcs.length; i++) {
       if (this.roamingNpcs[i].update) {
         this.roamingNpcs[i].update(delta);
+      }
+    }
+
+    // 4. Cập nhật đàn cá chép vàng & cá koi bơi lội sinh động dưới lòng Hồ Gươm
+    for (let i = 0; i < this.lakeFish.length; i++) {
+      const fish = this.lakeFish[i];
+      fish.orbitAngle += fish.orbitSpeed * delta;
+      const r = fish.orbitRadius + Math.sin(time * 1.5 + fish.swimPhase) * 2.2;
+      fish.group.position.x = fish.centerX + Math.cos(fish.orbitAngle) * r;
+      fish.group.position.z = fish.centerZ + Math.sin(fish.orbitAngle) * r;
+      fish.group.position.y = 0.04 + Math.sin(time * 2.2 + fish.swimPhase) * 0.012;
+
+      // Hướng quay tiếp tuyến quỹ đạo kèm uốn lượn hình sin
+      const tangent = fish.orbitAngle + (Math.PI / 2) * Math.sign(fish.orbitSpeed);
+      const serpentine = Math.sin(time * 4.2 + fish.swimPhase) * 0.14;
+      fish.group.rotation.y = -tangent + Math.PI / 2 + serpentine;
+
+      // Vẫy đuôi cá nhịp nhàng tự nhiên
+      if (fish.tail) {
+        fish.tail.rotation.y = Math.sin(time * 7.5 + fish.swimPhase) * 0.45;
       }
     }
   }

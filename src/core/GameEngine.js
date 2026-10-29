@@ -60,7 +60,7 @@ export class GameEngine {
       console.log('[GameEngine] Đã chốt nhân vật:', payload);
       await this.initWorld();
 
-      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 45, y: 0.5, z: -45 };
+      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 17, y: 0.5, z: -17 };
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
         playerPosition: {
@@ -114,7 +114,7 @@ export class GameEngine {
   async initWorld() {
     if (this.renderer) {
       console.log('[GameEngine] Thế giới 3D đã được khởi tạo trước đó. Kích hoạt CORE:WORLD_READY');
-      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 45, y: 0.5, z: -45 };
+      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 17, y: 0.5, z: -17 };
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
         playerPosition: {
@@ -206,7 +206,7 @@ export class GameEngine {
     this.startLoop();
 
     // Phát tín hiệu thế giới 3D đã sẵn sàng để UI mở màn hình chơi
-    const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 45, y: 0.5, z: -45 };
+    const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 17, y: 0.5, z: -17 };
     setTimeout(() => {
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
