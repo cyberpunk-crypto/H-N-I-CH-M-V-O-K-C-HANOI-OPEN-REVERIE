@@ -567,12 +567,12 @@ export class PlayerController {
       }
     }
 
-    // Khóa cứng và đẩy nhân vật an toàn vào bên trong lòng Cầu Kim Quy
+    // Khóa cứng và đẩy nhân vật an toàn vào bên trong lòng Cầu Kim Quy (Đoạn vượt mặt hồ từ s = 3.5m đến s = 68.0m)
     const sKimQuy = (pos.x - pos.z - 34) * 0.70710678;
-    if (sKimQuy >= 0.5 && sKimQuy <= 71.5) {
+    if (sKimQuy >= 3.5 && sKimQuy <= 68.0) {
       const dKimQuy = Math.abs(pos.x + pos.z) * 0.70710678;
-      if (dKimQuy > 1.60) {
-        const excess = dKimQuy - 1.60;
+      if (dKimQuy > 1.75) {
+        const excess = dKimQuy - 1.75;
         const sign = (pos.x + pos.z) > 0 ? 1 : -1;
         pos.x -= sign * excess * 0.70710678;
         pos.z -= sign * excess * 0.70710678;
@@ -718,12 +718,12 @@ export class PlayerController {
       return true; // Chặn ngang ngay lập tức, không cho phép xuống nước!
     }
 
-    // Rào chắn lan can Cầu Kim Quy (đường chéo nối bờ 17 ra Đảo Rùa 68):
+    // Rào chắn lan can Cầu Kim Quy (Đoạn vượt mặt hồ từ s = 3.5m đến s = 68.0m):
     // Khóa cứng tuyệt đối không cho phép xuyên qua hoặc bước ra ngoài lan can cầu!
     const sKimQuyTest = (testPos.x - testPos.z - 34) * 0.70710678;
-    if (sKimQuyTest >= 0.5 && sKimQuyTest <= 71.5) {
+    if (sKimQuyTest >= 3.5 && sKimQuyTest <= 68.0) {
       const dKimQuyTest = Math.abs(testPos.x + testPos.z) * 0.70710678;
-      if (dKimQuyTest > 1.65) {
+      if (dKimQuyTest > 1.80) {
         return true; // Chặn tuyệt đối tại lan can Cầu Kim Quy!
       }
     }

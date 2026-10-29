@@ -103,8 +103,8 @@ export class WorldManager {
       // Đang trong phạm vi mặt nước Hồ Gươm!
       // Kiểm tra xem có đang ở trên các khu vực an toàn (Đảo Rùa, Đảo Ngọc Sơn, Cầu Thê Húc, Cầu Kim Quy) không:
 
-      // a. Đảo Rùa tự nhiên: bán kính 17.5m quanh (80, -80)
-      if (distSq <= 17.5 * 17.5 && y >= 0.55) {
+      // a. Đảo Rùa tự nhiên: bán kính 18.5m quanh (80, -80)
+      if (distSq <= 18.5 * 18.5 && y >= 0.45) {
         return false; // An toàn trên Đảo Rùa
       }
 
@@ -121,10 +121,10 @@ export class WorldManager {
         return false; // An toàn trên Cầu Thê Húc
       }
 
-      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (17, -17) đến Đảo Rùa (68, -68), bán kính an toàn 2.4m
-      const dKimQuy = this._pointToSegmentDistSq(x, z, 17, -17, 68, -68);
-      if (dKimQuy <= 1.82 * 1.82 && y >= 0.35) {
-        return false; // An toàn trên Cầu Kim Quy
+      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (70, -70), bán kính an toàn 2.5m
+      const dKimQuy = this._pointToSegmentDistSq(x, z, 16, -16, 70, -70);
+      if (dKimQuy <= 2.5 * 2.5 && y >= 0.25) {
+        return false; // An toàn tuyệt đối trên Cầu Kim Quy và lối dẫn
       }
 
       // Không nằm trên cầu hay đảo -> ĐÂY LÀ MẶT NƯỚC HỒ GƯƠM! CẤM BƯỚC XUỐNG!
@@ -934,7 +934,8 @@ export class WorldManager {
     // HÀNG CÂY LIỄU RỦ NGHIÊNG BÓNG MẶT HỒ & GHẾ ĐÁ NGHỈ CHÂN VEN HỒ GƯƠM
     for (let i = 0; i < 16; i++) {
       const treeAngle = (i / 16) * Math.PI * 2;
-      if (treeAngle > 0.38 && treeAngle < 0.88) continue; // Tránh lối lên cầu Thê Húc
+      // Tránh lối lên Cầu Thê Húc (0.38 - 0.88 rad) VÀ Cầu Kim Quy (2.05 - 2.65 rad)
+      if ((treeAngle > 0.38 && treeAngle < 0.88) || (treeAngle > 2.05 && treeAngle < 2.65)) continue;
       const tx = 80 + Math.cos(treeAngle) * 91.5;
       const tz = -80 + Math.sin(treeAngle) * 91.5;
 
@@ -1068,14 +1069,14 @@ export class WorldManager {
     this.colliders.push(t1Floor);
 
     // 4 Trụ góc đá rêu phong vững chãi chịu lực cho Tháp
-    for (let cx of [-3.5, 3.5]) {
-      for (let cz of [-2.3, 2.3]) {
-        const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, t1Height, 1.5), this.materials.mossStone);
+    for (let cx of [-3.8, 3.8]) {
+      for (let cz of [-2.6, 2.6]) {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.1, t1Height, 1.1), this.materials.mossStone);
         pillar.position.set(80 + cx, 1.55 + t1Height / 2, -80 + cz);
         pillar.castShadow = true;
         pillar.receiveShadow = true;
         zoneGroup.add(pillar);
-        this._addBoxObstacle(80 + cx, -80 + cz, 1.65, 1.55, 1.55, 5.5);
+        this._addBoxObstacle(80 + cx, -80 + cz, 0.7, 0.7, 1.55, 5.5);
       }
     }
 
@@ -1294,18 +1295,18 @@ export class WorldManager {
     zoneGroup.add(bridgeGatePlaza);
     this.colliders.push(bridgeGatePlaza);
 
-    // Đôi cột trụ đá Nghinh Phong Môn dẫn lối lên cầu
-    for (let gs of [-2.2, 2.2]) {
+    // Đôi cột trụ đá Nghinh Phong Môn dẫn lối lên cầu (Đặt chuẩn hai bên mạn sườn cầu, mở rộng 4.4m thênh thang)
+    for (let gs of [-2.6, 2.6]) {
       const gateCol = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 3.2, 8), this.materials.mossStone);
-      gateCol.position.set(17 + gs * 0.707, 1.85, -17 - gs * 0.707);
+      gateCol.position.set(17 + gs * 0.7071, 1.85, -17 + gs * 0.7071);
       gateCol.castShadow = true;
       zoneGroup.add(gateCol);
 
       const gateLotus = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8), this.materials.templeGold || this.materials.mossStone);
-      gateLotus.position.set(17 + gs * 0.707, 3.6, -17 - gs * 0.707);
+      gateLotus.position.set(17 + gs * 0.7071, 3.6, -17 + gs * 0.7071);
       zoneGroup.add(gateLotus);
 
-      this._addBoxObstacle(17 + gs * 0.707, -17 - gs * 0.707, 0.8, 0.8, 0, 4.0);
+      this._addBoxObstacle(17 + gs * 0.7071, -17 + gs * 0.7071, 0.5, 0.5, 0, 4.0);
     }
 
     // 2. ĐƯỜNG CONG VÒM CẦU KIM QUY (CatmullRom Curve dài 71m bắc qua lòng hồ)
@@ -1343,7 +1344,7 @@ export class WorldManager {
       const perpX = -Math.sin(angleY);
       const perpZ = Math.cos(angleY);
 
-      for (let side of [-1.92, 1.92]) {
+      for (let side of [-2.05, 2.05]) {
         // Cột đá lan can
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.90, 8), this.materials.mossStone);
         post.position.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
@@ -1361,12 +1362,12 @@ export class WorldManager {
         railBeam.rotation.z = anglePitch;
         zoneGroup.add(railBeam);
 
-        // Đăng ký obstacle dày đặc liên tục chống xuyên lan can cầu Kim Quy (4 khối chồng lấn mỗi nhịp)
-        for (let s of [0.125, 0.375, 0.625, 0.875]) {
+        // Đăng ký obstacle gọn gàng trên đúng gờ lan can (không lấn vào lòng mặt cầu 3.8m)
+        for (let s of [0.25, 0.75]) {
           const subX = p1.x + (p2.x - p1.x) * s + perpX * side;
           const subZ = p1.z + (p2.z - p1.z) * s + perpZ * side;
           const subY = p1.y + (p2.y - p1.y) * s;
-          this._addBoxObstacle(subX, subZ, 1.3, 1.3, subY, subY + 2.2);
+          this._addBoxObstacle(subX, subZ, 0.45, 0.45, subY, subY + 2.2);
         }
       }
 
