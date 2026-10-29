@@ -1232,6 +1232,7 @@ export class WorldManager {
 
 
     // THÁP RÙA: TẦNG 2 (Thu nhỏ tỷ lệ, vòm cuốn Gothic thanh thoát)
+    const gothicDarkMat = new THREE.MeshStandardMaterial({ color: 0x181412, roughness: 0.95 });
     const t2Width = 6.4;
     const t2Depth = 4.4;
     const t2Height = 2.8;

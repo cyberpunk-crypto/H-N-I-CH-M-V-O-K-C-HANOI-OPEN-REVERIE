@@ -5,9 +5,9 @@
 
 import { THREE } from './ThreeLib.js';
 import { SceneManager } from './SceneManager.js';
-import { WorldManager } from './WorldManager.js?v=3.0';
+import { WorldManager } from './WorldManager.js';
 import { ZoneManager } from './ZoneManager.js';
-import { PlayerController } from './PlayerController.js?v=3.0';
+import { PlayerController } from './PlayerController.js';
 import { CameraController } from './CameraController.js';
 import { PerspectivePuzzle } from './PerspectivePuzzle.js';
 import { PhotoSystem } from './PhotoSystem.js';
@@ -313,3 +313,6 @@ export class GameEngine {
 
 // Tự động khởi tạo instance mặc định
 export const gameEngine = new GameEngine();
+if (typeof window !== 'undefined') {
+  window.gameEngine = gameEngine;
+}
