@@ -24,10 +24,10 @@ export class SceneManager {
    * Sương mù hoài niệm (Hà Nội bảng lảng sương chiều mùa thu)
    */
   _initFog() {
-    // Sương mù pha sắc vàng cam hoàng hôn êm dịu, tầm nhìn thoáng đãng chiêm ngưỡng kiến trúc
+    // Sương mù pha sắc vàng cam hoàng hôn hòa quyện với camera.far = 160m (Triệt tiêu hiện tượng drop FPS)
     const fogColor = new THREE.Color(0xd99a60);
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.FogExp2(fogColor.getHex(), 0.0022);
+    this.scene.fog = new THREE.Fog(fogColor.getHex(), 40, 155);
   }
 
   /**

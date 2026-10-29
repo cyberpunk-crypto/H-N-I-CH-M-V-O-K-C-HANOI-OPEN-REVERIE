@@ -24,8 +24,8 @@ export class PlayerController {
     };
 
     // Thông số vật lý & chuyển động nhạy bén
-    this.walkSpeed = 4.8;
-    this.sprintSpeed = 8.5;
+    this.walkSpeed = 5.2;
+    this.sprintSpeed = 9.2;
     this.jumpForce = 8.5;
     this.gravity = -24.0;
 
@@ -342,6 +342,31 @@ export class PlayerController {
       if (s === -1) this.leftLegPivot = legPivot;
       else this.rightLegPivot = legPivot;
     }
+
+    // Bóng tiếp xúc mềm mại dưới chân nhân vật (Soft Contact Blob Shadow - Zero GPU Overhead)
+    const shadowCanvas = document.createElement('canvas');
+    shadowCanvas.width = 64;
+    shadowCanvas.height = 64;
+    const sctx = shadowCanvas.getContext('2d');
+    const sgrad = sctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+    sgrad.addColorStop(0, 'rgba(12, 10, 8, 0.65)');
+    sgrad.addColorStop(0.5, 'rgba(12, 10, 8, 0.35)');
+    sgrad.addColorStop(1, 'rgba(12, 10, 8, 0)');
+    sctx.fillStyle = sgrad;
+    sctx.fillRect(0, 0, 64, 64);
+
+    const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+    const blobShadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.3, 1.3),
+      new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        depthWrite: false
+      })
+    );
+    blobShadow.rotation.x = -Math.PI / 2;
+    blobShadow.position.y = 0.03;
+    this.characterGroup.add(blobShadow);
 
     // Vị trí xuất phát ven hồ Gươm thông thoáng
     this.characterGroup.position.set(45, 0.5, -45);
@@ -744,17 +769,13 @@ export class PlayerController {
       const desiredVelX = finalDir.x * currentSpeed;
       const desiredVelZ = finalDir.z * currentSpeed;
 
-      // Phản hồi vận tốc tức thì (Instant Acceleration) - Triệt tiêu 100% độ trễ phím WASD
-      const accel = Math.min(1.0, delta * 32.0);
-      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, desiredVelX, accel);
-      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, desiredVelZ, accel);
+      // Phản hồi vận tốc tức thì (Zero Input Lag) - Bấm phím là vọt đi ngay lập tức!
+      this.velocity.x = desiredVelX;
+      this.velocity.z = desiredVelZ;
 
-      // Xoay hướng mặt nhân vật nhạy bén theo chiều chuyển động
+      // Xoay hướng mặt nhân vật tức thì theo hướng di chuyển
       const targetAngle = Math.atan2(finalDir.x, finalDir.z);
-      let diffAngle = targetAngle - this.characterGroup.rotation.y;
-      while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-      while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
-      this.characterGroup.rotation.y += diffAngle * Math.min(1.0, delta * 24.0);
+      this.characterGroup.rotation.y = targetAngle;
 
       // --- HOẠT ẢNH SINH HỌC BƯỚC ĐI TỰ NHIÊN ---
       this.walkCycle += delta * (currentSpeed / 4.8) * 11.5;
@@ -771,12 +792,9 @@ export class PlayerController {
       // Nhấp nhô tự nhiên của cơ thể
       this.torsoGroup.position.y = this.baseTorsoY + Math.abs(Math.sin(this.walkCycle * 2.0)) * 0.04;
     } else {
-      // Dừng lại dứt khoát - Không trượt lướt như trên băng tuyết
-      const decel = Math.min(1.0, delta * 26.0);
-      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, 0, decel);
-      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, 0, decel);
-      if (Math.abs(this.velocity.x) < 0.05) this.velocity.x = 0;
-      if (Math.abs(this.velocity.z) < 0.05) this.velocity.z = 0;
+      // Dừng lại dứt khoát 100% ngay khi nhả phím - Triệt tiêu hoàn toàn hiện tượng trượt quán tính
+      this.velocity.x = 0;
+      this.velocity.z = 0;
 
       // Trở về tư thế đứng nghỉ (Idle)
       this.leftLegPivot.rotation.x = THREE.MathUtils.lerp(this.leftLegPivot.rotation.x, 0, 0.25);

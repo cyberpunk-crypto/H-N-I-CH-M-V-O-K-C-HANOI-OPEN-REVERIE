@@ -194,10 +194,9 @@ export class CameraController {
     const playerPos = this.playerController.getPosition();
     const playerMesh = this.playerController.getMesh();
 
-    // 1. Phản hồi chuột tức thì 1:1, triệt tiêu hoàn toàn cảm giác lì lợm/trôi camera
-    const camLerp = Math.min(1.0, delta * 36.0);
-    this.yaw = THREE.MathUtils.lerp(this.yaw, this.targetYaw, camLerp);
-    this.pitch = THREE.MathUtils.lerp(this.pitch, this.targetPitch, camLerp);
+    // 1. Phản hồi chuột tức thì 1:1 theo thời gian thực - Triệt tiêu 100% cảm giác lì lợm/trôi camera
+    this.yaw = this.targetYaw;
+    this.pitch = this.targetPitch;
 
     // 2. Xử lý chuyển đổi mượt mà giữa TPS và FPS (0.3s)
     if (this.isTransitioning) {
