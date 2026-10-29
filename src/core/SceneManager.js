@@ -97,8 +97,8 @@ export class SceneManager {
     sunLight.shadow.mapSize.width = 1024;
     sunLight.shadow.mapSize.height = 1024;
     sunLight.shadow.camera.near = 10;
-    sunLight.shadow.camera.far = 400;
-    const shadowD = 180;
+    sunLight.shadow.camera.far = 320;
+    const shadowD = 130;
     sunLight.shadow.camera.left = -shadowD;
     sunLight.shadow.camera.right = shadowD;
     sunLight.shadow.camera.top = shadowD;

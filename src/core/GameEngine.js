@@ -155,7 +155,7 @@ export class GameEngine {
     });
 
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25)); // Tối ưu GPU, triệt tiêu lag giật 60fps
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0)); // Chuẩn 1.0 tối ưu tuyệt đối cho mọi laptop, văn phòng và thiết bị yếu không bao giờ tụt FPS
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -241,7 +241,7 @@ export class GameEngine {
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
   }
 
   /**

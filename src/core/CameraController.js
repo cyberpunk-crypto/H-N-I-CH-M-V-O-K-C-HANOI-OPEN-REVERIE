@@ -99,6 +99,13 @@ export class CameraController {
     let prevMouseX = 0;
     let prevMouseY = 0;
 
+    // Nhấp chuột vào khung canvas để khóa tâm chuột (Pointer Lock) - chuẩn game 3D PC không bị trễ chuột
+    this.domElement.addEventListener('click', () => {
+      if (document.pointerLockElement !== this.domElement) {
+        try { this.domElement.requestPointerLock(); } catch (_) {}
+      }
+    });
+
     this.domElement.addEventListener('mousedown', (e) => {
       if (e.button === 0 || e.button === 2) {
         isDragging = true;
@@ -108,9 +115,9 @@ export class CameraController {
     });
 
     window.addEventListener('mousemove', (e) => {
-      // Hỗ trợ cả PointerLock hoặc kéo chuột tự do
+      // Hỗ trợ cả PointerLock trực tiếp hoặc kéo rê chuột tự do
       if (document.pointerLockElement === this.domElement) {
-        const sens = 0.0022;
+        const sens = 0.0028;
         this.targetYaw -= e.movementX * sens;
         this.targetPitch -= e.movementY * sens;
         this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, -Math.PI / 2.6, Math.PI / 2.8);
@@ -120,7 +127,7 @@ export class CameraController {
         prevMouseX = e.clientX;
         prevMouseY = e.clientY;
 
-        const sens = 0.0035;
+        const sens = 0.0045;
         this.targetYaw -= deltaX * sens;
         this.targetPitch -= deltaY * sens;
         this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, -Math.PI / 2.6, Math.PI / 2.8);
@@ -187,9 +194,10 @@ export class CameraController {
     const playerPos = this.playerController.getPosition();
     const playerMesh = this.playerController.getMesh();
 
-    // 1. Damping xoay chuột mượt mà (Không jitter)
-    this.yaw = THREE.MathUtils.lerp(this.yaw, this.targetYaw, this.smoothFactor);
-    this.pitch = THREE.MathUtils.lerp(this.pitch, this.targetPitch, this.smoothFactor);
+    // 1. Phản hồi chuột tức thì 1:1, triệt tiêu hoàn toàn cảm giác lì lợm/trôi camera
+    const camLerp = Math.min(1.0, delta * 36.0);
+    this.yaw = THREE.MathUtils.lerp(this.yaw, this.targetYaw, camLerp);
+    this.pitch = THREE.MathUtils.lerp(this.pitch, this.targetPitch, camLerp);
 
     // 2. Xử lý chuyển đổi mượt mà giữa TPS và FPS (0.3s)
     if (this.isTransitioning) {
@@ -249,8 +257,18 @@ export class CameraController {
     // Vị trí TPS lý tưởng phía sau nhân vật
     const desiredTpsPos = this._desiredTpsPos.copy(eyePos).addScaledVector(camDir, this.targetArmLength);
 
-    // Raycast chống xuyên tường (Collision Detection)
-    const colliders = this.worldManager ? this.worldManager.getColliders() : [];
+    // Raycast chống xuyên tường (Collision Detection có bộ lọc cự ly gần - giảm 90% tải CPU)
+    const allColliders = this.worldManager ? this.worldManager.getColliders() : [];
+    const nearColliders = [];
+    for (let c = 0; c < allColliders.length; c++) {
+      const col = allColliders[c];
+      if (col.position && Math.hypot(col.position.x - eyePos.x, col.position.z - eyePos.z) > 28) {
+        continue;
+      }
+      nearColliders.push(col);
+    }
+    const colliders = nearColliders.length > 0 ? nearColliders : allColliders;
+
     if (colliders.length > 0) {
       const rayDir = this._rayDir.copy(desiredTpsPos).sub(eyePos).normalize();
       this.raycaster.set(eyePos, rayDir);

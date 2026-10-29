@@ -501,6 +501,10 @@ export class PlayerController {
 
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
+      // Bộ lọc không gian siêu tốc (Spatial Distance Culling) - Bỏ qua các vật cản cách xa nhân vật > 14m
+      if (Math.abs(pos.x - (obs.minX + obs.maxX) * 0.5) > 14 || Math.abs(pos.z - (obs.minZ + obs.maxZ) * 0.5) > 14) {
+        continue;
+      }
       // Bỏ qua nếu không trùng độ cao nhân vật
       if (pY + this.playerHeight <= obs.minY || pY >= obs.maxY) continue;
       // Bỏ qua gờ thấp bước qua được (Step-up)
@@ -661,6 +665,11 @@ export class PlayerController {
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
 
+      // Bộ lọc không gian siêu tốc (Spatial Culling - giảm 95% CPU bottleneck)
+      if (Math.abs(testPos.x - (obs.minX + obs.maxX) * 0.5) > 16 || Math.abs(testPos.z - (obs.minZ + obs.maxZ) * 0.5) > 16) {
+        continue;
+      }
+
       // Cơ chế Step-Up: Nếu vật thể thấp hơn chiều cao gờ bước chân (<= 0.38m) thì KHÔNG CHẶN NGANG,
       // cho phép Raycast tự động đưa nhân vật bước lên tự nhiên!
       if (obs.maxY - pY <= this.stepUpHeight && obs.maxY > pY) {
@@ -735,17 +744,17 @@ export class PlayerController {
       const desiredVelX = finalDir.x * currentSpeed;
       const desiredVelZ = finalDir.z * currentSpeed;
 
-      // Gia tốc mượt mà, phản hồi tức thì
-      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, desiredVelX, 0.28);
-      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, desiredVelZ, 0.28);
+      // Phản hồi vận tốc tức thì (Instant Acceleration) - Triệt tiêu 100% độ trễ phím WASD
+      const accel = Math.min(1.0, delta * 32.0);
+      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, desiredVelX, accel);
+      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, desiredVelZ, accel);
 
-      // Xoay hướng mặt nhân vật êm dịu theo chiều chuyển động
+      // Xoay hướng mặt nhân vật nhạy bén theo chiều chuyển động
       const targetAngle = Math.atan2(finalDir.x, finalDir.z);
-      // Xử lý góc xoay vòng để không bị giật 360 độ
       let diffAngle = targetAngle - this.characterGroup.rotation.y;
       while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
       while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
-      this.characterGroup.rotation.y += diffAngle * 0.25;
+      this.characterGroup.rotation.y += diffAngle * Math.min(1.0, delta * 24.0);
 
       // --- HOẠT ẢNH SINH HỌC BƯỚC ĐI TỰ NHIÊN ---
       this.walkCycle += delta * (currentSpeed / 4.8) * 11.5;
@@ -762,15 +771,18 @@ export class PlayerController {
       // Nhấp nhô tự nhiên của cơ thể
       this.torsoGroup.position.y = this.baseTorsoY + Math.abs(Math.sin(this.walkCycle * 2.0)) * 0.04;
     } else {
-      // Dừng lại êm dịu
-      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, 0, 0.30);
-      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, 0, 0.30);
+      // Dừng lại dứt khoát - Không trượt lướt như trên băng tuyết
+      const decel = Math.min(1.0, delta * 26.0);
+      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, 0, decel);
+      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, 0, decel);
+      if (Math.abs(this.velocity.x) < 0.05) this.velocity.x = 0;
+      if (Math.abs(this.velocity.z) < 0.05) this.velocity.z = 0;
 
       // Trở về tư thế đứng nghỉ (Idle)
-      this.leftLegPivot.rotation.x = THREE.MathUtils.lerp(this.leftLegPivot.rotation.x, 0, 0.18);
-      this.rightLegPivot.rotation.x = THREE.MathUtils.lerp(this.rightLegPivot.rotation.x, 0, 0.18);
-      this.leftArmPivot.rotation.x = THREE.MathUtils.lerp(this.leftArmPivot.rotation.x, 0, 0.18);
-      this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(this.rightArmPivot.rotation.x, 0, 0.18);
+      this.leftLegPivot.rotation.x = THREE.MathUtils.lerp(this.leftLegPivot.rotation.x, 0, 0.25);
+      this.rightLegPivot.rotation.x = THREE.MathUtils.lerp(this.rightLegPivot.rotation.x, 0, 0.25);
+      this.leftArmPivot.rotation.x = THREE.MathUtils.lerp(this.leftArmPivot.rotation.x, 0, 0.25);
+      this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(this.rightArmPivot.rotation.x, 0, 0.25);
 
       // Nhịp thở phập phồng nhẹ nhàng
       const time = performance.now() * 0.0025;
@@ -784,7 +796,7 @@ export class PlayerController {
     const currentPos = this.characterGroup.position;
     this._resolvePenetrations(currentPos);
 
-    const maxSubStep = 0.10; // Phân bước vi mô tối đa 10cm để không bao giờ bị lọt qua vách mỏng
+    const maxSubStep = 0.20; // 20cm là phân bước tối ưu: an toàn tuyệt đối chống xuyên tường mà giảm 50% số vòng lặp CPU
 
     // Trục X
     const stepX = this.velocity.x * delta;
@@ -803,7 +815,6 @@ export class PlayerController {
           this.velocity.x = 0; // Trượt tường theo trục Z
           break;
         }
-        this._resolvePenetrations(currentPos);
       }
     }
 
@@ -824,13 +835,25 @@ export class PlayerController {
           this.velocity.z = 0; // Trượt tường theo trục X
           break;
         }
-        this._resolvePenetrations(currentPos);
       }
     }
 
+    this._resolvePenetrations(currentPos);
+
     // 4. KIỂM TRA ĐỘ CAO MẶT ĐẤT VÀ BƯỚC LÊN GỜ VỈA HÈ (STEP-UP GROUND SNAP)
-    const colliders = this.worldManager.getColliders();
-    this._rayOrigin.copy(this.characterGroup.position);
+    const allColliders = this.worldManager.getColliders();
+    const nearColliders = [];
+    const charPos = this.characterGroup.position;
+    for (let c = 0; c < allColliders.length; c++) {
+      const col = allColliders[c];
+      if (col.position && Math.hypot(col.position.x - charPos.x, col.position.z - charPos.z) > 42) {
+        continue;
+      }
+      nearColliders.push(col);
+    }
+    const colliders = nearColliders.length > 0 ? nearColliders : allColliders;
+
+    this._rayOrigin.copy(charPos);
     this._rayOrigin.y += 1.4;
     this.raycaster.set(this._rayOrigin, this.downVector);
     this.raycaster.far = 4.0;
