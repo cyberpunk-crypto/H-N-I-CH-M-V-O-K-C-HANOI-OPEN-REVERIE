@@ -567,6 +567,17 @@ export class PlayerController {
       }
     }
 
+    // Đẩy nhân vật an toàn trở lại lòng cầu nếu tiếp cận sát lan can Cầu Kim Quy
+    if (pos.x >= 17.0 && pos.x <= 68.0 && pos.z <= -17.0 && pos.z >= -68.0) {
+      const kimQuyDist = Math.abs(pos.x + pos.z) * 0.70710678;
+      if (kimQuyDist > 1.65) {
+        const excess = kimQuyDist - 1.65;
+        const sign = (pos.x + pos.z) > 0 ? 1 : -1;
+        pos.x -= sign * excess * 0.70710678;
+        pos.z -= sign * excess * 0.70710678;
+      }
+    }
+
     // Đẩy ngược lại nếu vi phạm ranh giới mặt nước (bảo đảm 100% không chạm nước)
     if (this.worldManager.isWaterAt && this.worldManager.isWaterAt(pos.x, pos.y, pos.z)) {
       const dx = pos.x - 80;
@@ -704,6 +715,15 @@ export class PlayerController {
     // 0. Cấm tuyệt đối không cho bước xuống nước / chạm nước theo sắc lệnh
     if (this.worldManager.isWaterAt && this.worldManager.isWaterAt(testPos.x, testPos.y, testPos.z)) {
       return true; // Chặn ngang ngay lập tức, không cho phép xuống nước!
+    }
+
+    // Rào chắn lan can Cầu Kim Quy (đường chéo từ bờ 17.0 ra Đảo Rùa 68.0):
+    // Khóa cứng tuyệt đối không cho phép xuyên qua hoặc bước ra ngoài lan can cầu!
+    if (testPos.x >= 17.0 && testPos.x <= 68.0 && testPos.z <= -17.0 && testPos.z >= -68.0) {
+      const kimQuyDist = Math.abs(testPos.x + testPos.z) * 0.70710678;
+      if (kimQuyDist > 1.68) {
+        return true; // Chặn cứng ngay tại lan can Cầu Kim Quy!
+      }
     }
 
     // 1. Kiểm tra va chạm kiến trúc

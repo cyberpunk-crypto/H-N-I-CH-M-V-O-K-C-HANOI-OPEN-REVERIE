@@ -123,7 +123,7 @@ export class WorldManager {
 
       // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (17, -17) đến Đảo Rùa (68, -68), bán kính an toàn 2.4m
       const dKimQuy = this._pointToSegmentDistSq(x, z, 17, -17, 68, -68);
-      if (dKimQuy <= 2.4 * 2.4 && y >= 0.40) {
+      if (dKimQuy <= 1.82 * 1.82 && y >= 0.35) {
         return false; // An toàn trên Cầu Kim Quy
       }
 
@@ -938,7 +938,7 @@ export class WorldManager {
       const tx = 80 + Math.cos(treeAngle) * 91.5;
       const tz = -80 + Math.sin(treeAngle) * 91.5;
 
-      const willow = this._createWeepingWillow();
+      const willow = this._createWeepingWillow(i);
       willow.position.set(tx, 0.38, tz);
       willow.rotation.y = -treeAngle + Math.PI; // Tán cành nghiêng bóng xuống mặt nước
       zoneGroup.add(willow);
@@ -1001,52 +1001,228 @@ export class WorldManager {
       }
     }
 
-    // 3. ĐẢO RÙA TỰ NHIÊN & THÁP RÙA 3 TẦNG VÒM GOTHIC PHÁP CỔ
+    // 3. ĐẢO RÙA TỰ NHIÊN & THÁP RÙA 3 TẦNG VÒM GOTHIC - CÓ THỂ BƯỚC VÀO TRONG (WALKABLE INTERIOR)
     const turtleIsland = new THREE.Mesh(new THREE.CylinderGeometry(16, 19, 1.5, 32), this.materials.mossStone);
     turtleIsland.position.set(80, 0.75, -80);
     turtleIsland.castShadow = true;
     turtleIsland.receiveShadow = true;
     zoneGroup.add(turtleIsland);
     this.colliders.push(turtleIsland);
-    this._addBoxObstacle(80, -80, 26, 26, 0, 18);
 
-    // Thảm cỏ xanh trên Đảo Rùa
+    // Thảm cỏ xanh trên gò Đảo Rùa
     const grassMesh = new THREE.Mesh(new THREE.CylinderGeometry(15.2, 15.2, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0x3d5a2d, roughness: 0.9 }));
     grassMesh.position.set(80, 1.55, -80);
     zoneGroup.add(grassMesh);
 
-    // THÁP RÙA: TẦNG 1 (Chân đế với 10 Vòm Cuốn Gothic: 3 vòm mặt dài Đông-Tây, 2 vòm mặt ngắn Bắc-Nam)
+    // Lối đi dốc đá cổ nối liền từ đầu Cầu Kim Quy (68, 0.80, -68) lên sân Đảo Rùa (76, 1.55, -76)
+    const islandWalkway = new THREE.Mesh(new THREE.BoxGeometry(11.5, 0.35, 4.2), this.materials.mossStone);
+    islandWalkway.position.set(72, 1.18, -72);
+    islandWalkway.rotation.y = -Math.PI / 4;
+    islandWalkway.receiveShadow = true;
+    zoneGroup.add(islandWalkway);
+    this.colliders.push(islandWalkway);
+
+    // Sân lát đá xanh cổ nguyên khối xung quanh chân Tháp Rùa
+    const islandCourtyard = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.25, 15.0), this.materials.mossStone);
+    islandCourtyard.position.set(80, 1.50, -80);
+    islandCourtyard.receiveShadow = true;
+    zoneGroup.add(islandCourtyard);
+    this.colliders.push(islandCourtyard);
+
+    // Lan can đá hoa sen bảo vệ quanh mép đảo phía tiếp giáp hồ
+    for (let a = 0; a < 14; a++) {
+      const pAngle = (a / 14) * Math.PI * 2;
+      // Chừa lối dẫn lên cầu Kim Quy (hướng góc 225 độ / ~3.92 rad)
+      if (pAngle > 3.4 && pAngle < 4.4) continue;
+      const px = 80 + Math.cos(pAngle) * 14.8;
+      const pz = -80 + Math.sin(pAngle) * 14.8;
+      const balustrade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.85, 8), this.materials.mossStone);
+      balustrade.position.set(px, 1.55 + 0.425, pz);
+      zoneGroup.add(balustrade);
+      const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), this.materials.mossStone);
+      lotus.position.set(px, 1.55 + 0.95, pz);
+      zoneGroup.add(lotus);
+      this._addBoxObstacle(px, pz, 0.7, 0.7, 1.55, 3.2);
+    }
+
+    // =========================================================================
+    // THÁP RÙA TẦNG 1: KIẾN TRÚC MỞ 10 VÒM CUỐN GOTHIC BƯỚC ĐƯỢC VÀO TẬN BÊN TRONG
+    // (Open Walkable Gothic Architecture with Ancient Altar, Stela & Incense)
+    // =========================================================================
     const t1Width = 8.8;
     const t1Depth = 6.4;
     const t1Height = 3.6;
-    const t1Mesh = new THREE.Mesh(new THREE.BoxGeometry(t1Width, t1Height, t1Depth), this.materials.mossStone);
-    t1Mesh.position.set(80, 1.6 + t1Height / 2, -80);
-    t1Mesh.castShadow = true;
-    zoneGroup.add(t1Mesh);
 
-    // Chi tiết 10 Vòm Cuốn Gothic Tầng 1 Tháp Rùa
-    const gothicDarkMat = new THREE.MeshStandardMaterial({ color: 0x181412, roughness: 0.95 });
-    // Mặt dài Đông & Tây (mỗi mặt 3 vòm)
+    // Sàn đá cổ bên trong nội điện Tháp Rùa
+    const t1Floor = new THREE.Mesh(new THREE.BoxGeometry(t1Width, 0.22, t1Depth), this.materials.mossStone);
+    t1Floor.position.set(80, 1.55, -80);
+    t1Floor.receiveShadow = true;
+    zoneGroup.add(t1Floor);
+    this.colliders.push(t1Floor);
+
+    // 4 Trụ góc đá rêu phong vững chãi chịu lực cho Tháp
+    for (let cx of [-3.5, 3.5]) {
+      for (let cz of [-2.3, 2.3]) {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, t1Height, 1.5), this.materials.mossStone);
+        pillar.position.set(80 + cx, 1.55 + t1Height / 2, -80 + cz);
+        pillar.castShadow = true;
+        pillar.receiveShadow = true;
+        zoneGroup.add(pillar);
+        this._addBoxObstacle(80 + cx, -80 + cz, 1.65, 1.55, 1.55, 5.5);
+      }
+    }
+
+    // VÁCH CỬA MẶT TÂY (Hướng đón khách đi từ Cầu Kim Quy vào Tháp Rùa): 3 Vòm Gothic mở rộng
+    for (let vx of [-1.25, 1.25]) {
+      const pierW = new THREE.Mesh(new THREE.BoxGeometry(0.6, t1Height, 0.4), this.materials.mossStone);
+      pierW.position.set(80 + vx, 1.55 + t1Height / 2, -80 + 3.05);
+      pierW.castShadow = true;
+      zoneGroup.add(pierW);
+      this._addBoxObstacle(80 + vx, -80 + 3.05, 0.65, 0.45, 1.55, 5.5);
+    }
+
+    // VÁCH CỬA MẶT ĐÔNG (Hướng nhìn ra hồ phía Đông đón bình minh): 3 Vòm Gothic mở thoáng
+    for (let vx of [-1.25, 1.25]) {
+      const pierE = new THREE.Mesh(new THREE.BoxGeometry(0.6, t1Height, 0.4), this.materials.mossStone);
+      pierE.position.set(80 + vx, 1.55 + t1Height / 2, -80 - 3.05);
+      pierE.castShadow = true;
+      zoneGroup.add(pierE);
+      this._addBoxObstacle(80 + vx, -80 - 3.05, 0.65, 0.45, 1.55, 5.5);
+    }
+
+    // VÁCH CỬA MẶT BẮC & NAM (Mặt ngắn 2 vòm): Trụ giữa
+    for (let xSide of [-1, 1]) {
+      const pierSide = new THREE.Mesh(new THREE.BoxGeometry(0.4, t1Height, 0.6), this.materials.mossStone);
+      pierSide.position.set(80 + xSide * 4.25, 1.55 + t1Height / 2, -80);
+      pierSide.castShadow = true;
+      zoneGroup.add(pierSide);
+      this._addBoxObstacle(80 + xSide * 4.25, -80, 0.45, 0.65, 1.55, 5.5);
+    }
+
+    // Vòm cuốn Gothic trang trí trên đầu các cửa vào
     for (let zSide of [-1, 1]) {
       for (let vx of [-2.4, 0, 2.4]) {
-        const archMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.25), gothicDarkMat);
-        archMesh.position.set(80 + vx, 2.7, -80 + zSide * (t1Depth / 2 + 0.05));
-        zoneGroup.add(archMesh);
+        const archTop = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.75, 0.35), this.materials.mossStone);
+        archTop.position.set(80 + vx, 1.55 + t1Height - 0.35, -80 + zSide * 3.05);
+        zoneGroup.add(archTop);
       }
     }
-    // Mặt ngắn Bắc & Nam (mỗi mặt 2 vòm)
     for (let xSide of [-1, 1]) {
-      for (let vz of [-1.5, 1.5]) {
-        const archMesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.2, 1.2), gothicDarkMat);
-        archMesh.position.set(80 + xSide * (t1Width / 2 + 0.05), 2.7, -80 + vz);
-        zoneGroup.add(archMesh);
+      for (let vz of [-1.4, 1.4]) {
+        const archTop = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.75, 1.3), this.materials.mossStone);
+        archTop.position.set(80 + xSide * 4.25, 1.55 + t1Height - 0.35, -80 + vz);
+        zoneGroup.add(archTop);
       }
     }
 
-    // Gờ phân tầng chỉ viền (Cornice Moldings)
+    // =========================================================================
+    // NỘI ĐIỆN BÊN TRONG THÁP RÙA: BÀN THỜ KIM QUY, BIA ĐÁ CỔ, ÁNH SÁNG & ĐÈN LỒNG
+    // =========================================================================
+    // 1. Bàn thờ đá cổ thâm nghiêm
+    const thapRuaAltar = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 1.1), this.materials.mossStone);
+    thapRuaAltar.position.set(80, 1.55 + 0.425, -80.9);
+    thapRuaAltar.castShadow = true;
+    zoneGroup.add(thapRuaAltar);
+    this._addBoxObstacle(80, -80.9, 2.3, 1.2, 1.55, 3.2);
+
+    // 2. Tượng Thần Kim Quy (Rùa Vàng) cõng bia đá cổ
+    const turtleStatue = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 1.3), this.materials.templeGold);
+    turtleStatue.position.set(80, 1.55 + 0.85 + 0.175, -80.9);
+    turtleStatue.castShadow = true;
+    zoneGroup.add(turtleStatue);
+
+    // 3. Tấm bia đá cổ "Quy Sơn Linh Tháp" ghi dấu nghìn năm
+    const steleMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.15), this.materials.mossStone);
+    steleMesh.position.set(80, 1.55 + 0.85 + 0.35 + 0.55, -80.9);
+    steleMesh.castShadow = true;
+    zoneGroup.add(steleMesh);
+
+    // 4. Lư hương đồng tỏa khói trầm tôn nghiêm
+    const incenseCenser = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.35, 8), this.materials.templeGold);
+    incenseCenser.position.set(80, 1.55 + 0.85 + 0.18, -80.3);
+    zoneGroup.add(incenseCenser);
+
+    // 5. Nguồn sáng vàng ấm áp thiêng liêng rọi sáng nội điện Tháp Rùa
+    const towerInteriorLight = new THREE.PointLight(0xffdf80, 1.8, 14);
+    towerInteriorLight.position.set(80, 3.8, -80);
+    zoneGroup.add(towerInteriorLight);
+
+    // 6. Bốn đèn lồng đồng thả từ vòm trần bên trong
+    for (let lx of [-1.8, 1.8]) {
+      for (let lz of [-1.2, 1.2]) {
+        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.2, 4), this.materials.darkIron);
+        chain.position.set(80 + lx, 4.6, -80 + lz);
+        zoneGroup.add(chain);
+
+        const lanternMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshStandardMaterial({
+          color: 0xffdf80,
+          emissive: 0xffaa00,
+          emissiveIntensity: 0.9
+        }));
+        lanternMesh.position.set(80 + lx, 3.9, -80 + lz);
+        zoneGroup.add(lanternMesh);
+      }
+    }
+
+    // =========================================================================
+    // 🐢 NPC NHÀ SỬ HỌC THÁP RÙA - BÁC NGUYỄN VĂN AN (ĐỨNG TRONG NỘI ĐIỆN)
+    // =========================================================================
+    const historianNPC = this._createCitizenNPC(0, 0, 0x223a5e, 'kính lão');
+    historianNPC.position.set(80, 1.55, -79.2);
+    historianNPC.rotation.y = Math.PI; // Hướng mặt đón khách bước vào cửa chính
+    zoneGroup.add(historianNPC);
+    this._addNpcCollider(80, -79.2, 0.65);
+
+    this.interactables.push({
+      position: new THREE.Vector3(80, 1.55, -79.2),
+      radius: 3.2,
+      promptText: 'Lắng nghe Lịch sử Tháp Rùa cổ kính cùng Nhà Sử Học',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('UI:OPEN_DIALOGUE', {
+            name: 'Bác Nguyễn Văn An • Nhà Nghiên Cứu Lịch Sử Tháp Rùa',
+            role: 'Chuyên gia Viện Lịch Sử & Người gìn giữ ký ức Tháp Rùa Hồ Gươm',
+            avatar: '🐢',
+            greeting: '"Kính chào bạn trẻ! Thật quý hóa khi được đón bạn bước chân vào tận bên trong chốn thâm nghiêm của Tháp Rùa - trái tim ngàn năm linh thiêng của Thủ đô."',
+            monumentTitle: 'Tháp Rùa Hồ Gươm - Dấu Ấn Lịch Sử & Biểu Tượng Ngàn Năm Thăng Long',
+            historyText: `
+              <p><strong>Giai thoại Hồ Tả Vọng & Thần Kim Quy (Năm 1428):</strong> Sau khi lãnh đạo khởi nghĩa Lam Sơn toàn thắng đuổi sạch giặc Minh, Đức Vua Lê Thái Tổ (Lê Lợi) ngự thuyền rồng dạo chơi trên hồ Tả Vọng. Rùa Vàng khổng lồ nổi lên đòi lại thanh gươm thần Thuận Thiên cứu nước. Nhà vua rút gươm trao trả, Rùa ngậm gươm rồi lặn sâu xuống đáy hồ. Từ đó, hồ đổi tên thành <em>Hồ Hoàn Kiếm (Hồ Trả Gươm)</em>.</p>
+              <p><strong>Lịch sử Xây dựng Tháp Rùa (Năm 1886):</strong> Được xây dựng trên gò Đảo Rùa (Quy Sơn) giữa hồ. Kiến trúc Tháp Rùa là sự kết tinh giao thoa Á - Âu độc đáo bậc nhất: hai tầng dưới mang hệ vòm cuốn nhọn phong cách <em>Gothic phương Tây</em>, trong khi tầng trên cùng và mái cong lợp ngói vảy lại mang đậm bản sắc <em>truyền thống phong kiến Á Đông</em>.</p>
+              <p><strong>Trái Tim của Thủ Đô Hà Nội:</strong> Dù trải qua mưa bom bão đạn và bao thăng trầm thời gian, bóng Tháp Rùa rêu phong soi bóng xuống làn nước xanh lục thủy vẫn mãi là biểu tượng thiêng liêng về lòng yêu chuộng hòa bình và khí phách bất khuất của dân tộc Việt Nam.</p>
+            `,
+            dialogueOptions: [
+              { text: 'Bác ơi, sự tích Vua Lê Lợi trả gươm thần diễn ra chính xác ở đâu ạ?', reply: 'Chính tại làn nước hồ nơi chúng ta đang đứng đây! Vua Lê Lợi ngự thuyền rồng, Rùa Vàng nổi lên đòi gươm rồi bơi về hướng hang sâu dưới lòng hồ. Đó là lời nhắc nhở thiêng liêng về truyền thống yêu chuộng hòa bình của dân tộc ta.' },
+              { text: 'Kiến trúc Tháp Rùa có nét độc đáo nào về sự giao thoa Á - Âu thưa Bác?', reply: 'Tháp Rùa có 3 tầng: Tầng 1 và 2 mang các vòm cuốn Gothic Pháp thanh thoát, nhưng tầng 3 và phần mái lại lợp ngói mũi hài có bờ nóc cong vút uốn lượn theo mỹ thuật cung đình Việt. Đó là sự dung hợp văn hóa kỳ diệu cuối thế kỷ 19.' },
+              { text: 'Bên trong Tháp Rùa lưu giữ những gì thưa Bác?', reply: 'Nơi đây lưu giữ Bàn Thờ Quy Sơn Linh Tháp, tượng Rùa Vàng đội bia đá và làn trầm hương nghi ngút cầu quốc thái dân an. Bước vào đây, lòng người bỗng lắng lại giữa nhịp sống hối hả ngoài kia.' }
+            ],
+            shopItems: [
+              { name: 'Mô Hình Tháp Rùa Thu Nhỏ Mạ Đồng', price: '15 Xu', desc: 'Mô hình kỷ niệm Tháp Rùa tinh xảo mang lại may mắn', icon: '🐢' },
+              { name: 'Bưu Thiếp Tháp Rùa Đổi Màu Mờ Sương', price: '10 Xu', desc: 'Bức ảnh chụp Tháp Rùa trong làn sương sớm mùa đông', icon: '📮' },
+              { name: 'Sách Ảnh "Hồ Gươm - Hồn Xưa Nét Cũ"', price: '20 Xu', desc: 'Cuốn tư liệu quý giá về lịch sử Tháp Rùa và 36 phố phường', icon: '📖' },
+              { name: 'Mảnh Ngói Cổ Lưu Niệm Quy Sơn', price: '12 Xu', desc: 'Vật phẩm lưu niệm văn hóa Tháp Rùa thiêng liêng', icon: '🏮' }
+            ]
+          });
+        }
+      }
+    });
+
+    // 7. Cây cổ thụ bóng mát rêu phong trên Đảo Rùa tỏa bóng bên Tháp Rùa
+    const islandTree1 = this._createRealisticHeritageTree({ type: 'shade', scale: 0.95, seed: 7 });
+    islandTree1.position.set(73, 1.55, -86);
+    zoneGroup.add(islandTree1);
+    this._addBoxObstacle(73, -86, 1.2, 1.2, 1.55, 6.0);
+
+    const islandTree2 = this._createRealisticHeritageTree({ type: 'shade', scale: 1.05, seed: 8 });
+    islandTree2.position.set(87, 1.55, -74);
+    zoneGroup.add(islandTree2);
+    this._addBoxObstacle(87, -74, 1.2, 1.2, 1.55, 6.0);
+
+    // Gờ phân tầng chỉ viền tầng 1
     const cornice1 = new THREE.Mesh(new THREE.BoxGeometry(t1Width + 0.6, 0.35, t1Depth + 0.6), this.materials.mossStone);
-    cornice1.position.set(80, 1.6 + t1Height + 0.175, -80);
+    cornice1.position.set(80, 1.55 + t1Height + 0.175, -80);
     zoneGroup.add(cornice1);
+
 
     // THÁP RÙA: TẦNG 2 (Thu nhỏ tỷ lệ, vòm cuốn Gothic thanh thoát)
     const t2Width = 6.4;
@@ -1177,8 +1353,13 @@ export class WorldManager {
         railBeam.rotation.z = anglePitch;
         zoneGroup.add(railBeam);
 
-        // Đăng ký obstacle chống rơi xuống nước
-        this._addBoxObstacle(mid.x + perpX * side, mid.z + perpZ * side, 0.5, 0.5, mid.y, mid.y + 1.8);
+        // Đăng ký obstacle dày đặc liên tục chống xuyên lan can cầu Kim Quy (4 khối chồng lấn mỗi nhịp)
+        for (let s of [0.125, 0.375, 0.625, 0.875]) {
+          const subX = p1.x + (p2.x - p1.x) * s + perpX * side;
+          const subZ = p1.z + (p2.z - p1.z) * s + perpZ * side;
+          const subY = p1.y + (p2.y - p1.y) * s;
+          this._addBoxObstacle(subX, subZ, 1.3, 1.3, subY, subY + 2.2);
+        }
       }
 
       // Đèn lồng đồng thau cổ điển chiếu sáng lung linh dọc cầu (cách mỗi 3 nhịp)
@@ -1626,10 +1807,10 @@ export class WorldManager {
     const altarGroup = new THREE.Group();
     altarGroup.position.set(-tw / 2 + 1.8, 0, 0);
 
-    const altarTable = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.3, 4.2), this.materials.woodVarnish || this.materials.theHucRed);
-    altarTable.position.y = 0.65;
-    altarTable.castShadow = true;
-    altarGroup.add(altarTable);
+    const ngocSonAltarTable = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.3, 4.2), this.materials.woodVarnish || this.materials.theHucRed);
+    ngocSonAltarTable.position.y = 0.65;
+    ngocSonAltarTable.castShadow = true;
+    altarGroup.add(ngocSonAltarTable);
 
     // Viền chạm hoa văn rồng mạ vàng trên án gian thờ
     const altarGoldTrim = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.15, 4.25), this.materials.templeGold);
@@ -1858,8 +2039,8 @@ export class WorldManager {
       { x: 155, z: -110 }
     ];
 
-    willowSpots.forEach(pos => {
-      const willow = this._createWillowTree();
+    willowSpots.forEach((pos, idx) => {
+      const willow = this._createWillowTree(idx);
       willow.position.set(pos.x, 0, pos.z);
       zoneGroup.add(willow);
       this._addBoxObstacle(pos.x, pos.z, 1.2, 1.2, 0, 8);
@@ -3366,41 +3547,165 @@ export class WorldManager {
   }
 
   /**
-   * Tạo Cây Liễu Rủ Ven Hồ Gươm (Thân gỗ cong nghiêng, cành lá buông rủ soi bóng nước hồ)
+   * Tạo Cây Cổ Thụ Hà Nội Chân Thực Chuẩn 3D (Realistic Hanoi Heritage Tree)
+   * Thân gỗ gồ ghề vặn xoắn tự nhiên, rễ cuồn cuộn trồi mặt đất, cành chạc ba phân tầng,
+   * và các cụm tán lá bồng bềnh đa tầng màu sắc tươi tắn chân thực!
    */
-  _createWeepingWillow() {
-    const treeGroup = new THREE.Group();
+  _createRealisticHeritageTree(options = {}) {
+    const {
+      type = 'willow',      // 'willow' (liễu rủ ven hồ), 'shade' (cây bóng mát cổ thụ), 'bang' (cây bàng lá đỏ)
+      trunkRadius = 0.36,
+      treeHeight = 5.8,
+      scale = 1.0,
+      seed = 0
+    } = options;
 
-    // Thân cây gỗ sần sùi uốn cong nghiêng nhẹ về phía mặt nước
-    const trunkCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.2, 1.5, 0.2),
-      new THREE.Vector3(0.6, 2.9, 0.4),
-      new THREE.Vector3(1.1, 3.8, 0.6)
-    ]);
-    const trunkGeo = new THREE.TubeGeometry(trunkCurve, 10, 0.20, 8, false);
-    const trunkMesh = new THREE.Mesh(trunkGeo, this.materials.retroWood);
-    trunkMesh.castShadow = true;
-    treeGroup.add(trunkMesh);
+    const group = new THREE.Group();
+    group.scale.setScalar(scale);
 
-    // Tán cành lá liễu mềm mại buông rủ
-    const foliageMat = new THREE.MeshStandardMaterial({
-      color: 0x3d6e35,
-      roughness: 0.85
-    });
-
-    for (let b = 0; b < 6; b++) {
-      const bAngle = (b / 6) * Math.PI * 2;
-      const bx = 1.1 + Math.cos(bAngle) * 1.5;
-      const bz = 0.6 + Math.sin(bAngle) * 1.5;
-
-      const vineGeo = new THREE.CylinderGeometry(0.35, 0.08, 2.4, 6);
-      const vine = new THREE.Mesh(vineGeo, foliageMat);
-      vine.position.set(bx, 2.8, bz);
-      treeGroup.add(vine);
+    // 1. RỄ CÂY CUỒN CUỘN TRỒI TRÊN MẶT ĐẤT (ORGANIC SURFACE ROOTS)
+    const rootMat = this.materials.retroWood || new THREE.MeshStandardMaterial({ color: 0x3b271a, roughness: 0.92 });
+    const numRoots = 5;
+    for (let r = 0; r < numRoots; r++) {
+      const rootAngle = (r / numRoots) * Math.PI * 2 + (seed * 0.7);
+      const rootDist = 1.4 + Math.sin(r * 2.3 + seed) * 0.35;
+      const rootCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0.40, 0),
+        new THREE.Vector3(Math.cos(rootAngle) * (rootDist * 0.5), 0.16, Math.sin(rootAngle) * (rootDist * 0.5)),
+        new THREE.Vector3(Math.cos(rootAngle) * rootDist, 0.02, Math.sin(rootAngle) * rootDist)
+      ]);
+      const rootMesh = new THREE.Mesh(new THREE.TubeGeometry(rootCurve, 8, trunkRadius * 0.42, 6, false), rootMat);
+      rootMesh.castShadow = true;
+      group.add(rootMesh);
     }
 
-    return treeGroup;
+    // 2. THÂN CÂY CHÍNH VẶN XOẮN TỰ NHIÊN (GNARLED MAIN TRUNK)
+    const leanX = Math.sin(seed * 1.7) * 0.35 + (type === 'willow' ? 0.45 : 0.1);
+    const leanZ = Math.cos(seed * 2.1) * 0.35;
+    const trunkCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(leanX * 0.3, treeHeight * 0.25, leanZ * 0.3),
+      new THREE.Vector3(leanX * 0.7, treeHeight * 0.50, leanZ * 0.7),
+      new THREE.Vector3(leanX, treeHeight * 0.65, leanZ)
+    ]);
+    const trunkMesh = new THREE.Mesh(new THREE.TubeGeometry(trunkCurve, 10, trunkRadius, 8, false), rootMat);
+    trunkMesh.castShadow = true;
+    group.add(trunkMesh);
+
+    // 3. CÁC CÀNH CHÍNH VƯƠN TỎA RA CÁC HƯỚNG (PRIMARY BOUGHS)
+    const forkY = treeHeight * 0.65;
+    const boughAngles = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
+    const boughEnds = [];
+
+    boughAngles.forEach((baseAngle, idx) => {
+      const angle = baseAngle + Math.sin(idx + seed) * 0.35;
+      const reach = 1.9 + Math.cos(idx * 1.5 + seed) * 0.4;
+      const boughEnd = new THREE.Vector3(
+        leanX + Math.cos(angle) * reach,
+        forkY + 1.2 + Math.sin(idx * 2.0) * 0.35,
+        leanZ + Math.sin(angle) * reach
+      );
+      boughEnds.push({ pos: boughEnd, angle: angle });
+
+      const boughCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(leanX, forkY, leanZ),
+        new THREE.Vector3(
+          leanX + Math.cos(angle) * (reach * 0.5),
+          forkY + 0.75,
+          leanZ + Math.sin(angle) * (reach * 0.5)
+        ),
+        boughEnd
+      ]);
+      const boughMesh = new THREE.Mesh(new THREE.TubeGeometry(boughCurve, 8, trunkRadius * 0.52, 6, false), rootMat);
+      boughMesh.castShadow = true;
+      group.add(boughMesh);
+    });
+
+    // 4. VẬT LIỆU TÁN LÁ BỒNG BỀNH ĐA TẦNG MÀU SẮC TỰ NHIÊN (VOLUMETRIC FOLIAGE MATERIALS)
+    let foliageMatShadow, foliageMatMid, foliageMatHighlight;
+
+    if (type === 'bang') {
+      // Cây bàng già lá đỏ cuối thu rực rỡ
+      foliageMatShadow = new THREE.MeshStandardMaterial({ color: 0x6e1b12, roughness: 0.88 });
+      foliageMatMid = new THREE.MeshStandardMaterial({ color: 0xa82b18, roughness: 0.85 });
+      foliageMatHighlight = new THREE.MeshStandardMaterial({ color: 0xcc4b20, roughness: 0.80 });
+    } else {
+      // Liễu rủ & Cây xanh bóng mát Hà Nội
+      foliageMatShadow = new THREE.MeshStandardMaterial({ color: 0x1d3a15, roughness: 0.88 });
+      foliageMatMid = new THREE.MeshStandardMaterial({ color: 0x365f22, roughness: 0.85 });
+      foliageMatHighlight = new THREE.MeshStandardMaterial({ color: 0x528230, roughness: 0.80 });
+    }
+
+    // 5. CÁC CỤM TÁN LÁ BỒNG BỀNH HÌNH KHỐI HỮU CƠ (ORGANIC FOLIAGE CLOUDS)
+    // Đỉnh vòm tán trên cùng
+    const topCloud = new THREE.Mesh(new THREE.SphereGeometry(2.0, 10, 8), foliageMatHighlight);
+    topCloud.position.set(leanX, forkY + 1.85, leanZ);
+    topCloud.scale.set(1.2, 0.72, 1.2);
+    topCloud.castShadow = true;
+    group.add(topCloud);
+
+    // Tán lá theo từng cành chính
+    boughEnds.forEach((bough, bIdx) => {
+      // Cụm tán chính đầu cành
+      const clumpRadius = 1.6 + (bIdx % 2) * 0.3;
+      const clumpMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(clumpRadius, 10, 8),
+        bIdx % 2 === 0 ? foliageMatMid : foliageMatShadow
+      );
+      clumpMesh.position.copy(bough.pos);
+      clumpMesh.scale.set(1.25, 0.68, 1.25);
+      clumpMesh.castShadow = true;
+      group.add(clumpMesh);
+
+      // Cụm phụ đệm bên dưới và vươn ra ngoài
+      const subPos = new THREE.Vector3(
+        bough.pos.x + Math.cos(bough.angle) * 0.75,
+        bough.pos.y - 0.40,
+        bough.pos.z + Math.sin(bough.angle) * 0.75
+      );
+      const subMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(clumpRadius * 0.8, 8, 6),
+        foliageMatHighlight
+      );
+      subMesh.position.copy(subPos);
+      subMesh.scale.set(1.15, 0.65, 1.15);
+      subMesh.castShadow = true;
+      group.add(subMesh);
+    });
+
+    // 6. DẢI LIỄU RỦ THƠ MỘNG BUÔNG BÓNG XUỐNG MẶT NƯỚC (NẾU LÀ CÂY LIỄU)
+    if (type === 'willow') {
+      const vineMat = new THREE.MeshStandardMaterial({
+        color: 0x487530,
+        roughness: 0.82
+      });
+      const numVines = 18;
+      for (let v = 0; v < numVines; v++) {
+        const vAngle = (v / numVines) * Math.PI * 2;
+        const vDist = 2.4 + Math.sin(v * 3.1) * 0.45;
+        const vx = leanX + Math.cos(vAngle) * vDist;
+        const vz = leanZ + Math.sin(vAngle) * vDist;
+        const vyStart = forkY + 0.8 + Math.cos(v * 2.2) * 0.35;
+        const vineLen = 2.8 + Math.sin(v * 1.7) * 0.65;
+
+        // Dải liễu mềm mại thon dài rủ bóng
+        const vineGeo = new THREE.CylinderGeometry(0.08, 0.02, vineLen, 5);
+        const vineMesh = new THREE.Mesh(vineGeo, vineMat);
+        vineMesh.position.set(vx, vyStart - vineLen / 2, vz);
+        vineMesh.rotation.z = Math.sin(vAngle) * 0.12;
+        vineMesh.rotation.x = Math.cos(vAngle) * 0.12;
+        group.add(vineMesh);
+      }
+    }
+
+    return group;
+  }
+
+  /**
+   * Tạo Cây Liễu Rủ Ven Hồ Gươm (Thân gỗ cong nghiêng, rễ cuộn, cành lá buông rủ soi bóng nước hồ chân thực)
+   */
+  _createWeepingWillow(seed = 0) {
+    return this._createRealisticHeritageTree({ type: 'willow', seed: seed });
   }
 
   /**
@@ -3586,49 +3891,17 @@ export class WorldManager {
   }
 
   /**
-   * Cây liễu rủ ven hồ
+   * Cây bóng mát cổ thụ chân thực (Phố cổ & ven hồ)
    */
-  _createWillowTree() {
-    const group = new THREE.Group();
-    const trunkCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.5, 2.2, 0.2),
-      new THREE.Vector3(0.8, 4.4, -0.3)
-    ]);
-    const trunk = new THREE.Mesh(new THREE.TubeGeometry(trunkCurve, 8, 0.35, 8, false), this.materials.retroWood);
-    trunk.castShadow = true;
-    group.add(trunk);
-
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x477840, roughness: 0.85, transparent: true, opacity: 0.92 });
-    for (let i = 0; i < 7; i++) {
-      const angle = (i / 7) * Math.PI * 2;
-      const branch = new THREE.Mesh(new THREE.ConeGeometry(1.6, 4.2, 6), leafMat);
-      branch.position.set(0.8 + Math.cos(angle) * 1.5, 3.2, -0.3 + Math.sin(angle) * 1.5);
-      branch.rotation.z = Math.PI;
-      group.add(branch);
-    }
-    return group;
+  _createWillowTree(seed = 1) {
+    return this._createRealisticHeritageTree({ type: 'shade', seed: seed });
   }
 
   /**
-   * Cây bàng lá đỏ góc sân tập thể
+   * Cây bàng già lá đỏ cuối thu chân thực (Góc sân tập thể)
    */
-  _createBangTree() {
-    const group = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 4.5, 8), this.materials.retroWood);
-    trunk.position.y = 2.25;
-    trunk.castShadow = true;
-    group.add(trunk);
-
-    // Tán lá bàng đỏ nhiều tầng vươn ngang
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0xb53522, roughness: 0.8 });
-    for (let t = 0; t < 3; t++) {
-      const tier = new THREE.Mesh(new THREE.CylinderGeometry(2.8 - t * 0.6, 3.2 - t * 0.6, 0.5, 8), leafMat);
-      tier.position.y = 3.6 + t * 1.2;
-      tier.castShadow = true;
-      group.add(tier);
-    }
-    return group;
+  _createBangTree(seed = 5) {
+    return this._createRealisticHeritageTree({ type: 'bang', seed: seed });
   }
 
   /**
