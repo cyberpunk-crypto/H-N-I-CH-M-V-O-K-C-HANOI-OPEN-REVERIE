@@ -5,6 +5,7 @@
  */
 
 import { THREE } from './ThreeLib.js';
+import { createHanoiCharacter3D, CHARACTERS_META } from './CharacterFactory.js';
 
 export class PlayerController {
   constructor(scene, worldManager, eventBus) {
@@ -72,305 +73,73 @@ export class PlayerController {
     this.characterGroup = new THREE.Group();
     this.characterGroup.name = 'DreamerCharacter';
 
-    // 1. BẢNG VẬT LIỆU MỸ THUẬT CAO CẤP
-    const skinMat = new THREE.MeshStandardMaterial({
-      color: 0xf0c8a6,
-      roughness: 0.52,
-      metalness: 0.04
-    });
-    const hairMat = new THREE.MeshStandardMaterial({
-      color: 0x1f1917,
-      roughness: 0.85
-    });
-    const coatCaramelMat = new THREE.MeshStandardMaterial({
-      color: 0x8a5b3a, // Áo dạ măng tô caramel ấm áp phong cách lãng tử
-      roughness: 0.72,
-      metalness: 0.05
-    });
-    const trousersNavyMat = new THREE.MeshStandardMaterial({
-      color: 0x242d38, // Quần âu ống đứng xanh than đậm
-      roughness: 0.8
-    });
-    const leatherOxfordMat = new THREE.MeshStandardMaterial({
-      color: 0x23160e, // Giày da Oxford bóng nhẹ
-      roughness: 0.35,
-      metalness: 0.2
-    });
-    const beretMat = new THREE.MeshStandardMaterial({
-      color: 0x361f17, // Mũ nồi Beret nỉ dạ nâu
-      roughness: 0.9
-    });
-    const scarfMat = new THREE.MeshStandardMaterial({
-      color: 0x9e2424, // Khăn len quàng cổ đỏ bã trầu
-      roughness: 0.92
-    });
-    const brassMat = new THREE.MeshStandardMaterial({
-      color: 0xd6ad42, // Khuy đồng thau
-      metalness: 0.85,
-      roughness: 0.25
-    });
+    // Xác định nhân vật ban đầu từ hồ sơ lưu trữ hoặc mặc định là char_photographer
+    let savedCharId = 'char_photographer';
+    try {
+      const profile = JSON.parse(localStorage.getItem('hanoi_user_profile') || '{}');
+      if (profile.characterId) savedCharId = profile.characterId;
+      else if (profile.outfit && profile.outfit.startsWith('char_')) savedCharId = profile.outfit;
+    } catch (e) {}
 
-    // 2. THÂN MÌNH (TORSO GROUP) - BO TRÒN HÌNH THỂ NGƯỜI
-    this.torsoGroup = new THREE.Group();
-    this.torsoGroup.position.y = this.baseTorsoY;
-
-    // Thân trên (Lồng ngực bo tròn hình viên nang Capsule mềm mại)
-    const chestGeo = new THREE.CylinderGeometry(0.24, 0.21, 0.52, 16);
-    chestGeo.scale(1.15, 1.0, 0.78); // Tỷ lệ ngực nở vai rộng tự nhiên
-    const chestMesh = new THREE.Mesh(chestGeo, coatCaramelMat);
-    chestMesh.position.y = 0.26;
-    chestMesh.castShadow = true;
-    this.torsoGroup.add(chestMesh);
-
-    // Hàng cúc áo đồng cổ điển
-    for (let b = 0; b < 3; b++) {
-      const button = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.015, 10), brassMat);
-      button.rotation.x = Math.PI / 2;
-      button.position.set(0, 0.14 + b * 0.13, 0.17);
-      this.torsoGroup.add(button);
-    }
-
-    // Tà áo măng tô xòe nhẹ phía dưới (Đường cong mềm mại, không vuông vức)
-    const skirtGeo = new THREE.CylinderGeometry(0.22, 0.32, 0.44, 16);
-    skirtGeo.scale(1.12, 1.0, 0.82);
-    const skirtMesh = new THREE.Mesh(skirtGeo, coatCaramelMat);
-    skirtMesh.position.y = -0.16;
-    skirtMesh.castShadow = true;
-    this.torsoGroup.add(skirtMesh);
-
-    // Khăn quàng len đỏ uốn lượn quanh cổ
-    const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.065, 12, 24), scarfMat);
-    scarf.rotation.x = Math.PI / 2;
-    scarf.position.y = 0.54;
-    this.torsoGroup.add(scarf);
-
-    // Tà khăn rủ mềm mại
-    const scarfDrapeCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0.08, 0.52, 0.18),
-      new THREE.Vector3(0.12, 0.35, 0.20),
-      new THREE.Vector3(0.09, 0.18, 0.19)
-    ]);
-    const scarfDrape = new THREE.Mesh(
-      new THREE.TubeGeometry(scarfDrapeCurve, 12, 0.04, 8, false),
-      scarfMat
-    );
-    this.torsoGroup.add(scarfDrape);
-
-    // Cổ áo
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.12, 12), skinMat);
-    neck.position.y = 0.58;
-    this.torsoGroup.add(neck);
-
-    // 3. ĐẦU & KHUÔN MẶT CÓ ĐƯỜNG NÉT CON NGƯỜI CHÂN THỰC
-    this.headGroup = new THREE.Group();
-    this.headGroup.position.y = 0.70;
-
-    // Hộp sọ & Gương mặt bo tròn elip
-    const skullGeo = new THREE.SphereGeometry(0.165, 20, 20);
-    skullGeo.scale(0.88, 1.15, 1.0);
-    const skullMesh = new THREE.Mesh(skullGeo, skinMat);
-    skullMesh.castShadow = true;
-    this.headGroup.add(skullMesh);
-
-    // Cằm & Hàm dưới thon gọn
-    const chinGeo = new THREE.SphereGeometry(0.085, 12, 12);
-    chinGeo.scale(0.85, 0.7, 1.0);
-    const chin = new THREE.Mesh(chinGeo, skinMat);
-    chin.position.set(0, -0.11, 0.06);
-    this.headGroup.add(chin);
-
-    // Sống mũi 3D thanh thoát
-    const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, 0.08, 8), skinMat);
-    nose.rotation.x = 0.35;
-    nose.position.set(0, 0.02, 0.18);
-    this.headGroup.add(nose);
-
-    // Mắt (Đôi mắt có chiều sâu và điểm sáng)
-    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xf5f5f5 });
-    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
-
-    for (let s of [-1, 1]) {
-      // Tròng trắng
-      const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), eyeWhiteMat);
-      eyeWhite.scale.set(1.2, 0.7, 0.5);
-      eyeWhite.position.set(s * 0.058, 0.045, 0.155);
-
-      // Con ngươi đen
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 8), pupilMat);
-      pupil.position.set(s * 0.058, 0.045, 0.168);
-
-      // Đôi tai 2 bên
-      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), skinMat);
-      ear.scale.set(0.4, 0.9, 0.7);
-      ear.position.set(s * 0.15, 0.02, -0.01);
-
-      this.headGroup.add(eyeWhite, pupil, ear);
-    }
-
-    // Tóc đen lãng tử bồng bềnh
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), hairMat);
-    hair.position.set(0, 0.07, -0.03);
-    hair.scale.set(0.92, 1.02, 1.05);
-    this.headGroup.add(hair);
-
-    // Mũ nồi Beret mềm mại có cuống mũ (French Beret)
-    const beretGeo = new THREE.CylinderGeometry(0.23, 0.13, 0.075, 18);
-    const beret = new THREE.Mesh(beretGeo, beretMat);
-    beret.position.set(0, 0.16, -0.01);
-    beret.rotation.x = 0.18;
-    beret.rotation.z = -0.15;
-    this.headGroup.add(beret);
-
-    // Cuống mũ nhỏ trên đỉnh
-    const beretTip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6), beretMat);
-    beretTip.position.set(0, 0.21, -0.01);
-    this.headGroup.add(beretTip);
-
-    this.torsoGroup.add(this.headGroup);
-
-    // 4. MÁY ẢNH CƠ LEICA M3 BO VIỀN TINH XẢO
-    const camMat = new THREE.MeshStandardMaterial({ color: 0x1f2224, metalness: 0.8, roughness: 0.25 });
-    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.95, roughness: 0.12 });
-
-    const cameraBody = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.12, 0.08), camMat);
-    cameraBody.position.set(0.24, 0.10, 0.18);
-    cameraBody.rotation.z = -0.32;
-    cameraBody.rotation.y = 0.22;
-
-    const camPlate = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.03, 0.08), chromeMat);
-    camPlate.position.y = 0.07;
-    cameraBody.add(camPlate);
-
-    // Ống kính kim loại tròn
-    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.075, 16), chromeMat);
-    lens.rotation.x = Math.PI / 2;
-    lens.position.set(0.02, 0, 0.065);
-    cameraBody.add(lens);
-
-    // Dây da máy ảnh đeo vai
-    const strapCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.24, 0.48, 0.05),
-      new THREE.Vector3(0, 0.30, 0.20),
-      new THREE.Vector3(0.24, 0.10, 0.18)
-    ]);
-    const strap = new THREE.Mesh(
-      new THREE.TubeGeometry(strapCurve, 12, 0.015, 6, false),
-      new THREE.MeshStandardMaterial({ color: 0x3d2117, roughness: 0.6 })
-    );
-    this.torsoGroup.add(strap, cameraBody);
-
-    this.characterGroup.add(this.torsoGroup);
-
-    // 5. HAI CÁNH TAY KHỚP VAI BO TRÒN TỰ NHIÊN
-    for (let s of [-1, 1]) {
-      const armPivot = new THREE.Group();
-      armPivot.position.set(s * 0.29, this.baseTorsoY + 0.43, 0);
-
-      // Cầu vai tròn (Shoulder joint)
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), coatCaramelMat);
-      armPivot.add(shoulder);
-
-      // Bắp tay (Upper arm bo tròn)
-      const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.062, 0.30, 10), coatCaramelMat);
-      upperArm.position.y = -0.16;
-      upperArm.castShadow = true;
-      armPivot.add(upperArm);
-
-      // Khớp khuỷu tay
-      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.062, 8, 8), coatCaramelMat);
-      elbow.position.y = -0.31;
-      armPivot.add(elbow);
-
-      // Cẳng tay (Forearm)
-      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.052, 0.28, 10), coatCaramelMat);
-      forearm.position.y = -0.45;
-      forearm.castShadow = true;
-      armPivot.add(forearm);
-
-      // Bàn tay với các ngón tay gập tự nhiên
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.048, 8, 8), skinMat);
-      hand.scale.set(0.9, 1.2, 0.7);
-      hand.position.y = -0.61;
-      armPivot.add(hand);
-
-      this.characterGroup.add(armPivot);
-
-      if (s === -1) this.leftArmPivot = armPivot;
-      else this.rightArmPivot = armPivot;
-    }
-
-    // 6. HAI CHÂN KHỚP HÁNG & GIÀY OXFORD BO CONG
-    for (let s of [-1, 1]) {
-      const legPivot = new THREE.Group();
-      legPivot.position.set(s * 0.13, 0.82, 0);
-
-      // Đùi (Thigh uốn cong tự nhiên)
-      const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.42, 10), trousersNavyMat);
-      thigh.position.y = -0.21;
-      thigh.castShadow = true;
-      legPivot.add(thigh);
-
-      // Đầu gối
-      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), trousersNavyMat);
-      knee.position.y = -0.42;
-      legPivot.add(knee);
-
-      // Cẳng chân (Calf thon dần xuống cổ chân)
-      const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.058, 0.40, 10), trousersNavyMat);
-      calf.position.y = -0.62;
-      calf.castShadow = true;
-      legPivot.add(calf);
-
-      // Giày da Oxford mũi tròn uốn lượn (Không còn là khối hộp vuông!)
-      const shoeGroup = new THREE.Group();
-      shoeGroup.position.set(0, -0.82, 0.04);
-
-      // Thân giày bo cong
-      const shoeSole = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.07, 0.24, 12), leatherOxfordMat);
-      shoeSole.rotation.x = Math.PI / 2;
-      shoeSole.scale.set(0.85, 1.2, 0.55);
-      shoeGroup.add(shoeSole);
-
-      // Gót giày
-      const shoeHeel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.05, 10), leatherOxfordMat);
-      shoeHeel.position.set(0, -0.02, -0.06);
-      shoeGroup.add(shoeHeel);
-
-      legPivot.add(shoeGroup);
-      this.characterGroup.add(legPivot);
-
-      if (s === -1) this.leftLegPivot = legPivot;
-      else this.rightLegPivot = legPivot;
-    }
-
-    // Bóng tiếp xúc mềm mại dưới chân nhân vật (Soft Contact Blob Shadow - Zero GPU Overhead)
-    const shadowCanvas = document.createElement('canvas');
-    shadowCanvas.width = 64;
-    shadowCanvas.height = 64;
-    const sctx = shadowCanvas.getContext('2d');
-    const sgrad = sctx.createRadialGradient(32, 32, 2, 32, 32, 30);
-    sgrad.addColorStop(0, 'rgba(12, 10, 8, 0.65)');
-    sgrad.addColorStop(0.5, 'rgba(12, 10, 8, 0.35)');
-    sgrad.addColorStop(1, 'rgba(12, 10, 8, 0)');
-    sctx.fillStyle = sgrad;
-    sctx.fillRect(0, 0, 64, 64);
-
-    const shadowTex = new THREE.CanvasTexture(shadowCanvas);
-    const blobShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.3, 1.3),
-      new THREE.MeshBasicMaterial({
-        map: shadowTex,
-        transparent: true,
-        depthWrite: false
-      })
-    );
-    blobShadow.rotation.x = -Math.PI / 2;
-    blobShadow.position.y = 0.03;
-    this.characterGroup.add(blobShadow);
+    this.currentCharacterId = savedCharId;
+    this.setCharacter(this.currentCharacterId);
 
     // Vị trí xuất phát trên đường dạo ven hồ Gươm dẫn thẳng lên Cầu Tháp Rùa
     this.characterGroup.position.set(17, 0.5, -17);
     this.scene.add(this.characterGroup);
+
+    // Lắng nghe sự kiện chuyển đổi nhân vật
+    if (this.eventBus) {
+      this.eventBus.on('UI:CHARACTER_CONFIRMED', (payload) => {
+        if (payload && (payload.characterId || payload.outfitId)) {
+          this.setCharacter(payload.characterId || payload.outfitId);
+        }
+      });
+      this.eventBus.on('CORE:SWITCH_CHARACTER', (payload) => {
+        if (payload && payload.characterId) {
+          this.setCharacter(payload.characterId);
+        }
+      });
+    }
+  }
+
+  /**
+   * Đổi nhân vật 3D sang 1 trong 4 nhân vật thực tế
+   * @param {string} characterId - 'char_photographer' | 'char_cultural_officer' | 'char_young_explorer' | 'char_hanoi_elder'
+   */
+  setCharacter(characterId) {
+    if (!characterId) return;
+    this.currentCharacterId = characterId;
+
+    // Giữ nguyên tọa độ và góc xoay hiện tại
+    const curPos = this.characterGroup ? this.characterGroup.position.clone() : new THREE.Vector3(17, 0.5, -17);
+    const curRot = this.characterGroup ? this.characterGroup.rotation.y : 0;
+
+    // Xóa sạch các bộ phận cũ trong characterGroup
+    while (this.characterGroup.children.length > 0) {
+      const child = this.characterGroup.children[0];
+      this.characterGroup.remove(child);
+    }
+
+    // Tạo nhân vật mới từ CharacterFactory
+    const newCharMesh = createHanoiCharacter3D(characterId, { isNPC: false });
+
+    // Trích xuất các pivot cho chu kỳ đi bộ (walkCycle)
+    this.torsoGroup = newCharMesh.torsoGroup;
+    this.headGroup = newCharMesh.headGroup;
+    this.leftArmPivot = newCharMesh.leftArmPivot;
+    this.rightArmPivot = newCharMesh.rightArmPivot;
+    this.leftLegPivot = newCharMesh.leftLegPivot;
+    this.rightLegPivot = newCharMesh.rightLegPivot;
+    this.baseTorsoY = newCharMesh.baseTorsoY || 0.95;
+
+    // Chuyển toàn bộ children từ newCharMesh sang this.characterGroup
+    while (newCharMesh.children.length > 0) {
+      this.characterGroup.add(newCharMesh.children[0]);
+    }
+
+    this.characterGroup.position.copy(curPos);
+    this.characterGroup.rotation.y = curRot;
   }
 
   /**

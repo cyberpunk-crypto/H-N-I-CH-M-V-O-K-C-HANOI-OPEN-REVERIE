@@ -6,6 +6,7 @@
 
 import { THREE } from './ThreeLib.js';
 import { ZONES } from './ZoneManager.js';
+import { createHanoiCharacter3D, CHARACTERS_META } from './CharacterFactory.js';
 
 export class WorldManager {
   constructor(sceneManager, eventBus) {
@@ -27,6 +28,7 @@ export class WorldManager {
     this.animatedObjects = [];
     this.interactiveDoors = [];
     this.roamingNpcs = [];
+    this.historicalNpcs = [];
     this.lakeFish = []; // Đàn cá chép vàng & cá koi bơi lội dưới lòng Hồ Gươm
 
     // 3. Cơ chế biến đổi không gian khi giải đố
@@ -1850,38 +1852,26 @@ export class WorldManager {
     }
 
     // =========================================================================
-    // 🐢 NPC NHÀ SỬ HỌC THÁP RÙA - BÁC NGUYỄN VĂN AN (ĐỨNG BÊN CẠNH BÀN THỜ)
+    // 🐢 1. NPC LỊCH SỬ THÁP RÙA - BÀ CỤ HÀ NỘI XƯA (BÀ NGOẠI PHỐ CỔ - CHAR 4)
     // =========================================================================
-    const historianNPC = this._createCitizenNPC(0, 0, 0x223a5e, 'kính lão');
-    historianNPC.position.set(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0);
-    historianNPC.rotation.y = Math.PI * 0.75; // Đứng chếch chào đón người chơi
-    zoneGroup.add(historianNPC);
+    const elderMeta = CHARACTERS_META.find(c => c.id === 'char_hanoi_elder') || CHARACTERS_META[3];
+    const hanoiElderNPC = createHanoiCharacter3D('char_hanoi_elder', { isNPC: true });
+    hanoiElderNPC.position.set(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0);
+    hanoiElderNPC.rotation.y = Math.PI * 0.75; // Đứng chào đón người chơi
+    zoneGroup.add(hanoiElderNPC);
+    this.historicalNpcs.push(hanoiElderNPC);
     this._addNpcCollider(80 - 1.5, -80 - 1.0, 0.65);
 
     this.interactables.push({
       position: new THREE.Vector3(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0),
       radius: 3.2,
-      promptText: 'Lắng nghe Lịch sử Tháp Rùa cổ kính cùng Nhà Sử Học',
+      promptText: 'Trò chuyện cùng Bà Cụ Hà Nội Xưa • Sự Tích Tháp Rùa',
       actionKey: 'E',
       onInteract: () => {
-        if (window.GameAPI && window.GameAPI.openNPCDialogue) {
-          window.GameAPI.openNPCDialogue({
-            name: 'Bác Nguyễn Văn An',
-            title: 'Nhà Nghiên Cứu Lịch Sử & Cố Vấn Văn Hóa Hà Nội',
-            greeting: 'Kính chào Tổng Giám Đốc và các bạn lãng tử! Bác đã ở bên Tháp Rùa này hơn bốn mươi năm. Từng thớ đá rêu phong, từng mái ngói cong vút ở đây đều mang theo hồn thiêng ngàn năm văn hiến của Thăng Long.',
-            avatar: 'assets/textures/turtle_tower_moss.jpg',
-            topics: [
-              { text: 'Bác có thể kể về truyền thuyết Thần Kim Quy trao gươm báu?', reply: 'Đầu thế kỷ 15, tại hồ Tả Vọng này, vua Lê Lợi đã hoàn trả gươm thần Thuận Thiên cho Rùa Vàng sau khi dẹp tan giặc ngoại xâm. Từ đó, hồ được đổi tên thành Hồ Hoàn Kiếm linh thiêng.' },
-              { text: 'Kiến trúc Tháp Rùa có nét độc đáo nào về sự giao thoa Á - Âu thưa Bác?', reply: 'Tháp Rùa có 3 tầng: Tầng 1 và 2 mang các vòm cuốn Gothic Pháp thanh thoát, nhưng tầng 3 và phần mái lại lợp ngói mũi hài có bờ nóc cong vút uốn lượn theo mỹ thuật cung đình Việt. Đó là sự dung hợp văn hóa kỳ diệu cuối thế kỷ 19.' },
-              { text: 'Bên trong Tháp Rùa lưu giữ những gì thưa Bác?', reply: 'Nơi đây lưu giữ Bàn Thờ Quy Sơn Linh Tháp, tượng Rùa Vàng đội bia đá và làn trầm hương nghi ngút cầu quốc thái dân an. Bước vào đây, lòng người bỗng lắng lại giữa nhịp sống hối hả ngoài kia.' }
-            ],
-            shopItems: [
-              { name: 'Mô Hình Tháp Rùa Thu Nhỏ Mạ Đồng', price: '15 Xu', desc: 'Mô hình kỷ niệm Tháp Rùa tinh xảo mang lại may mắn', icon: '🐢' },
-              { name: 'Bưu Thiếp Tháp Rùa Đổi Màu Mờ Sương', price: '10 Xu', desc: 'Bức ảnh chụp Tháp Rùa trong làn sương sớm mùa đông', icon: '📮' },
-              { name: 'Sách Ảnh "Hồ Gươm - Hồn Xưa Nét Cũ"', price: '20 Xu', desc: 'Cuốn tư liệu quý giá về lịch sử Tháp Rùa và 36 phố phường', icon: '📖' },
-              { name: 'Mảnh Ngói Cổ Lưu Niệm Quy Sơn', price: '12 Xu', desc: 'Vật phẩm lưu niệm văn hóa Tháp Rùa thiêng liêng', icon: '🏮' }
-            ]
-          });
+        if (this.eventBus) {
+          this.eventBus.emit('UI:OPEN_DIALOGUE', elderMeta);
+        } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
+          window.GameAPI.openNPCDialogue(elderMeta);
         }
       }
     });
@@ -2762,43 +2752,28 @@ export class WorldManager {
     // Obstacle bảo vệ tủ kính Cụ Rùa (chống đi xuyên tủ kính)
     this._addBoxObstacle(116.5, -66.2, 1.8, 3.0, 0, 1.8);
 
-    // 3. NPC CỤ THỦ TỪ ĐỀN NGỌC SƠN (ĐỨNG TẠI GIAN HỮU VU BÊN PHẢI)
-    // Dáng đứng trang nghiêm, áo dài the đen, đầu đội khăn đóng
-    const priestNPC = this._createCitizenNPC(-1.2, -4.2, 0x1f1f1f, 'áo dài the');
-    templeGroup.add(priestNPC);
+    // =========================================================================
+    // ⛩️ 2. NPC LỊCH SỬ ĐỀN NGỌC SƠN - NỮ CÁN BỘ VĂN HÓA TRÀNG AN (CHAR 2)
+    // =========================================================================
+    const officerMeta = CHARACTERS_META.find(c => c.id === 'char_cultural_officer') || CHARACTERS_META[1];
+    const culturalOfficerNPC = createHanoiCharacter3D('char_cultural_officer', { isNPC: true });
+    culturalOfficerNPC.position.set(-1.2, 0.88, -4.2);
+    culturalOfficerNPC.rotation.y = Math.PI * 0.15;
+    templeGroup.add(culturalOfficerNPC);
+    this.historicalNpcs.push(culturalOfficerNPC);
     this._addNpcCollider(116 - 1.2, -70 - 4.2, 0.65);
 
-    // Điểm tương tác phím E trò chuyện với Cụ Thủ Từ Đền Ngọc Sơn
+    // Điểm tương tác phím E trò chuyện với Cán Bộ Văn Hóa Tràng An
     this.interactables.push({
       position: new THREE.Vector3(116 - 1.2, 0.88, -70 - 4.2),
       radius: 3.0,
-      promptText: 'Chiêm bái & Trò chuyện cùng Cụ Thủ Từ Đền Ngọc Sơn',
+      promptText: 'Trò chuyện cùng Cán Bộ Văn Hóa • Lịch Sử Cầu Thê Húc & Đền Ngọc Sơn',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', {
-            name: 'Cụ Trần &bull; Thủ Từ Đền Ngọc Sơn',
-            role: 'Người giữ đền và thủ hộ bảo vật thiêng liêng đất Thăng Long',
-            avatar: '⛩️',
-            greeting: '"A Di Đà Phật! Chào con, lãng tử đã qua Cầu Thê Húc đỏ son vào chiêm bái Đền Ngọc Sơn. Nơi đây là chốn linh quy tụ hồn thiêng sông núi giữa làn nước biếc Hồ Gươm."',
-            monumentTitle: 'Đền Ngọc Sơn - Cầu Thê Húc & Tiêu Bản Cụ Rùa Hồ Gươm',
-            historyText: `
-              <p><strong>Đền Ngọc Sơn (Thế kỷ 19):</strong> Tọa lạc trang nghiêm trên Đảo Ngọc. Đền thờ <em>Đức Thánh Trần Hưng Đạo</em> – vị anh hùng kiệt xuất ba lần đại phá quân Nguyên Mông bảo vệ bờ cõi nước Đại Việt, và <em>Văn Xương Đế Quân</em> – vị thần chủ trì đường khoa cử học vấn của sĩ tử nước Nam.</p>
-              <p><strong>Tiêu Bản Cụ Rùa Hồ Gươm:</strong> Đang ngự trang trọng trong tủ kính chính điện, là cá thể giải khổng lồ mai mềm (<em>Rafetus swinhoei</em>) từng sống hàng trăm năm trong lòng hồ, biểu tượng sống động gắn liền với sự tích Vua Lê Lợi trả gươm báu Thuận Thiên cho Rùa Vàng thế kỷ 15.</p>
-              <p><strong>Cầu Thê Húc & Đắc Nguyệt Lâu:</strong> Cầu 15 nhịp sơn màu đỏ son tượng trưng cho ánh dương ban mai rực rỡ, nối qua Đắc Nguyệt Lâu (Lầu Đón Trăng) đưa khách bộ hành bước vào cõi thanh tịnh an yên.</p>
-            `,
-            dialogueOptions: [
-              { text: 'Cụ ơi, ngôi đền này thờ những vị thần nào ạ?', reply: 'Đền thờ Đức Thánh Trần Hưng Đạo - bậc anh hùng hộ quốc an dân, và Đức Văn Xương Đế Quân - vị thần soi sáng việc học vấn, thi cử đỗ đạt cho con cháu đời đời.' },
-              { text: 'Ý nghĩa của cây cầu Thê Húc màu đỏ son là gì thưa cụ?', reply: 'Thê Húc nghĩa là "Nơi giữ lại ánh sáng ban mai tinh khôi nhất của mặt trời". Cầu son 15 nhịp cong như dải lụa đỏ dẫn lối khách thập phương gột rửa bụi trần bước vào chốn linh thiêng thanh tịnh.' },
-              { text: 'Cụ có thể kể về tiêu bản Cụ Rùa trong tủ kính kia không ạ?', reply: 'Đó là Cụ Rùa Hồ Gươm thiêng liêng nặng hơn hai tạ đã gắn bó cùng biết bao thế hệ người Hà Nội. Cụ là minh chứng sống cho huyền tích Thần Kim Quy và truyền thống yêu chuộng hòa bình của dân tộc ta.' }
-            ],
-            shopItems: [
-              { name: 'Vòng Dâu Tằm Chỉ Đỏ Bình An', price: '10 Xu', desc: 'Vòng đeo may mắn cầu chúc một chuyến du hành an lành', icon: '🏮' },
-              { name: 'Thẻ Quẻ Cầu May Đầu Xuân', price: '5 Xu', desc: 'Quẻ thẻ hanh thông ghi lời chúc tốt lành', icon: '📜' },
-              { name: 'Lá Bùa Hộ Mệnh Bình An Thăng Long', price: '15 Xu', desc: 'Lá bùa thêu gấm đỏ may mắn trừ tà khí', icon: '🧿' },
-              { name: 'Bưu Thiếp Di Tích Đền Ngọc Sơn & Cụ Rùa', price: '10 Xu', desc: 'Bức ảnh màu lưu giữ khoảnh khắc thiêng liêng bên hồ', icon: '📮' }
-            ]
-          });
+          this.eventBus.emit('UI:OPEN_DIALOGUE', officerMeta);
+        } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
+          window.GameAPI.openNPCDialogue(officerMeta);
         }
       }
     });
@@ -2999,6 +2974,31 @@ export class WorldManager {
     zoneGroup.add(this.secretWallOldQuarter);
     this.colliders.push(this.secretWallOldQuarter);
     this._addBoxObstacle(-78, 68, 1.0, 8.2, 0, 5.0);
+
+    // =========================================================================
+    // 📸 4. NPC LỊCH SỬ PHỐ CỔ - NAM NHIẾP ẢNH GIA DI SẢN (CHÚ TUẤN - CHAR 1)
+    // =========================================================================
+    const photoMeta = CHARACTERS_META.find(c => c.id === 'char_photographer') || CHARACTERS_META[0];
+    const photographerNPC = createHanoiCharacter3D('char_photographer', { isNPC: true });
+    photographerNPC.position.set(-48.0, 0.5, 54.0);
+    photographerNPC.rotation.y = Math.PI * 0.35;
+    zoneGroup.add(photographerNPC);
+    this.historicalNpcs.push(photographerNPC);
+    this._addNpcCollider(-48.0, 54.0, 0.65);
+
+    this.interactables.push({
+      position: new THREE.Vector3(-48.0, 0.5, 54.0),
+      radius: 3.2,
+      promptText: 'Gặp gỡ Nhiếp Ảnh Gia Di Sản • Lịch Sử 36 Phố Phường',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('UI:OPEN_DIALOGUE', photoMeta);
+        } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
+          window.GameAPI.openNPCDialogue(photoMeta);
+        }
+      }
+    });
 
     this.worldGroup.add(zoneGroup);
   }
@@ -3795,113 +3795,33 @@ export class WorldManager {
     pipeMesh.rotation.z = 0.25;
     npcLongBienGroup.add(pipeMesh);
 
-    // Nhân vật Bác Hùng - Cựu chiến binh tự vệ Cầu Long Biên
-    const vetMat = new THREE.MeshStandardMaterial({ color: 0x3d5438, roughness: 0.85 }); // Áo trấn thủ xanh quân đội
-    const pantMat = new THREE.MeshStandardMaterial({ color: 0x273623, roughness: 0.9 }); // Quần bộ đội
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.6 });
-    const hairMat = new THREE.MeshStandardMaterial({ color: 0xa0a0a0, roughness: 0.9 }); // Tóc hoa râm
+    // =========================================================================
+    // 🚂 3. NPC LỊCH SỬ CẦU LONG BIÊN - NAM PHƯỢT THỦ / BẢO LÃNG TỬ (CHAR 3)
+    // =========================================================================
+    const explorerMeta = CHARACTERS_META.find(c => c.id === 'char_young_explorer') || CHARACTERS_META[2];
+    const youngExplorerNPC = createHanoiCharacter3D('char_young_explorer', { isNPC: true });
+    youngExplorerNPC.position.set(0, 0, 0); // Đặt chính giữa nhóm bục nghỉ ngơi
+    youngExplorerNPC.rotation.y = Math.PI * 0.15;
+    npcLongBienGroup.add(youngExplorerNPC);
+    this.historicalNpcs.push(youngExplorerNPC);
 
-    // Thân người (Áo trấn thủ bộ đội)
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.68, 0.28), vetMat);
-    torso.position.y = 1.04;
-    npcLongBienGroup.add(torso);
-
-    // Huân huy chương lấp lánh trên ngực áo
-    const medal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.02), this.materials.templeGold);
-    medal.position.set(-0.12, 1.22, 0.15);
-    npcLongBienGroup.add(medal);
-
-    // Chân & Quần bộ đội
-    for (let s of [-0.12, 0.12]) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.70, 0.20), pantMat);
-      leg.position.set(s, 0.35, 0);
-      npcLongBienGroup.add(leg);
-    }
-
-    // Cánh tay áo
-    for (let s of [-0.28, 0.28]) {
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.60, 0.16), vetMat);
-      arm.position.set(s, 1.0, 0);
-      npcLongBienGroup.add(arm);
-    }
-
-    // Đầu & Cổ
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), skinMat);
-    head.position.y = 1.52;
-    npcLongBienGroup.add(head);
-
-    // Tóc hoa râm
-    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.10, 0.26), hairMat);
-    hair.position.y = 1.62;
-    npcLongBienGroup.add(hair);
-
-    // Mũ cối bộ đội cổ điển màu xanh rêu
-    const pithMat = new THREE.MeshStandardMaterial({ color: 0x2e422b, roughness: 0.8 });
-    const pithCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.16, 12), pithMat);
-    pithCrown.position.y = 1.70;
-    const pithBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 16), pithMat);
-    pithBrim.position.y = 1.63;
-    npcLongBienGroup.add(pithCrown);
-    npcLongBienGroup.add(pithBrim);
-
-    // Ngôi sao vàng nhỏ trên mũ cối
-    const star = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), this.materials.templeGold);
-    star.position.set(0, 1.70, 0.19);
-    npcLongBienGroup.add(star);
-
-    // Bi đông nước quân đội quàng qua vai
-    const canteen = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), pithMat);
-    canteen.position.set(-0.25, 0.85, 0.08);
-    canteen.rotation.z = 0.3;
-    npcLongBienGroup.add(canteen);
-
-    // Hướng nhìn ra sông Hồng
     npcLongBienGroup.rotation.y = Math.PI / 2;
     zoneGroup.add(npcLongBienGroup);
 
-    // Đăng ký Collider cho Bác Hùng để người chơi không đi xuyên qua
+    // Đăng ký Collider cho Bảo Lãng Tử để người chơi không đi xuyên qua
     this._addNpcCollider(npcX, npcZ, 0.65);
 
     // Đăng ký Tương tác chiêm bái & Trò chuyện lịch sử
     this.interactables.push({
       position: new THREE.Vector3(npcX, npcY + 0.8, npcZ),
       radius: 3.2,
-      promptText: 'Trò chuyện cùng Bác Hùng • Ký Ức Cầu Long Biên 1972',
+      promptText: 'Trò chuyện cùng Bảo Lãng Tử • Ký Ức Cầu Long Biên 1972',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', {
-            name: 'Bác Hùng • Người Lính Gác Cầu Long Biên Lão Thành',
-            role: 'Chiến sĩ tự vệ bảo vệ cầu năm 1972 & Chứng nhân lịch sử trăm năm Thăng Long',
-            avatar: '🎖️',
-            greeting: '"Chào cháu, người lãng tử! Đứng ở nhịp cầu số 4 này đón gió sông Hồng, bác lại nhớ mùa đông năm 1972 khói lửa ngút trời... Khi ấy bom Mỹ dội ác liệt, nhưng mạch máu Long Biên không bao giờ được phép ngừng chảy!"',
-            monumentTitle: 'Cầu Long Biên (1898 - 1902) • Chứng Nhân Lịch Sử Thủ Đô',
-            historyText: `
-              <p><strong>Cầu Long Biên (Tên ban đầu: Cầu Doumer):</strong> Khởi công năm 1898, khánh thành năm 1902 do hãng Daydé & Pillé thi công theo kiến trúc dầm thép Eiffel độc đáo. Từng là cây cầu thép dài thứ hai thế giới (hơn 2.290m) bắc qua dòng sông Hồng cuộn đỏ phù sa.</p>
-              <p><strong>Trận Địa Pháo Cao Xạ & Huyết Mạch 1972:</strong> Trong chiến dịch 'Điện Biên Phủ trên không' 12 ngày đêm cuối năm 1972, không quân Mỹ đã thả hàng trăm quả bom điều khiển laser nhằm đánh sập cây cầu huyết mạch. Các khẩu đội pháo cao xạ 37mm của tự vệ công nhân hỏa xa đã bám trụ trên bãi giữa, bắn rách trời bảo vệ từng thanh ray tà vẹt.</p>
-              <p><strong>Vết Sẹo Kiêu Hãnh Của Lịch Sử:</strong> Những nhịp dầm chữ A và dầm dã chiến Bailey thay thế những nhịp bị bom đánh gãy chính là minh chứng sống động cho ý chí quật cường: <em>'Tim có thể ngừng đập, nhưng tàu qua cầu Long Biên chi viện miền Nam không bao giờ ngừng lại!'</em></p>
-            `,
-            dialogueOptions: [
-              {
-                text: 'Bác có thể kể lại khoảnh khắc bảo vệ cầu trong 12 ngày đêm 1972 không ạ?',
-                reply: 'Đêm 18/12/1972, trời Hà Nội rực sáng như ban ngày bởi bom đạn và pháo cao xạ. Bom cắt đứt nhịp cầu số 4, nhưng ngay trong đêm tối dưới làn bom nổ chậm, hàng trăm thợ cầu và công binh ta đã lao mình xuống dòng sông Hồng xiết lạnh, dùng gỗ tà vẹt và dầm thép dã chiến nối thông cầu trước rạng sáng để đoàn tàu quân lương kịp lăn bánh vào Nam!'
-              },
-              {
-                text: 'Tại sao các nhịp cầu ở đoạn giữa lại có hình dáng dầm khác với hai đầu ạ?',
-                reply: 'Đó chính là những "vết sẹo lịch sử" kiêu hãnh của cầu đấy cháu! Nhịp nguyên bản là kết cấu thép uốn lượn hình rồng bay của Eiffel. Những nhịp dầm giàn thép phẳng ở giữa là do công binh và công nhân cầu đường ta cấp tốc hàn dựng lại sau những trận bom ác liệt, tượng trưng cho sức sống mãnh liệt không gì khuất phục nổi.'
-              },
-              {
-                text: 'Đứng trên cầu nghe tiếng còi tàu hỏa hú vang vượt sông Hồng cảm giác thế nào thưa bác?',
-                reply: 'Tiếng sắt thép rung chuyển rầm rập dưới chân, tiếng còi tàu gióng giả xé tan sương sớm sông Hồng... Với người Hà Nội thế hệ bác, âm thanh ấy chính là nhịp đập trái tim của thủ đô, là tiếng gọi của quê hương không bao giờ phai mờ trong ký ức.'
-              }
-            ],
-            shopItems: [
-              { name: 'Huy Hiệu Cầu Long Biên Kháng Chiến', price: '15 Xu', desc: 'Huy hiệu kim loại in hình nhịp cầu thép và ngôi sao đỏ anh dũng', icon: '🎖️' },
-              { name: 'Trà Xanh Nóng & Kẹo Lạc Bác Hùng', price: '5 Xu', desc: 'Ấm chè xanh nóng hổi đậm đà tình người gác cầu, hồi phục sinh lực', icon: '🍵' },
-              { name: 'Bản Rập Thép Cổ "Daydé & Pillé 1899"', price: '20 Xu', desc: 'Bản in dập tấm biển đồng lịch sử gắn trên dầm cầu thép Eiffel', icon: '📜' },
-              { name: 'Ảnh Tư Liệu Cầu Long Biên 1972', price: '10 Xu', desc: 'Bức ảnh đen trắng ghi lại khoảnh khắc hào hùng thời hoa lửa', icon: '📷' }
-            ]
-          });
+          this.eventBus.emit('UI:OPEN_DIALOGUE', explorerMeta);
+        } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
+          window.GameAPI.openNPCDialogue(explorerMeta);
         }
       }
     });
@@ -5193,6 +5113,13 @@ export class WorldManager {
     for (let i = 0; i < this.interactiveDoors.length; i++) {
       if (this.interactiveDoors[i].update) {
         this.interactiveDoors[i].update(delta);
+      }
+    }
+
+    // 3. Cập nhật nhịp thở & chuyển động tự nhiên của 4 NPC Lịch Sử Hà Nội
+    for (let i = 0; i < this.historicalNpcs.length; i++) {
+      if (this.historicalNpcs[i] && this.historicalNpcs[i].updateNPCAnimation) {
+        this.historicalNpcs[i].updateNPCAnimation(delta);
       }
     }
 

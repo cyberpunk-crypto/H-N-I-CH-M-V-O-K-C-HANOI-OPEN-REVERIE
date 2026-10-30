@@ -1,37 +1,14 @@
 /**
  * CharacterCreation.js - Màn hình tạo nhân vật trước gương căn phòng tập thể cũ
- * Real-time Validation kiểm tra trùng tên (Debounce 500ms)
  * Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
+ * Hỗ trợ 4 nhân vật 3D thực tế theo thiết kế của Tổng Giám Đốc
  */
 
 import { GameEventBus } from '../bridge/GameEvents.js';
+import { CHARACTERS_META } from '../core/CharacterFactory.js';
 
-export const OUTFITS = [
-  {
-    id: 'outfit_ao_dai',
-    name: 'Áo Dài Trắng Thanh Lịch',
-    desc: 'Tà áo dài trắng học trò Hà thành thướt tha trong gió',
-    icon: 'M12 2C9 2 7 5 7 9v13h10V9c0-4-2-7-5-7z'
-  },
-  {
-    id: 'outfit_winter_coat',
-    name: 'Áo Phao Mùa Đông Phố Cũ',
-    desc: 'Ấm áp giữa những cơn gió mùa đông bắc rét buốt',
-    icon: 'M12 2L4 5v15h16V5l-8-3z'
-  },
-  {
-    id: 'outfit_leather_jacket',
-    name: 'Áo Khoác Da Bomber Cổ Điển',
-    desc: 'Phong cách lãng tử phóng khoáng thập niên 90',
-    icon: 'M12 3L2 6v14h20V6L12 3z'
-  },
-  {
-    id: 'outfit_vintage_shirt',
-    name: 'Sơ Mi Trắng Quần Tây Thống Nhất',
-    desc: 'Thanh niên trí thức Tràng An chỉn chu, mực thước',
-    icon: 'M12 2L6 5v15h12V5l-6-3z'
-  }
-];
+export const CHARACTERS = CHARACTERS_META;
+export const OUTFITS = CHARACTERS_META; // Giữ tương thích ngược
 
 export const CAMERAS = [
   { id: 'leica_m3', name: 'Leica M3 Rangefinder (1954)', focal: '50mm f/2' },
@@ -46,7 +23,7 @@ export class CharacterCreation {
     this.onCharacterConfirmed = options.onCharacterConfirmed || (() => {});
     this.element = null;
 
-    this.selectedOutfitId = 'outfit_leather_jacket';
+    this.selectedOutfitId = 'char_photographer';
     this.selectedCameraId = 'leica_m3';
     this.isNameValid = false;
     this.currentName = this.initialName;
@@ -56,6 +33,9 @@ export class CharacterCreation {
   render() {
     this.element = document.createElement('div');
     this.element.className = 'retro-modal-card character-creator-card';
+    
+    const selectedChar = CHARACTERS.find(c => c.id === this.selectedOutfitId) || CHARACTERS[0];
+
     this.element.innerHTML = `
       <div class="card-corner-tr"></div>
       <div class="card-corner-bl"></div>
@@ -63,7 +43,7 @@ export class CharacterCreation {
       <header class="brand-header">
         <div class="brand-badge">CĂN PHÒNG TẬP THỂ CŨ &bull; CHIỀU HOÀNG HÔN</div>
         <h1 class="brand-title">TRƯỚC <span>GƯƠNG KÝ ỨC</span></h1>
-        <p class="brand-subtitle">Soi lại bóng hình, chọn trang phục và chuẩn bị chiếc máy ảnh film</p>
+        <p class="brand-subtitle">Chọn nhân vật 3D đại diện, trang phục và chuẩn bị chiếc máy ảnh film dạo phố</p>
       </header>
 
       <div class="creator-layout">
@@ -71,12 +51,10 @@ export class CharacterCreation {
         <div class="vintage-mirror-frame">
           <div class="mirror-overlay-dust"></div>
           <div class="mirror-reflection">
-            <div class="avatar-silhouette">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
+            <div class="avatar-silhouette" style="display:flex;align-items:center;justify-content:center;width:140px;height:140px;margin:0 auto;border-radius:50%;overflow:hidden;border:3px solid #d4af37;box-shadow:0 0 20px rgba(212,175,55,0.4);background:#1a1c20;">
+              <img id="mirrorCharacterPreview" src="${selectedChar.avatar}" alt="${selectedChar.name}" style="width:100%;height:100%;object-fit:cover;">
             </div>
-            <p id="mirrorOutfitCaption" class="mirror-caption">Áo Khoác Da Bomber Cổ Điển</p>
+            <p id="mirrorOutfitCaption" class="mirror-caption" style="margin-top:10px;font-weight:700;color:#ffdf99;">${selectedChar.name}</p>
           </div>
         </div>
 
@@ -103,20 +81,18 @@ export class CharacterCreation {
             <div id="nameSuggestions" class="name-suggestions" style="display: none;"></div>
           </div>
 
-          <!-- Bộ chọn 4 bộ trang phục hoài niệm -->
+          <!-- Bộ chọn 4 nhân vật 3D hoài niệm từ ảnh thực tế -->
           <div class="outfit-selector-section">
-            <div class="outfit-selector-title">Lựa chọn trang phục dạo phố</div>
-            <div class="outfit-grid">
-              ${OUTFITS.map(outfit => `
-                <div class="outfit-card ${outfit.id === this.selectedOutfitId ? 'active' : ''}" data-outfit-id="${outfit.id}">
-                  <div class="outfit-icon">
-                    <svg style="width:20px;height:20px;fill:currentColor" viewBox="0 0 24 24">
-                      <path d="${outfit.icon}"/>
-                    </svg>
+            <div class="outfit-selector-title">Lựa chọn 4 nhân vật 3D khám phá Hà Nội</div>
+            <div class="outfit-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              ${CHARACTERS.map(char => `
+                <div class="outfit-card ${char.id === this.selectedOutfitId ? 'active' : ''}" data-outfit-id="${char.id}" style="display:flex;align-items:center;padding:8px 10px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.04);border:1px solid rgba(212,175,55,0.2);transition:all 0.2s ease;">
+                  <div class="outfit-avatar-box" style="width:46px;height:46px;border-radius:50%;overflow:hidden;border:2px solid #d4af37;flex-shrink:0;background:#202228;">
+                    <img src="${char.avatar}" alt="${char.name}" style="width:100%;height:100%;object-fit:cover;">
                   </div>
-                  <div class="outfit-info">
-                    <span class="outfit-name">${outfit.name}</span>
-                    <span class="outfit-desc">${outfit.desc}</span>
+                  <div class="outfit-info" style="margin-left:10px;overflow:hidden;">
+                    <span class="outfit-name" style="display:block;font-size:13px;font-weight:700;color:#ffdf99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${char.name}</span>
+                    <span class="outfit-desc" style="display:block;font-size:11px;color:#cfc5b8;opacity:0.85;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${char.desc}</span>
                   </div>
                 </div>
               `).join('')}
@@ -124,7 +100,7 @@ export class CharacterCreation {
           </div>
 
           <!-- Chọn máy ảnh film -->
-          <div class="form-group-retro" style="margin-top: 4px;">
+          <div class="form-group-retro" style="margin-top: 6px;">
             <label for="cameraSelect">Máy ảnh film 35mm mang theo</label>
             <select id="cameraSelect" class="retro-select">
               ${CAMERAS.map(cam => `
@@ -145,7 +121,6 @@ export class CharacterCreation {
 
     this.bindEvents();
 
-    // Nếu đã có initialName thì kiểm tra ngay lập tức
     if (this.currentName) {
       this.validateName(this.currentName);
     }
@@ -171,17 +146,26 @@ export class CharacterCreation {
       }, 500);
     });
 
-    // Chọn trang phục
+    // Chọn nhân vật
     outfitCards.forEach(card => {
       card.addEventListener('click', () => {
-        outfitCards.forEach(c => c.classList.remove('active'));
+        outfitCards.forEach(c => {
+          c.classList.remove('active');
+          c.style.borderColor = 'rgba(212,175,55,0.2)';
+          c.style.background = 'rgba(255,255,255,0.04)';
+        });
         card.classList.add('active');
+        card.style.borderColor = '#d4af37';
+        card.style.background = 'rgba(212,175,55,0.15)';
+
         this.selectedOutfitId = card.dataset.outfitId;
 
-        const outfit = OUTFITS.find(o => o.id === this.selectedOutfitId);
-        if (outfit) {
+        const charObj = CHARACTERS.find(o => o.id === this.selectedOutfitId);
+        if (charObj) {
           const caption = this.element.querySelector('#mirrorOutfitCaption');
-          caption.textContent = outfit.name;
+          if (caption) caption.textContent = charObj.name;
+          const previewImg = this.element.querySelector('#mirrorCharacterPreview');
+          if (previewImg) previewImg.src = charObj.avatar;
         }
       });
     });
@@ -241,7 +225,6 @@ export class CharacterCreation {
       const result = await window.GameAPI.checkCharacterNameAvailability(name);
 
       if (result.isValid) {
-        // HỢP LỆ
         input.className = 'name-input is-valid';
         icon.innerHTML = `
           <svg style="width:18px;height:18px;fill:#2ecc71" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -252,11 +235,9 @@ export class CharacterCreation {
         btnEnter.disabled = false;
         this.isNameValid = true;
       } else {
-        // TRÙNG TÊN HOẶC KHÔNG HỢP LỆ
-        input.className = 'name-input is-invalid shake-animation';
-        icon.innerHTML = `
-          <svg style="width:18px;height:18px;fill:#e74c3c" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        `;
+        input.className = 'name-input is-invalid';
+        input.classList.add('shake-animation');
+        icon.innerHTML = `<span style="color:#e74c3c">&times;</span>`;
         msg.textContent = result.message || 'Tên này đã có lãng tử sử dụng tại Hà Nội!';
         msg.className = 'name-validation-msg error';
         btnEnter.disabled = true;
@@ -264,7 +245,6 @@ export class CharacterCreation {
 
         setTimeout(() => input.classList.remove('shake-animation'), 400);
 
-        // Hiển thị gợi ý
         if (result.suggestions && result.suggestions.length > 0) {
           suggestionsBox.style.display = 'flex';
           suggestionsBox.innerHTML = `
@@ -298,18 +278,18 @@ export class CharacterCreation {
   confirmCharacter() {
     const profile = {
       username: this.currentName,
+      characterId: this.selectedOutfitId,
       outfit: this.selectedOutfitId,
       cameraModel: this.selectedCameraId,
       unlockedPuzzles: [],
       capturedPhotosCount: 0
     };
 
-    // Lưu vào LocalStorage thông qua GameAPI
     window.GameAPI.saveUserProfile(profile);
 
-    // Bắn sự kiện theo bảng hợp đồng 3.2
     GameEventBus.emit('UI:CHARACTER_CONFIRMED', {
       characterName: this.currentName,
+      characterId: this.selectedOutfitId,
       outfitId: this.selectedOutfitId,
       cameraModel: this.selectedCameraId
     });

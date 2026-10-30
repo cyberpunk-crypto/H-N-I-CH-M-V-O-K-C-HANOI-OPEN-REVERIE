@@ -146,9 +146,15 @@ export class DialogueModal {
     const optionsContainer = this.element.querySelector('#dialogueOptionsContainer');
     const shopContainer = this.element.querySelector('#shopItemsContainer');
 
-    if (avatarEl) avatarEl.textContent = npcData.avatar || '👤';
+    if (avatarEl) {
+      if (npcData.avatar && (npcData.avatar.includes('/') || npcData.avatar.includes('.'))) {
+        avatarEl.innerHTML = `<img src="${npcData.avatar}" alt="NPC" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      } else {
+        avatarEl.textContent = npcData.avatar || '👤';
+      }
+    }
     if (nameEl) nameEl.innerHTML = npcData.name || 'Người Dân Hà Nội';
-    if (roleEl) roleEl.textContent = npcData.role || 'Cư dân phố cổ';
+    if (roleEl) roleEl.textContent = npcData.role || npcData.title || 'Cư dân phố cổ';
     if (textEl) textEl.textContent = npcData.greeting || '"Chào bạn lãng tử!"';
 
     // 1. Thuyết minh lịch sử
@@ -159,10 +165,10 @@ export class DialogueModal {
       `;
     }
 
-    // 2. Lựa chọn câu thoại
+    // 2. Lựa chọn câu thoại (hỗ trợ cả dialogueOptions và topics)
     if (optionsContainer) {
       optionsContainer.innerHTML = '';
-      const options = npcData.dialogueOptions || [
+      const options = npcData.dialogueOptions || npcData.topics || [
         { text: 'Hỏi về nét đẹp của nơi này', reply: 'Nơi này mỗi mùa thu qua đi lại lắng đọng biết bao câu chuyện thời gian...' },
         { text: 'Thời tiết Hà Nội hôm nay thế nào bác?', reply: 'Trời bảng lảng sương sớm, se se lạnh của gió heo may đầu mùa, đẹp lắm bạn ơi!' }
       ];

@@ -138,6 +138,12 @@ export class OnboardingManager {
     this.currentStep = 'LOADING';
     this.clearCurrentModal();
 
+    if (window.gameEngine && window.gameEngine.worldManager) {
+      // Thế giới đã khởi tạo sẵn, hoàn tất nạp tức thì
+      this.finishOnboarding({ spawnZone: 'ho_guom' });
+      return;
+    }
+
     this.renderLoadingScreen();
 
     // Hủy timer cũ nếu có
