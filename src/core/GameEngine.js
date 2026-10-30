@@ -5,9 +5,9 @@
 
 import { THREE } from './ThreeLib.js';
 import { SceneManager } from './SceneManager.js';
-import { WorldManager } from './WorldManager.js?v=4.1';
+import { WorldManager } from './WorldManager.js?v=4.3';
 import { ZoneManager } from './ZoneManager.js';
-import { PlayerController } from './PlayerController.js?v=4.1';
+import { PlayerController } from './PlayerController.js?v=4.3';
 import { CameraController } from './CameraController.js';
 import { PerspectivePuzzle } from './PerspectivePuzzle.js';
 import { PhotoSystem } from './PhotoSystem.js';

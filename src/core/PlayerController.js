@@ -567,6 +567,18 @@ export class PlayerController {
       }
     }
 
+    // Giữ nhân vật an toàn trong lòng Cầu Thê Húc (Bản rộng 3.8m, lan can ở ±1.85m):
+    if (this.worldManager.getTheHucBridgeInfo) {
+      const thInfo = this.worldManager.getTheHucBridgeInfo(pos.x, pos.y, pos.z);
+      if (thInfo.dist < 3.8 && Math.abs(pos.y - thInfo.closestY) <= 1.0) {
+        if (thInfo.dist > 1.75) {
+          const excess = thInfo.dist - 1.75;
+          pos.x -= (pos.x - thInfo.closestX) * (excess / thInfo.dist);
+          pos.z -= (pos.z - thInfo.closestZ) * (excess / thInfo.dist);
+        }
+      }
+    }
+
     // Đẩy ngược lại nếu vi phạm ranh giới mặt nước (bảo đảm 100% không chạm nước)
     if (this.worldManager.isWaterAt && this.worldManager.isWaterAt(pos.x, pos.y, pos.z)) {
       const dx = pos.x - 80;
@@ -704,6 +716,16 @@ export class PlayerController {
     // 0. Cấm tuyệt đối không cho bước xuống nước / chạm nước theo sắc lệnh
     if (this.worldManager.isWaterAt && this.worldManager.isWaterAt(testPos.x, testPos.y, testPos.z)) {
       return true; // Chặn ngang ngay lập tức, không cho phép xuống nước!
+    }
+
+    // Rào chắn lan can Cầu Thê Húc (Khóa cứng 100% không cho phép đi xuyên qua hoặc rơi khỏi lan can cầu)
+    if (this.worldManager.getTheHucBridgeInfo) {
+      const thInfo = this.worldManager.getTheHucBridgeInfo(testPos.x, testPos.y, testPos.z);
+      if (thInfo.dist < 4.0 && Math.abs(testPos.y - thInfo.closestY) <= 1.0) {
+        if (thInfo.dist > 1.80) {
+          return true; // Chặn cứng tuyệt đối tại lan can Cầu Thê Húc!
+        }
+      }
     }
 
     // 1. Kiểm tra va chạm kiến trúc

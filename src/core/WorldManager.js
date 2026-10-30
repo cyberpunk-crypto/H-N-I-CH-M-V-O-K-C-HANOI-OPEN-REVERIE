@@ -92,6 +92,52 @@ export class WorldManager {
    * KIỂM TRA RANH GIỚI MẶT NƯỚC (CẤM TUYỆT ĐỐI KHÔNG CHẠM NƯỚC)
    * Trả về true nếu tọa độ nằm trong vùng nước không an toàn (ngoài đảo và cầu).
    */
+  /**
+   * KIỂM TRA CHUẨN XÁC TỌA ĐỘ VÀ ĐỘ CAO TRÊN CẦU THÊ HÚC
+   * Trả về khoảng cách tới tim cầu, độ cao mặt cầu chuẩn, và cờ onBridge
+   */
+  getTheHucBridgeInfo(x, y, z) {
+    const pts = [
+      { x: 164.0, y: 0.38, z: -36.0 }, // Quảng trường đá bờ đông
+      { x: 158.0, y: 0.58, z: -42.0 }, // Dốc nối lên đầu cầu
+      { x: 151.0, y: 1.42, z: -47.0 }, // Vòm lên 1
+      { x: 146.0, y: 2.18, z: -52.0 }, // Đỉnh vòm cong cao nhất
+      { x: 140.0, y: 1.42, z: -58.0 }, // Vòm xuống 2
+      { x: 134.0, y: 0.72, z: -64.0 }, // Hạ dốc đầu đảo
+      { x: 128.0, y: 0.80, z: -69.0 }  // Cập bến sân Đền Ngọc Sơn
+    ];
+    let minDistSq = Infinity;
+    let closestX = x, closestZ = z, closestY = y;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const dx = p2.x - p1.x;
+      const dz = p2.z - p1.z;
+      const lenSq = dx * dx + dz * dz;
+      let t = ((x - p1.x) * dx + (z - p1.z) * dz) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const projX = p1.x + t * dx;
+      const projZ = p1.z + t * dz;
+      const projY = p1.y + t * (p2.y - p1.y);
+      const dSq = (x - projX) * (x - projX) + (z - projZ) * (z - projZ);
+      if (dSq < minDistSq) {
+        minDistSq = dSq;
+        closestX = projX;
+        closestZ = projZ;
+        closestY = projY;
+      }
+    }
+    const dist = Math.sqrt(minDistSq);
+    const onBridge = (dist <= 2.0 && Math.abs(y - closestY) <= 0.65);
+    return {
+      dist,
+      closestX,
+      closestZ,
+      closestY,
+      onBridge
+    };
+  }
+
   isWaterAt(x, y, z) {
     // 1. Vùng Hồ Gươm (Tâm x = 80, z = -80, bán kính lòng hồ R = 84.8m)
     const dx = x - 80;
@@ -108,18 +154,17 @@ export class WorldManager {
         return false; // An toàn trên Đảo Rùa
       }
 
-      // b. Đảo Ngọc Sơn: bán kính 26.5m quanh (128, -68)
-      const dNgocX = x - 128;
-      const dNgocZ = z - (-68);
-      if (dNgocX * dNgocX + dNgocZ * dNgocZ <= 26.5 * 26.5 && y >= 0.35) {
+      // b. Đảo Ngọc Sơn: bán kính 20.5m quanh (122, -73)
+      const dNgocX = x - 122;
+      const dNgocZ = z - (-73);
+      if (dNgocX * dNgocX + dNgocZ * dNgocZ <= 20.5 * 20.5 && y >= 0.35) {
         return false; // An toàn trên Đảo Ngọc Sơn
       }
 
-      // c. Cầu Thê Húc son đỏ & Toàn bộ hành lang lối dẫn vào cầu:
-      // Bao gồm hành lang Cầu Thê Húc từ quảng trường bờ đông (166, -36) qua vòm cong đến Đắc Nguyệt Lâu (128, -68)
-      const dTheHuc = this._pointToSegmentDistSq(x, z, 166, -36, 128, -68);
-      if (dTheHuc <= 6.0 * 6.0 && y >= 0.15) {
-        return false; // An toàn tuyệt đối trên Cầu Thê Húc và lối dẫn vào cầu!
+      // c. Cầu Thê Húc son đỏ (Kiểm tra chuẩn xác cả mặt bằng tọa độ và độ cao bản ván cầu):
+      const theHucInfo = this.getTheHucBridgeInfo(x, y, z);
+      if (theHucInfo.onBridge) {
+        return false; // An toàn tuyệt đối trên Cầu Thê Húc!
       }
 
       // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (72, -72), bán kính an toàn 3.8m
@@ -2217,9 +2262,10 @@ export class WorldManager {
     });
 
     // 4. QUẦN THỂ ĐỀN NGỌC SƠN, CẦU THÊ HÚC, ĐẮC NGUYỆT LÂU & CHÙA ĐỎ CHÍNH ĐIỆN
-    // ĐẢO NGỌC SƠN TỰ NHIÊN (Rộng 44m, cao y = 0.8m)
-    const ngocIsland = new THREE.Mesh(new THREE.CylinderGeometry(22, 25, 1.6, 32), this.materials.mossStone);
-    ngocIsland.position.set(128, 0.8, -68);
+    // ĐẢO NGỌC SƠN TỰ NHIÊN (Cao mặt sân chuẩn y = 0.80m, liền mạch tuyệt đối với Cầu Thê Húc)
+    // Đảo dày 1.2m từ y = -0.40m đến y = +0.80m, triệt tiêu hoàn toàn lỗi đảo nhô cao 1.6m cắt xuyên sàn cầu
+    const ngocIsland = new THREE.Mesh(new THREE.CylinderGeometry(20, 23, 1.2, 32), this.materials.mossStone);
+    ngocIsland.position.set(122, 0.20, -73);
     ngocIsland.castShadow = true;
     ngocIsland.receiveShadow = true;
     zoneGroup.add(ngocIsland);
@@ -2229,13 +2275,13 @@ export class WorldManager {
     const islandPostCount = 32;
     for (let ip = 0; ip < islandPostCount; ip++) {
       const iAngle = (ip / islandPostCount) * Math.PI * 2;
-      // Chừa lối vào từ Cầu Thê Húc (Góc Đông Nam: angle khoảng 0.05 đến 0.65)
-      if (iAngle >= -0.15 && iAngle <= 0.95) continue; // Mở rộng lối vào Cầu Thê Húc lên đảo Ngọc Sơn thênh thang 100%
+      // Chừa lối vào từ Cầu Thê Húc (Góc Đông Bắc: angle khoảng -0.15 đến 0.85)
+      if (iAngle >= -0.15 && iAngle <= 0.85) continue;
 
-      const ix = 128 + Math.cos(iAngle) * 21.5;
-      const iz = -68 + Math.sin(iAngle) * 21.5;
+      const ix = 122 + Math.cos(iAngle) * 19.5;
+      const iz = -73 + Math.sin(iAngle) * 19.5;
       const rockMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 0.85, 8), this.materials.mossStone);
-      rockMesh.position.set(ix, 1.05, iz);
+      rockMesh.position.set(ix, 0.95, iz);
       rockMesh.castShadow = true;
       zoneGroup.add(rockMesh);
       this._addBoxObstacle(ix, iz, 1.2, 1.2, 0, 2.0);
@@ -2268,6 +2314,18 @@ export class WorldManager {
     zoneGroup.add(theHucApproachRamp);
     this.colliders.push(theHucApproachRamp);
 
+    // Rào chắn bảo vệ 2 bên mép dốc tiếp cận bờ đông (Chống đi xuyên/rơi xuống mép nước)
+    const rampNormPerpX = -Math.sin(rampAngle);
+    const rampNormPerpZ = Math.cos(rampAngle);
+    for (let side of [-2.15, 2.15]) {
+      for (let s of [0.15, 0.38, 0.62, 0.85]) {
+        const ax = 164.0 + (158.0 - 164.0) * s + rampNormPerpX * side;
+        const az = -36.0 + (-42.0 - (-36.0)) * s + rampNormPerpZ * side;
+        const ay = 0.38 + (0.58 - 0.38) * s;
+        this._addBoxObstacle(ax, az, 0.85, 0.85, ay, ay + 2.2);
+      }
+    }
+
     // 2. VÒM CONG 15 NHỊP CẦU THÊ HÚC UỐN LƯỢN THANH THOÁT
     const theHucCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(158, 0.58, -42),
@@ -2289,7 +2347,7 @@ export class WorldManager {
       const anglePitch = Math.asin((p2.y - p1.y) / segLength);
 
       // Bản ván cầu gỗ lim đỏ son rộng 3.8m (Đi lại thênh thang tự do không bị bó hẹp)
-      const deckPlank = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.12, 0.24, 3.8), this.materials.theHucRed);
+      const deckPlank = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.28, 0.32, 3.8), this.materials.theHucRed);
       deckPlank.position.set(mid.x, mid.y + 0.1, mid.z);
       deckPlank.rotation.y = -angleY;
       deckPlank.rotation.z = anglePitch;
@@ -2330,8 +2388,14 @@ export class WorldManager {
           zoneGroup.add(slat);
         }
 
-        // Obstacle bảo vệ chống ngã xuống nước
-        this._addBoxObstacle(mid.x + perpX * side, mid.z + perpZ * side, 0.5, 0.5, mid.y, mid.y + 1.8);
+        // Rào chắn bảo vệ liên tục khép kín (Solid continuous barrier - ZERO GAPS)
+        // 4 khối va chạm gối đầu dày đặc trên mỗi nhịp loại bỏ 100% khe hở, chống rơi/đi xuyên lan can tuyệt đối
+        for (let s of [0.15, 0.40, 0.65, 0.90]) {
+          const rx = p1.x + (p2.x - p1.x) * s + perpX * side;
+          const rz = p1.z + (p2.z - p1.z) * s + perpZ * side;
+          const ry = p1.y + (p2.y - p1.y) * s;
+          this._addBoxObstacle(rx, rz, 0.85, 0.85, ry, ry + 2.4);
+        }
       }
 
       // Hai dầm cong gỗ chịu lực chạy dọc bên dưới đỡ mặt cầu
@@ -2364,6 +2428,19 @@ export class WorldManager {
     islandRamp.receiveShadow = true;
     zoneGroup.add(islandRamp);
     this.colliders.push(islandRamp);
+
+    // Rào chắn bảo vệ 2 bên mép dốc hạ đầu đảo (Chống đi xuyên/rơi xuống mép nước)
+    const islRampAngle = Math.atan2(-6, -8);
+    const islPerpX = -Math.sin(islRampAngle);
+    const islPerpZ = Math.cos(islRampAngle);
+    for (let side of [-2.0, 2.0]) {
+      for (let s of [0.15, 0.38, 0.62, 0.85]) {
+        const ix = 134.0 + (128.0 - 134.0) * s + islPerpX * side;
+        const iz = -64.0 + (-69.0 - (-64.0)) * s + islPerpZ * side;
+        const iy = 0.72 + (0.80 - 0.72) * s;
+        this._addBoxObstacle(ix, iz, 0.85, 0.85, iy, iy + 2.2);
+      }
+    }
 
     // ĐẮC NGUYỆT LÂU (Lầu Đón Trăng - Cổng Đền Ngọc Sơn 2 tầng mái cong)
     // Tự căn chỉnh góc đón chính xác theo trục Cầu Thê Húc hạ dốc (vectơ (-0.8, -0.6)), mở rộng lối đi thông thoáng 4.2m
