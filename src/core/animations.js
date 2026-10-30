@@ -178,8 +178,8 @@ export class HumanoidAnimator {
   _cacheRestPositions() {
     this.restPositions = {
       pelvisY: (this.rig.pelvisGroup && this.rig.pelvisGroup.position) ? this.rig.pelvisGroup.position.y : this.baseTorsoY,
-      leftShoulderY: (this.rig.leftShoulderGroup && this.rig.leftShoulderGroup.position) ? this.rig.leftShoulderGroup.position.y : 0.38,
-      rightShoulderY: (this.rig.rightShoulderGroup && this.rig.rightShoulderGroup.position) ? this.rig.rightShoulderGroup.position.y : 0.38
+      leftShoulderY: (this.rig.leftShoulderGroup && this.rig.leftShoulderGroup.position) ? this.rig.leftShoulderGroup.position.y : 0.05,
+      rightShoulderY: (this.rig.rightShoulderGroup && this.rig.rightShoulderGroup.position) ? this.rig.rightShoulderGroup.position.y : 0.05
     };
   }
 
