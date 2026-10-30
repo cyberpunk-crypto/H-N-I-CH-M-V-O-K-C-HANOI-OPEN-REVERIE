@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Temporary test profiles and browser caches
+.*-tmp*
+.tmp*
+.chrome*
+
+# Logs & Environment
+*.log
+.env
+.DS_Store
+Thumbs.db
