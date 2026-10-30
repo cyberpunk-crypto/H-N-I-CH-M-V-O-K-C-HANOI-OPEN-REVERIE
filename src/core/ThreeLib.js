@@ -5,7 +5,8 @@
 
 import * as THREE from '../lib/three.module.js';
 
-window.THREE = THREE;
+const globalScope = typeof window !== 'undefined' ? window : globalThis;
+globalScope.THREE = THREE;
 
 export { THREE };
 export default THREE;

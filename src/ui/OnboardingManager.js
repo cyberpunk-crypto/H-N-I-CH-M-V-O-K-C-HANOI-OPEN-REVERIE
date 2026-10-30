@@ -8,6 +8,7 @@
  */
 
 import { GameEventBus } from '../bridge/GameEvents.js';
+import { CHARACTERS_META } from '../core/CharacterFactory.js';
 import { AgeGateModal } from './AgeGateModal.js';
 import { AuthModal } from './AuthModal.js';
 import { CharacterCreation } from './CharacterCreation.js';
@@ -81,12 +82,14 @@ export class OnboardingManager {
     if (this.currentModal && typeof this.currentModal.destroy === 'function') {
       this.currentModal.destroy();
     }
+    this.currentModal = null;
     this.container.innerHTML = '';
   }
 
   // Bước 1: Age Gate (18+)
   showAgeGate() {
     this.currentStep = 'AGE_GATE';
+    if (this.container) this.container.classList.remove('hidden');
     this.clearCurrentModal();
 
     this.currentModal = new AgeGateModal({
@@ -102,6 +105,7 @@ export class OnboardingManager {
   // Bước 2: Đăng Nhập Tài Khoản
   showAuth() {
     this.currentStep = 'AUTH';
+    if (this.container) this.container.classList.remove('hidden');
     this.clearCurrentModal();
 
     this.currentModal = new AuthModal({
@@ -115,17 +119,67 @@ export class OnboardingManager {
     this.container.appendChild(el);
   }
 
-  // Bước 3: Tạo Nhân Vật Trước Gương
-  showCharacterCreation() {
+  // Bước 3: Tạo Nhân Vật Trước Gương & Chọn Nhân Vật 3D
+  showCharacterCreation(options = {}) {
     this.currentStep = 'CHARACTER';
+    if (this.container) this.container.classList.remove('hidden');
     this.clearCurrentModal();
 
-    const initialName = this.userData?.username || '';
+    // Khóa di chuyển 3D khi đang mở giao diện chọn diện mạo
+    if (window.GameAPI && typeof window.GameAPI.setPlayerMovementLock === 'function') {
+      window.GameAPI.setPlayerMovementLock(true);
+    }
+
+    // Ẩn HUD nếu đang mở trong game
+    const hudLayer = document.getElementById('gameHudLayer');
+    if (hudLayer) hudLayer.classList.add('hidden');
+
+    let savedProfile = null;
+    try {
+      savedProfile = JSON.parse(localStorage.getItem('hanoi_user_profile') || 'null');
+    } catch (e) {}
+
+    const initialName = (savedProfile && savedProfile.username) || this.userData?.username || '';
+    const initialCharacterId = (savedProfile && (savedProfile.characterId || savedProfile.outfit)) || 'char_nu_sinh_ao_dai';
+    const initialCameraId = (savedProfile && savedProfile.cameraModel) || 'leica_m3';
+    const isRecreate = !!options.isRecreate;
 
     this.currentModal = new CharacterCreation({
       initialName,
+      initialCharacterId,
+      initialCameraId,
+      isRecreate,
+      onClose: () => {
+        this.clearCurrentModal();
+        if (this.container) this.container.classList.add('hidden');
+        if (hudLayer) hudLayer.classList.remove('hidden');
+        if (window.GameAPI && typeof window.GameAPI.setPlayerMovementLock === 'function') {
+          window.GameAPI.setPlayerMovementLock(false);
+        }
+      },
       onCharacterConfirmed: (profile) => {
-        this.startWorldLoading();
+        if (this.container) this.container.classList.add('hidden');
+        if (hudLayer) hudLayer.classList.remove('hidden');
+        if (window.GameAPI && typeof window.GameAPI.setPlayerMovementLock === 'function') {
+          window.GameAPI.setPlayerMovementLock(false);
+        }
+
+        // Bắn thông báo Toast chúc mừng
+        if (window._UIManagerInstance && window._UIManagerInstance.toast) {
+          const charObj = (CHARACTERS_META || []).find(c => c.id === profile.characterId);
+          const charName = charObj ? charObj.name : 'Nhân vật 3D';
+          window._UIManagerInstance.toast.show(
+            'Diện Mạo Ký Ức Mới',
+            `Đã chuyển sang: ${charName}`,
+            'character',
+            4500
+          );
+        }
+
+        // Nếu thế giới chưa chạy thì tiếp tục luồng nạp thế giới
+        if (!window.gameEngine || !window.gameEngine.worldManager) {
+          this.startWorldLoading();
+        }
       }
     });
 

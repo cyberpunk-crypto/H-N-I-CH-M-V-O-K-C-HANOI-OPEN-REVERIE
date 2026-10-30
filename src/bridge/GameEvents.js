@@ -52,8 +52,9 @@ class EventBus {
 }
 
 // Khởi tạo EventBus toàn cục duy nhất
-if (!window.GameEventBus) {
-  window.GameEventBus = new EventBus();
+const globalScope = typeof window !== 'undefined' ? window : globalThis;
+if (!globalScope.GameEventBus) {
+  globalScope.GameEventBus = new EventBus();
 }
 
-export const GameEventBus = window.GameEventBus;
+export const GameEventBus = globalScope.GameEventBus;

@@ -99,6 +99,17 @@
   font-family: var(--font-mono);
   font-size: 0.85rem;
   transition: all 0.2s;
+  cursor: pointer;
+}
+
+#btnRecreateCharacterHud {
+  border-color: rgba(212, 175, 55, 0.6);
+  background: linear-gradient(135deg, rgba(28, 22, 16, 0.95) 0%, rgba(55, 25, 30, 0.9) 100%);
+}
+
+#btnRecreateCharacterHud:hover {
+  border-color: var(--c-gold-royal);
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
 }
 
 .btn-hud-tool:hover {

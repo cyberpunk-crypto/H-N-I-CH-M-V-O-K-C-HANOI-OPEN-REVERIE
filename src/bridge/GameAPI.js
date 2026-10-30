@@ -8,7 +8,9 @@ const RESERVED_NAMES = [
   'hoanghon', 'phoco', 'trangan', 'nguoihanoi', 'boss'
 ];
 
-window.GameAPI = {
+const globalScope = typeof window !== 'undefined' ? window : globalThis;
+
+globalScope.GameAPI = {
   /**
    * Kiểm tra tính hợp lệ và trùng lặp của tên nhân vật theo thời gian thực (Debounce)
    * @param {string} rawName - Tên người dùng nhập vào
@@ -43,7 +45,15 @@ window.GameAPI = {
     // Kiểm tra trong danh sách đã đặt trước hoặc LocalStorage đã có
     const normalized = trimmed.toLowerCase();
     const existingUsers = JSON.parse(localStorage.getItem('hanoi_registered_names') || '[]');
-    const isTaken = RESERVED_NAMES.includes(normalized) || existingUsers.includes(normalized);
+    
+    // Nếu chính là tên hiện tại của người chơi đang sở hữu, thì luôn hợp lệ
+    let currentProfile = null;
+    try {
+      currentProfile = JSON.parse(localStorage.getItem('hanoi_user_profile') || 'null');
+    } catch (e) {}
+    const isCurrentPlayerName = !!(currentProfile && currentProfile.username && currentProfile.username.toLowerCase() === normalized);
+
+    const isTaken = !isCurrentPlayerName && (RESERVED_NAMES.includes(normalized) || existingUsers.includes(normalized));
 
     if (isTaken) {
       const year = new Date().getFullYear();
@@ -107,8 +117,9 @@ window.GameAPI = {
    * @param {boolean} locked - true: không cho WASD di chuyển; false: cho phép
    */
   setPlayerMovementLock: (locked) => {
-    if (window._GameCoreInstance && window._GameCoreInstance.playerController) {
-      window._GameCoreInstance.playerController.setLocked(locked);
+    const engine = window._GameCoreInstance || window.gameEngine;
+    if (engine && engine.playerController) {
+      engine.playerController.setLocked(locked);
     }
   },
 
@@ -139,12 +150,12 @@ window.GameAPI = {
    * Khởi động nhanh quá trình nạp thế giới 3D
    */
   startWorldEngine: () => {
-    if (window._GameCoreInstance) {
-      window._GameCoreInstance.initWorld();
+    if (globalScope._GameCoreInstance) {
+      globalScope._GameCoreInstance.initWorld();
     } else {
-      window.GameEventBus.emit('UI:START_ENGINE_REQUEST', {});
+      globalScope.GameEventBus.emit('UI:START_ENGINE_REQUEST', {});
     }
   }
 };
 
-export const GameAPI = window.GameAPI;
+export const GameAPI = globalScope.GameAPI;

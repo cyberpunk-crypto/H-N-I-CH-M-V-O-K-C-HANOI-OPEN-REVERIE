@@ -409,27 +409,56 @@
    BƯỚC 3: CHARACTER CREATION (TRƯỚC GƯƠNG TẬP THỂ CŨ)
    ========================================================================== */
 .character-creator-card {
-  max-width: 780px;
+  max-width: 820px;
+}
+
+/* Nút đóng modal khi mở lại từ HUD */
+.btn-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  background: rgba(18, 14, 11, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: var(--c-yellow-cuc);
+  border-radius: 50%;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.25s ease;
+}
+
+.btn-modal-close:hover {
+  background: rgba(139, 38, 53, 0.7);
+  border-color: var(--c-gold-royal);
+  color: #fff;
+  transform: rotate(90deg) scale(1.08);
 }
 
 .creator-layout {
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 26px;
-  margin-bottom: 20px;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  margin-bottom: 18px;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .creator-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
 /* Khung gương phòng tập thể */
 .vintage-mirror-frame {
   position: relative;
-  height: 320px;
-  background: radial-gradient(circle at 50% 40%, rgba(255, 230, 160, 0.08), rgba(15, 12, 10, 0.95));
+  min-height: 340px;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 230, 160, 0.12), rgba(15, 12, 10, 0.96));
   border: 4px solid #4a3525;
   outline: 2px solid var(--c-gold-royal);
   border-radius: 8px;
@@ -438,7 +467,26 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.85);
+  padding: 24px 16px 16px 16px;
+}
+
+.mirror-status-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 14, 11, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--c-yellow-cuc);
+  text-transform: uppercase;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .mirror-reflection {
@@ -447,28 +495,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  opacity: 0.88;
-  transition: all 0.3s;
+  width: 100%;
 }
 
 .avatar-silhouette {
-  width: 130px;
-  height: 130px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
-  border: 2px dashed rgba(212, 175, 55, 0.5);
+  overflow: hidden;
+  border: 3px solid var(--c-gold-royal);
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.45), inset 0 0 15px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
-  background: rgba(30, 24, 18, 0.5);
+  margin: 12px auto 10px auto;
+  background: #1a1c22;
   position: relative;
 }
 
-.avatar-silhouette svg {
-  width: 80px;
-  height: 80px;
-  fill: var(--c-yellow-cuc);
-  opacity: 0.9;
+.mirror-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.25s ease, transform 0.35s ease;
+}
+
+.avatar-silhouette:hover .mirror-avatar-img {
+  transform: scale(1.06);
 }
 
 .mirror-overlay-dust {
@@ -479,19 +532,36 @@
 }
 
 .mirror-caption {
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffdf99;
+  text-align: center;
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+}
+
+.mirror-subdesc {
   font-family: var(--font-poem);
-  font-size: 0.85rem;
+  font-size: 0.76rem;
   font-style: italic;
   color: var(--c-paper-aged);
+  opacity: 0.85;
   text-align: center;
-  padding: 0 10px;
+  margin-top: 4px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding: 0 6px;
 }
 
 /* Phần nhập tên & chọn trang phục */
 .character-fields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 /* Input Tên với Debounce & Trạng thái */
@@ -596,14 +666,14 @@
   transform: translateY(-1px);
 }
 
-/* Bộ chọn 4 bộ trang phục hoài niệm */
+/* Bộ chọn 4 nhân vật 3D hoài niệm */
 .outfit-selector-title {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-family: var(--font-mono);
   color: var(--c-yellow-cuc);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-top: 4px;
+  margin-bottom: 8px;
 }
 
 .outfit-grid {
@@ -612,62 +682,149 @@
   gap: 10px;
 }
 
+@media (max-width: 580px) {
+  .outfit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .outfit-card {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  background: rgba(22, 18, 14, 0.7);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .outfit-card:hover {
-  background: rgba(45, 34, 25, 0.85);
+  background: rgba(212, 175, 55, 0.1);
   border-color: var(--c-gold-royal);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .outfit-card.active {
-  background: rgba(183, 121, 31, 0.22);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.24) 0%, rgba(139, 38, 53, 0.22) 100%);
   border: 2px solid var(--c-gold-royal);
-  box-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.4);
 }
 
-.outfit-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  background: rgba(212, 175, 55, 0.15);
-  color: var(--c-yellow-cuc);
+.outfit-avatar-box {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--c-gold-royal);
+  flex-shrink: 0;
+  background: #202228;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.25);
+}
+
+.outfit-avatar-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .outfit-info {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  flex: 1;
 }
 
 .outfit-name {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--c-paper-do);
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffdf99;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .outfit-desc {
-  font-size: 0.74rem;
-  color: var(--c-paper-dark);
+  display: block;
+  font-size: 0.70rem;
+  color: #cfc5b8;
+  opacity: 0.85;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.outfit-check-icon {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c-gold-royal);
+  color: #121008;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.outfit-card.active .outfit-check-icon {
+  display: flex;
+}
+
+/* Hàng nút hành động */
+.creator-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.btn-secondary-retro {
+  flex: 1;
+  padding: 14px 18px;
+  background: rgba(18, 14, 11, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: var(--c-paper-aged);
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn-secondary-retro:hover {
+  background: rgba(45, 34, 25, 0.95);
+  border-color: var(--c-gold-royal);
+  color: var(--c-yellow-cuc);
+  transform: translateY(-1px);
 }
 
 /* Nút BƯỚC VÀO KÝ ỨC kích hoạt rực sáng */
 .btn-enter-reverie {
   position: relative;
+  flex: 2;
   width: 100%;
-  padding: 16px 28px;
+  padding: 15px 24px;
+  margin-top: 0;
+  font-size: 1.1rem;
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 6px;
+  transition: all 0.35s ease;
+  cursor: pointer;
+}
   margin-top: 14px;
   font-size: 1.15rem;
   font-family: var(--font-title);

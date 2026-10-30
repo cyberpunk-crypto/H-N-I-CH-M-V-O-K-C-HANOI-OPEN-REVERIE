@@ -1,38 +1,47 @@
 # HÀ NỘI: CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
-## TÀI LIỆU KIẾN TRÚC KỸ THUẬT & ĐẶC TẢ HỆ THỐNG (GAME SPECIFICATION)
+## TÀI LIỆU KIẾN TRÚC KỸ THUẬT & ĐẶC TẢ HỆ THỐNG TOÀN DIỆN (GAME SPECIFICATION)
 
 ---
 
 > **Mã dự án:** `HANOI-OPEN-REVERIE-3D`  
-> **Phiên bản tài liệu:** `1.0.0-RELEASE`  
+> **Phiên bản tài liệu:** `2.0.0-PRO-3D-HUMANOID`  
 > **Phê duyệt:** Sếp Tổng Game Studio & Hội đồng Kiến trúc sư Trưởng  
-> **Ngày ban hành:** 29/10/2026  
-> **Áp dụng cho:** 3 Mũi nhọn sản xuất (`coder-chinh`, `ui-polish`, `nano-banana`) & Khâu Kiểm duyệt (`kiem-duyet-qa`).
+> **Ngày ban hành:** 30/10/2026  
+> **Áp dụng cho 4 Mũi nhọn sản xuất:**  
+> 1. `coder-chinh` (Core Logic 3D Engine & Systems)  
+> 2. `ui-polish` (Giao diện người dùng, Onboarding, Modals & Styling)  
+> 3. `animation-master` (Hoạt họa chuyển động 3D Skeletal Humanoid 60 FPS & VFX trong `animations.js`)  
+> 4. `nano-banana` (Họa sĩ Textures PBR, UI Art, Audio)  
+> & Khâu Kiểm duyệt độc lập: `kiem-duyet-qa`.
 
 ---
 
 ## 1. TỔNG QUAN DỰ ÁN & TẦM NHÌN KỸ THUẬT
 
 ### 1.1. Tầm nhìn nghệ thuật và trải nghiệm
-**HÀ NỘI: CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)** là tựa game khám phá thế giới mở 3D không gian hoài niệm Hà Nội (Thập niên 80-90 giao thoa đương đại) vận hành trực tiếp trên trình duyệt Web. Người chơi hóa thân thành một "Kẻ Mộng Mơ" dạo bước qua 4 phân khu đặc trưng của thủ đô, sử dụng chiếc máy ảnh cơ film 35mm để căn góc nhìn giải mã những "Giao điểm thị giác" (Perspective Alignment) ẩn giấu trong kiến trúc, hồi sinh những lát cắt ký ức ngưng đọng của thời gian.
+**HÀ NỘI: CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)** là tựa game khám phá thế giới mở 3D không gian hoài niệm Hà Nội (Thập niên 80-90 giao thoa đương đại) vận hành trực tiếp trên trình duyệt Web (WebGL / WebGL2). 
+
+Người chơi hóa thân thành một "Kẻ Mộng Mơ" dạo bước qua 4 phân khu đặc trưng của thủ đô (Hồ Gươm & Tháp Rùa, Mê cung Phố Cổ & Cà phê Đường Tàu, Nhịp Cầu Long Biên dầm thép Eiffel, Khu Tập Thể Cũ chuồng cọp hoàng hôn), sử dụng chiếc máy ảnh cơ film 35mm để căn góc nhìn giải mã những "Giao điểm thị giác" (Perspective Alignment) ẩn giấu trong kiến trúc, hồi sinh những lát cắt ký ức ngưng đọng của thời gian.
 
 ### 1.2. Tech Stack & Nền tảng
 - **Engine 3D Core:** `Three.js` (r160+) chạy trực tiếp trên WebGL / WebGL2 context.
+- **Mô hình nhân vật:** True 3D Humanoid Mesh with Skeletal Rig Hierarchy (khớp xương đa tầng: hông, thân, ngực, cổ, đầu, vai, cánh tay, cẳng tay, bàn tay, đùi, cẳng chân, bàn chân, cùng tà áo dài 3D và phụ kiện 3D uốn lượn). **Tuyệt đối cấm sử dụng ảnh 2D billboard/plane cho nhân vật người chơi!**
+- **Hoạt họa (Animation):** Hệ thống Skeletal Easing & Kinematics 60 FPS độc lập trong `src/core/animations.js`, quản lý các chu kỳ Walk Cycle, Run Cycle, Idle Breathing & Weight Shift.
 - **Kiến trúc mã nguồn:** Vanilla JavaScript (ES6+ ES Modules), mô hình phân rã Decoupled Architecture hướng sự kiện (`EventBus`), không phụ thuộc build tooling nặng nề để đảm bảo hot-reload và tương thích tối đa.
-- **Audio Engine:** `Web Audio API` với bộ giải mã âm thanh không gian (Spatial Audio Listener / PannerNode) tạo không khí Hà Nội 3D sống động (tiếng ve sầu, còi tàu, tiếng rao đêm).
+- **Audio Engine:** `Web Audio API` với bộ giải mã âm thanh không gian (Spatial Audio Listener / PannerNode) tạo không khí Hà Nội 3D sống động (tiếng ve sầu, còi tàu, tiếng rao đêm, tiếng máy hát loa kèn cổ).
 - **Lưu trữ dữ liệu:** `LocalStorage` kết hợp `IndexedDB` cục bộ cho việc lưu trữ hồ sơ nhân vật, thiết lập, và album ảnh film độ phân giải cao (`data:image/webp` base64).
 - **Giao diện & Mỹ thuật:** HTML5 Canvas Overlay, CSS3 biến đổi không gian (3D Transforms, Backdrop Blur, Vintage Film Grain Post-processing, CSS Grid).
 
 ---
 
-## 2. KIẾN TRÚC HỆ THỐNG & TÁCH BIỆT VÙNG LÀM VIỆC
+## 2. KIẾN TRÚC HỆ THỐNG & TÁCH BIỆT VÙNG LÀM VIỆC (STRICT BOUNDARIES)
 
-Để đảm bảo 3 bộ phận (`coder-chinh`, `ui-polish`, `nano-banana`) sản xuất song song 100% không xung đột mã nguồn (zero merge conflicts), hệ sinh thái thư mục được phân định ranh giới nghiêm ngặt như sau:
+Để đảm bảo 4 bộ phận (`coder-chinh`, `ui-polish`, `animation-master`, `nano-banana`) sản xuất song song 100% không xung đột mã nguồn (zero merge conflicts), hệ sinh thái thư mục được phân định ranh giới nghiêm ngặt như sau:
 
 ```
 d:/HÀ NỘI CHẠM VÀO KÝ ỨC ,HANOI OPEN REVERIE/
 ├── index.html                     # Điểm vào ứng dụng (Shell, nạp modules)
-├── GAME_SPEC.md                   # Bản đặc tả kỹ thuật này
+├── GAME_SPEC.md                   # Bản đặc tả kỹ thuật này (Chuẩn mực tối cao)
 ├── REVIEW_LOG.md                  # Nhật ký kiểm duyệt chất lượng QA
 │
 ├── assets/                        # [VÙNG CỦA HỌA SĨ nano-banana]
@@ -42,7 +51,10 @@ d:/HÀ NỘI CHẠM VÀO KÝ ỨC ,HANOI OPEN REVERIE/
 │   │   ├── old_wall_yellow.jpg    # Vôi vàng nứt nẻ
 │   │   ├── rusty_iron_beam.jpg    # Thép dầm cầu Long Biên rỉ
 │   │   ├── hanoi_brick_ground.jpg # Gạch ngói & đá lát vỉa hè
-│   │   └── vintage_posters.jpg    # Áp phích cổ, biển hiệu vẽ tay
+│   │   ├── vintage_posters.jpg    # Áp phích cổ, biển hiệu vẽ tay
+│   │   ├── wood_counter_varnish.jpg
+│   │   ├── bridge_ramp_stone.jpg
+│   │   └── bougainvillea_blossom.png
 │   ├── ui/                        # Đồ họa giao diện, biểu tượng
 │   │   ├── viewfinder_frame.png   # Khung ngắm máy ảnh 35mm cơ khí
 │   │   ├── shutter_button.png     # Nút chụp kim loại retro
@@ -63,51 +75,57 @@ d:/HÀ NỘI CHẠM VÀO KÝ ỨC ,HANOI OPEN REVERIE/
 │
 ├── src/
 │   ├── bridge/                    # [VÙNG GIAO TIẾP DÙNG CHUNG - BẤT BIẾN]
-│   │   ├── GameEvents.js          # Hệ thống EventBus tập trung
-│   │   └── GameAPI.js             # Window Contract APIs cho UI tương tác với 3D
+│   │   ├── GameEvents.js          # Hệ thống EventBus tập trung (window.GameEventBus)
+│   │   └── GameAPI.js             # Window Contract APIs cho UI tương tác với 3D (window.GameAPI)
 │   │
-│   ├── core/                      # [VÙNG CỦA coder-chinh - LOGIC 3D & CORE]
+│   ├── core/                      # [VÙNG CỦA coder-chinh & animation-master]
 │   │   ├── GameEngine.js          # Khởi tạo WebGL, vòng lặp GameLoop, render pass
 │   │   ├── SceneManager.js        # Quản lý cảnh 3D, ánh sáng, sương mù (Fog)
-│   │   ├── WorldManager.js        # Bản đồ 500m x 500m, LOD, Chunking
+│   │   ├── WorldManager.js        # Bản đồ 500m x 500m, Collision AABB, giữ nguyên 100% NPC cũ
 │   │   ├── ZoneManager.js         # Quản lý 4 phân khu (Hồ Gươm, Phố Cổ, Cầu, Nhà Tập Thể)
-│   │   ├── PlayerController.js    # Điều khiển nhân vật, va chạm (AABB/Raycast), parkour
+│   │   ├── PlayerController.js    # Điều khiển nhân vật, va chạm, tích hợp Humanoid Animator
+│   │   ├── CharacterFactory.js    # BỘ XÂY DỰNG MÔ HÌNH NGƯỜI 3D THẬT SỰ (TRUE 3D RIGGED MESH)
+│   │   ├── animations.js          # [VÙNG CỦA animation-master] Hệ thống hoạt họa xương 60 FPS
 │   │   ├── CameraController.js    # Camera Kép (TPS Spring-Arm & FPS Viewfinder)
 │   │   ├── PerspectivePuzzle.js   # Hệ thống giải đố căn góc nhìn quang học
 │   │   ├── PhotoSystem.js         # Cơ chế chụp ảnh film, canvas capture, lưu khoảnh khắc
 │   │   └── StorageService.js      # Dịch vụ LocalStorage / IndexedDB đồng bộ dữ liệu
 │   │
 │   └── ui/                        # [VÙNG CỦA ui-polish - GIAO DIỆN & TƯƠNG TÁC]
+│       ├── UIManager.js           # Điều phối toàn bộ vòng đời UI
 │       ├── OnboardingManager.js   # Quản lý tuần tự: Age Gate -> Login -> Character
 │       ├── AgeGateModal.js        # Cổng xác nhận độ tuổi 18+ tính năm sinh
 │       ├── AuthModal.js           # Modal Đăng nhập (Google Mock / Email)
-│       ├── CharacterCreation.js   # Tạo nhân vật, Debounce 0.5s check trùng tên
+│       ├── CharacterCreation.js   # Tạo nhân vật & chọn 4 nhân vật 3D, Debounce 0.5s check tên
 │       ├── ViewfinderHUD.js       # Khung ngắm máy ảnh, thước đo tiêu cự, lưới bố cục
 │       ├── ScrapbookModal.js      # Cuốn Album Ký Ức lật trang, tem dán, tản văn
+│       ├── MinimapModal.js        # Bản đồ toàn cảnh & điểm dịch chuyển 4 phân khu
+│       ├── DialogueModal.js       # Hộp thoại tương tác với NPC người Hà Nội
+│       ├── ChatboxModal.js        # Kênh chat lãng tử
 │       ├── ToastNotification.js   # Bảng thông báo góc màn hình phong cách retro
-│       ├── MinimapHUD.js          # La bàn và bản đồ chỉ hướng 4 phân khu
 │       └── AudioBGMController.js  # Nút bật tắt nhạc, thanh chỉnh âm lượng hoài niệm
 │
 └── styles/                        # [VÙNG CỦA ui-polish - CSS STYLES]
     ├── reset.css                  # Chuẩn hóa CSS
     ├── retro_theme.css            # Biến màu sắc hoài niệm (Vàng hoàng cúc, đỏ bã trầu, xanh rêu)
     ├── onboarding.css             # Giao diện Age Gate, Login, Tạo nhân vật
-    ├── hud.css                    # Thanh trạng thái, bản đồ, thông báo toast
+    ├── hud.css                    # Thanh trạng thái, bản đồ, thông báo toast, modal hội thoại
     └── viewfinder.css             # Hiệu ứng film grain, vignette, khung ngắm camera
 ```
 
 ---
 
 ## 3. ĐẶC TẢ GIAO DIỆN LẬP TRÌNH VÀ TẬP HÀM GIAO TIẾP (API & EVENT SPECIFICATION)
-> **KHÂU KIỂM DUYỆT 1 - BẮT BUỘC:**  
-> Dưới đây là danh sách đầy đủ, chính xác từng ký tự tên hàm, tham số, kiểu dữ liệu, chiều truyền dữ liệu giữa `coder-chinh` và `ui-polish`. Tuyệt đối không tự ý đổi tên để đảm bảo ghép nối hoàn hảo.
+
+> **KHÂU KIỂM DUYỆT 1 - BẮT BUỘC TUÂN THỦ:**  
+> Dưới đây là danh sách đầy đủ, chính xác từng ký tự tên hàm, tham số, kiểu dữ liệu, chiều truyền dữ liệu giữa `coder-chinh`, `animation-master` và `ui-polish`. Tuyệt đối không tự ý đổi tên để đảm bảo ghép nối hoàn hảo 100%.
 
 ### 3.1. Đối tượng toàn cục EventBus: `window.GameEventBus`
 Được định nghĩa tại [src/bridge/GameEvents.js](file:///d:/H%C3%80%20N%E1%BB%98I%20CH%E1%BA%A0M%20V%C3%80O%20K%C3%9D%20%E1%BB%A8C%20,HANOI%20OPEN%20REVERIE/src/bridge/GameEvents.js).  
 Phương thức chuẩn:
-- `window.GameEventBus.on(eventName, callback)`: Đăng ký lắng nghe sự kiện.
+- `window.GameEventBus.on(eventName, callback)`: Đăng ký lắng nghe sự kiện. Trả về hàm hủy đăng ký.
 - `window.GameEventBus.off(eventName, callback)`: Hủy đăng ký.
-- `window.GameEventBus.emit(eventName, payload)`: Bắn sự kiện kèm dữ liệu.
+- `window.GameEventBus.emit(eventName, payload)`: Bắn sự kiện kèm dữ liệu payload.
 
 ---
 
@@ -115,14 +133,15 @@ Phương thức chuẩn:
 
 | Tên Sự Kiện (`eventName`) | Kiểu Dữ Liệu (`payload`) | Bộ Phận Bắn | Bộ Phận Nhận | Ý Nghĩa Kỹ Thuật |
 | :--- | :--- | :--- | :--- | :--- |
-| `UI:AGE_VERIFIED` | `{ birthYear: number, birthMonth: number, birthDay: number, isAdult: boolean }` | `ui-polish` | `coder-chinh` | Người dùng xác nhận tuổi thành công (>= 18 tuổi), cho phép mở màn hình tiếp. |
-| `UI:AUTH_SUCCESS` | `{ userId: string, username: string, authType: 'google' \| 'guest' \| 'email' }` | `ui-polish` | `coder-chinh` | Đăng nhập tài khoản thành công, khởi động nạp dữ liệu người dùng từ Storage. |
-| `UI:CHARACTER_CONFIRMED` | `{ characterName: string, outfitId: string, cameraModel: string }` | `ui-polish` | `coder-chinh` | Người dùng chốt tên hợp lệ và trang phục, kích hoạt Game Core tải 3D World. |
-| `UI:SWITCH_CAMERA_MODE` | `{ targetMode: 'TPS' \| 'FPS' }` | `ui-polish` | `coder-chinh` | Chuyển đổi thủ công camera (ví dụ bấm nút trên màn hình cảm ứng hoặc phím tắt). |
+| `UI:AGE_VERIFIED` | `{ birthYear: number, birthMonth: number, birthDay: number, isAdult: boolean }` | `ui-polish` | `coder-chinh` | Người dùng xác nhận tuổi thành công (>= 18 tuổi), cho phép mở màn hình Auth. |
+| `UI:AUTH_SUCCESS` | `{ userId: string, username: string, authType: 'google' \| 'guest' \| 'email' }` | `ui-polish` | `coder-chinh` | Đăng nhập tài khoản thành công, khởi động nạp hồ sơ người dùng từ Storage. |
+| `UI:CHARACTER_CONFIRMED` | `{ characterName: string, characterId: string, outfitId: string, cameraModel: string }` | `ui-polish` | `coder-chinh` | Người dùng chốt tên hợp lệ và chọn 1 trong 4 nhân vật 3D, kích hoạt Core nạp nhân vật & World 3D. |
+| `UI:SWITCH_CAMERA_MODE` | `{ targetMode: 'TPS' \| 'FPS' }` | `ui-polish` | `coder-chinh` | Chuyển đổi thủ công camera (bấm nút Máy Ảnh hoặc phím V). |
 | `UI:TRIGGER_SHUTTER` | `{ timestamp: number }` | `ui-polish` | `coder-chinh` | Bấm nút chụp ảnh vật lý/ảo trên Viewfinder HUD, kích hoạt chụp Canvas 3D. |
 | `UI:OPEN_SCRAPBOOK` | `{ open: boolean }` | `ui-polish` | `coder-chinh` | Bật/tắt Album Ký Ức, yêu cầu Core tạm dừng (pause) hoặc tiếp tục Game Loop. |
 | `UI:TELEPORT_REQUEST` | `{ zoneId: 'ho_guom' \| 'pho_co' \| 'long_bien' \| 'tap_the' }` | `ui-polish` | `coder-chinh` | Người chơi chọn điểm dịch chuyển nhanh trên bản đồ nhỏ (Minimap). |
 | `UI:SET_AUDIO_VOLUME` | `{ master: number, bgm: number, sfx: number }` | `ui-polish` | `coder-chinh` | Điều chỉnh âm lượng tổng và thành phần (giá trị float từ `0.0` đến `1.0`). |
+| `UI:START_ENGINE_REQUEST` | `{}` | `ui-polish` | `coder-chinh` | Yêu cầu Game Engine khởi động WebGL render loop khi sẵn sàng. |
 
 ---
 
@@ -131,13 +150,15 @@ Phương thức chuẩn:
 | Tên Sự Kiện (`eventName`) | Kiểu Dữ Liệu (`payload`) | Bộ Phận Bắn | Bộ Phận Nhận | Ý Nghĩa Kỹ Thuật |
 | :--- | :--- | :--- | :--- | :--- |
 | `CORE:WORLD_LOAD_PROGRESS` | `{ progress: number, currentAsset: string }` | `coder-chinh` | `ui-polish` | Cập nhật tiến độ tải 3D World (0 - 100%) lên thanh loading retro. |
-| `CORE:WORLD_READY` | `{ spawnZone: string, playerPosition: { x: number, y: number, z: number } }` | `coder-chinh` | `ui-polish` | Thế giới 3D đã sẵn sàng, yêu cầu UI ẩn màn hình chờ và hiện HUD. |
-| `CORE:CAMERA_MODE_CHANGED` | `{ mode: 'TPS' \| 'FPS', fov: number }` | `coder-chinh` | `ui-polish` | Core thông báo đã lerp xong chế độ camera (FPS bật Viewfinder HUD, TPS tắt HUD). |
+| `CORE:WORLD_READY` | `{ spawnZone: string, playerPosition: { x: number, y: number, z: number } }` | `coder-chinh` | `ui-polish` | Thế giới 3D đã sẵn sàng, yêu cầu UI ẩn màn hình chờ và hiện HUD chính. |
+| `CORE:CAMERA_MODE_CHANGED` | `{ mode: 'TPS' \| 'FPS', fov: number }` | `coder-chinh` | `ui-polish` | Core thông báo đã chuyển xong chế độ camera (FPS bật Viewfinder HUD & ẩn đầu/mũ nhân vật; TPS tắt HUD & hiện lại nhân vật). |
 | `CORE:PUZZLE_DETECTED` | `{ puzzleId: string, puzzleName: string, alignmentScore: number, isAligned: boolean }` | `coder-chinh` | `ui-polish` | Người chơi đang nhìn vào vị trí câu đố; `alignmentScore` (0.0 - 1.0) để UI vẽ thước ngắm đổi màu. |
 | `CORE:PUZZLE_SOLVED` | `{ puzzleId: string, title: string, quote: string, unlockedShortcut: string, photoUrl: string }` | `coder-chinh` | `ui-polish` | Căn góc thành công! UI mở hiệu ứng chớp sáng, vinh danh ký ức và trao huy hiệu. |
 | `CORE:PHOTO_CAPTURED` | `{ photoId: string, dataUrl: string, zoneId: string, timestamp: number, isPuzzle: boolean, poemQuote: string }` | `coder-chinh` | `ui-polish` | Ảnh vừa chụp được render xong, gửi dataUrl sang UI để hiển thị thumbnail và cất vào Album. |
 | `CORE:ZONE_ENTERED` | `{ zoneId: string, zoneName: string, description: string, ambientTrack: string }` | `coder-chinh` | `ui-polish` | Người chơi bước vào ranh giới phân khu mới, UI hiện Toast thông báo tên phố. |
-| `CORE:INTERACTION_AVAILABLE` | `{ canInteract: boolean, promptText: string, actionKey: string }` | `coder-chinh` | `ui-polish` | Gần ghế đá, hàng nước chè, bảng tin: UI hiện phím gợi ý (ví dụ: "[E] Ngồi uống trà đá"). |
+| `CORE:INTERACTION_AVAILABLE` | `{ canInteract: boolean, promptText: string, actionKey: string }` | `coder-chinh` | `ui-polish` | Gần ghế đá, hàng nước chè, NPC, bảng tin: UI hiện phím gợi ý (ví dụ: "[E] Uống trà đá vỉa hè"). |
+| `UI:OPEN_DIALOGUE` | `{ name: string, role: string, avatar: string, greeting: string, monumentTitle: string, historyText: string, dialogueOptions: Array, shopItems: Array }` | `coder-chinh` | `ui-polish` | Khi người chơi bấm E tương tác với NPC, mở modal đối thoại và tìm hiểu lịch sử danh thắng. |
+| `CORE:SWITCH_CHARACTER` | `{ characterId: string }` | `ui-polish` | `coder-chinh` | Yêu cầu thay đổi mô hình nhân vật người chơi trong thế giới 3D. |
 
 ---
 
@@ -150,7 +171,7 @@ Phương thức chuẩn:
  */
 window.GameAPI = {
   /**
-   * Kiểm tra tính hợp lệ và trùng lặp của tên nhân vật theo thời gian thực (Debounce)
+   * Kiểm tra tính hợp lệ và trùng lặp của tên nhân vật theo thời gian thực (Debounce 500ms)
    * @param {string} rawName - Tên người dùng nhập vào
    * @returns {Promise<{ isValid: boolean, message: string, suggestions: string[] }>}
    */
@@ -158,7 +179,7 @@ window.GameAPI = {
 
   /**
    * Lưu hoặc cập nhật hồ sơ người chơi vào LocalStorage
-   * @param {Object} profile - { username, outfit, unlockedPuzzles, capturedPhotosCount }
+   * @param {Object} profile - { username, outfit, characterId, unlockedPuzzles, capturedPhotosCount }
    * @returns {boolean} Thành công hay thất bại
    */
   saveUserProfile: (profile) => {},
@@ -170,7 +191,7 @@ window.GameAPI = {
   getAlbumPhotos: async () => {},
 
   /**
-   * Khóa hoặc mở khóa điều khiển di chuyển nhân vật (khi đang mở modal UI)
+   * Khóa hoặc mở khóa điều khiển di chuyển nhân vật (khi đang mở modal UI, hội thoại, scrapbook)
    * @param {boolean} locked - true: không cho WASD di chuyển; false: cho phép
    */
   setPlayerMovementLock: (locked) => {},
@@ -216,106 +237,43 @@ Bản đồ tổng thể được thiết kế theo tỷ lệ tọa độ 3D th�
 ```
 
 ### 4.1. Phân khu 1: Hồ Gươm & Tháp Rùa (Zone A: Hoan Kiem Lake)
+- **Tọa độ trung tâm:** `(100, 0, -100)`.
 - **Tâm điểm:** Tháp Rùa cổ kính rêu phong nằm giữa đảo xanh trên mặt nước phẳng lặng.
-- **Chi tiết môi trường:**
-  - Mặt nước sử dụng Three.js `Water` shader với hiệu ứng gợn sóng nhỏ và phản chiếu môi trường hoàng hôn mờ ảo.
-  - Cầu Thê Húc uốn cong màu đỏ son dẫn vào Đền Ngọc Sơn với hàng cây đa và liễu rủ ven hồ đung đưa theo gió.
-  - Vỉa hè lát đá xanh, hàng ghế đá xưa, cột đèn đường phong cách Pháp cổ với ánh sáng vàng ấm áp.
-- **Thiết kế dốc tiếp cận Cầu Thê Húc (Thê Húc Bridge Approach Ramps):**
-  - **Đầu phía Bờ Hồ:** Thiết kế dốc thoải tiếp cận nhẹ nhàng (Gentle Approach Ramp) chuyển tiếp từ mặt vỉa hè (`y = 0.15m`) lên sàn chân cầu (`y = 0.95m`), độ dốc êm ái < 12%, bề mặt lát đá khuyết mộc mạc, triệt tiêu gờ gập giúp raycast nhân vật bước lên êm ái 100% không bị vấp.
-  - **Nhịp cầu cong & Mặt ván đỏ:** Thân cầu cong hình cầu vồng với chuỗi collider đa giác cong mượt mà theo sống cầu, lan can gỗ sơn son đỏ chạm đầu rồng cách điệu.
-  - **Đầu phía Đảo Ngọc Sơn:** Dốc hạ thoải dẫn thẳng qua cổng Đắc Nguyệt Lâu (Lầu Ngắm Trăng) vào sân đền cổ kính rợp bóng cây đa nghìn năm tuổi, không có bất kỳ khoảng hở hay xung đột va chạm nào.
-- **Ký ức ngưng đọng:** Hình bóng rùa thiêng lập lờ trong sương mai, tiếng lá rụng xào xạc lúc chớm đông.
+- **Hệ thống Cầu Thê Húc:**
+  - Dốc thoải tiếp cận nhẹ nhàng (Gentle Approach Ramp) chuyển tiếp từ mặt vỉa hè (`y = 0.15m`) lên sàn chân cầu (`y = 0.95m`), độ dốc < 12%, không gờ vấp.
+  - Thân cầu 15 nhịp cong màu đỏ son dẫn vào Đền Ngọc Sơn & Đắc Nguyệt Lâu với hàng cây đa và liễu rủ ven hồ đung đưa theo gió.
+  - Vỉa hè lát đá xanh, hàng ghế đá xưa, cột đèn đường Pháp cổ chiếu sáng vàng ấm 2700K.
 
 ### 4.2. Phân khu 2: Mê Cung Phố Cổ & Phố Đường Tàu (Zone B: Old Quarter & Train Street)
-- **Tâm điểm:** Đoạn đường ray tàu hỏa uốn lượn chạy sát rạt qua các ngôi nhà phố cổ hình ống sâu hun hút.
-- **Chi tiết môi trường ngoại thất:**
-  - Mái ngói âm dương rêu phong nhấp nhô cao thấp; tường quét vôi vàng đặc trưng đã bong tróc từng mảng lộ lớp gạch đỏ.
-  - Mạng nhện dây điện chằng chịt treo lủng lẳng trên các cột điện bê tông xưa.
-  - Quán cà phê cóc ven đường tàu với bàn ghế gỗ con con, tách cà phê phin nhôm đang nhỏ giọt.
-  - Biển hiệu cửa hiệu vẽ tay thủ công phong cách Hà Nội xưa: "Cắt tóc bình dân", "Đồng hồ Liên Xô", "May đo âu phục".
-- **Ký ức ngưng đọng:** Còi tàu vang dội từ xa, chuông cảnh báo leng keng, những bóng người vội vã nép sát vào vách tường khi đoàn tàu chạy qua ga trong ký ức.
-
-#### 4.2.1. Quy chuẩn Kiến trúc Tường Mỏng & Không Gian Thông Thủy (Thin-Wall Architecture)
-> **YÊU CẦU ĐẠI TU TỪ SẾP TỔNG:**  
-> Tuyệt đối **KHÔNG** sử dụng khối hộp đặc (Solid Box) dày 4m - 5m chiếm hết diện tích lòng nhà.  
-- **Độ dày tường bao ngoại thất:** Chuẩn xác `0.35m` (kết cấu tường gạch 330 trát vữa vôi truyền thống).
-- **Kích thước thông thủy bên trong:** Đạt đúng tỷ lệ quy mô bên ngoài `11.3m x 15.3m`, chiều cao trần nhà `4.2m`, tạo không gian bên trong rộng thênh thang, thoáng đãng, người chơi có thể tự do đi lại và khám phá mọi góc phòng.
-- **Cửa chính & Cửa sổ đón sáng:** Cửa gỗ bức bàn 4 cánh mở toang đón gió và ánh sáng tự nhiên, cửa sổ chớp lá sách phong cách Pháp cổ sơn màu xanh lam/xanh ngọc.
-
-#### 4.2.2. Chi tiết Nội Thất: Tiệm Cà Phê Trứng & Trà Sen Cổ Điển (Egg Coffee & Lotus Tea House)
-- **Quầy Bar Trung Tâm:** Dài 5.2m bằng gỗ lim đánh vec-ni cánh gián bóng loáng, mặt quầy bo viền đồng thau sáng bóng. Trên mặt quầy xếp 6 phin nhôm cà phê đang nhỏ giọt chầm chậm, cốc thủy tinh khía hoa văn đựng lớp kem trứng béo ngậy vàng óng.
-- **Kệ Tủ Trưng Bày Trà & Cà Phê:** Kệ gỗ 4 tầng kịch trần, sắp đặt các hũ thủy tinh nút bần đựng hạt cà phê rang mộc Robusta, Arabica, hũ gốm ủ cánh sen Tây Hồ sấy khô, ấm trà đất nung Bát Tràng.
-- **Khu Âm Nhạc Hoài Niệm:** Một chiếc máy hát đĩa than loa kèn đồng cổ (Gramophone) đặt trên đôn gỗ chạm khắc, phát ra những thanh âm rè rè mộc mạc của các bản tình ca Hà Nội xưa.
-- **Đồng Hồ Thời Gian:** Đồng hồ quả lắc bằng gỗ sồi treo tường, quả lắc đồng đung đưa nhịp nhàng gõ tích tắc theo từng giây trôi.
-- **Khu Vực Tiếp Khách Sang Trọng:**
-  - 3 bộ bàn ghế sofa bọc nỉ nhung xanh rêu và da nâu cổ điển.
-  - 4 bộ bàn tròn gỗ gụ khảm ốc xà cừ kèm ghế đôn mây tre đan tinh tế.
-  - Tấm thảm trải sàn dệt hoa văn hình học phong cách Đông Dương (Indochine) khổ lớn 4m x 6m.
-- **Nghệ Thuật & Mỹ Cảm:**
-  - Bình gốm Bát Tràng men rạn cắm những búp sen hồng và sen trắng tỏa hương thơm dịu mát.
-  - Tủ sách gỗ lớn chứa đầy tiểu thuyết, tập thơ Quang Dũng, Nguyễn Đình Thi, Thạch Lam và báo Tiền Phong, Nhân Dân thập niên 80-90.
-  - Cầu thang gỗ uốn cong thanh thoát dẫn lên gác lửng (Mezzanine), nơi có ban công nhìn thẳng ra phố cổ và đường ray xe lửa.
-- **Hệ Thống Ánh Sáng:** Đèn chùm thả đồng cổ trần nhà, kết hợp 8 đèn rọi spotlight vàng ấm (2700K) rọi rực rỡ vào tranh sơn mài và các góc tĩnh vật.
-
-#### 4.2.3. Chi tiết Nội Thất: Cửa Hàng Bách Hóa Mậu Dịch Thời Bao Cấp (State Department Store)
-- **Không Gian & Mặt Bằng:** Kích thước `11.3m x 15.3m` rộng thênh thang, sàn lát gạch bông hoa chanh cổ điển thập niên 80.
-- **Dãy Kệ Hàng Mậu Dịch:** 3 dãy kệ gỗ thông và khung thép sơn xám chạy dọc gian phòng, đầy ắp hiện vật thời bao cấp:
-  - Hàng trăm chiếc ca tráng men Hải Phòng màu trắng in bông hoa hải đường đỏ.
-  - Những chiếc phích nước Rạng Đông vỏ nhôm in họa tiết cúc vạn thọ rực rỡ.
-  - Hộp bích quy Hải Châu bằng thiếc vuông vức xếp thành chồng tháp.
-  - Các súc vải hoa phin nõn, vải kaki Nam Định cuộn tròn xếp lớp ngay ngắn.
-- **Bàn Quầy Thu Ngân Phân Phối:**
-  - Bàn gỗ mậu dịch viên với chiếc cân đĩa đồng có bộ quả cân sắt từ 50g đến 2kg.
-  - Bàn tính gảy bằng gỗ kêu lách cách mỗi khi tính tem phiếu.
-- **Góc Kỹ Nghệ & Đời Sống:**
-  - Chiếc đài Radio Cassette Liên Xô (VEF-206) thân bọc da đen vỏ nhôm sáng bóng.
-  - Quạt tai voi Liên Xô cánh cao su dẻo màu xanh ngọc bích êm ái quay phe phẩy.
-  - Chiếc xe đạp Thống Nhất khung nam màu xanh bộ đội, gắn chuông đồng "kính coong" và biển số đăng ký kiểm soát xe đạp Hà Nội năm 1985 dựng ngay góc phòng danh dự.
-- **Bích Họa & Khẩu Hiệu Cổ Động:** Tường treo các bức tranh cổ động vẽ tay: *"Không có gì quý hơn độc lập tự do"*, *"Cửa hàng phục vụ văn minh lịch sự"*, bảng thông báo *"Phân phối nhu yếu phẩm theo tem phiếu đợt 2"*.
-- **Hệ Thống Đèn Chiếu:** Đèn tuýp huỳnh quang treo dây xích thả trần phát ánh sáng xanh trắng đặc trưng kết hợp bóng đèn tròn sợi đốt 40W vàng ấm.
+- **Tọa độ trung tâm:** `(-100, 0, 100)`.
+- **Tâm điểm:** Đường ray xe lửa uốn lượn chạy sát rạt qua các ngôi nhà phố cổ hình ống sâu hun hút.
+- **Quy chuẩn Kiến trúc Tường Mỏng & Không Gian Thông Thủy (Thin-Wall Architecture):**
+  - Tường bao kết cấu gạch trát vữa dày chuẩn xác `0.35m` (tuyệt đối không dùng khối đặc 4m-5m bịt kín).
+  - Lòng nhà thông thủy rộng `11.3m x 15.3m`, cao `4.2m`, người chơi tự do đi lại bên trong.
+  - **Tiệm Cà Phê Trứng & Trà Sen Cổ Điển:** Quầy bar gỗ lim viền đồng dài 5.2m, 6 phin nhôm nhỏ giọt, kệ hũ trà sen Tây Hồ, máy hát đĩa than cổ (Gramophone), đồng hồ quả lắc gỗ sồi gõ nhịp, sofa nhung rêu, thảm dệt Đông Dương, cầu thang gỗ dẫn lên gác lửng ban công ngắm tàu chạy.
+  - **Cửa Hàng Bách Hóa Mậu Dịch Thời Bao Cấp:** Sàn gạch bông hoa chanh, kệ hàng ca men Hải Phòng trắng in hoa hải đường, phích Rạng Đông vỏ nhôm, hộp bích quy Hải Châu, súc vải hoa phin nõn, cân đĩa đồng, đài cassette Liên Xô VEF-206, quạt tai voi cánh ngọc bích, xe đạp Thống Nhất khung nam màu xanh bộ đội dựng góc phòng danh dự.
 
 ### 4.3. Phân khu 3: Nhịp Cầu Long Biên & Bãi Bồi Sông Hồng (Zone C: Long Bien Bridge)
-- **Tâm điểm:** Cây cầu Long Biên bằng dầm thép khổng lồ rỉ sét màu cánh gián vắt ngang dòng Sông Hồng phù sa đỏ, đặt tại cao độ mặt sàn `y = 4.2m`.
-- **Thiết Kế Tiếp Cận Cầu (Ramps & Stairs System):**
-  > **YÊU CẦU ĐẠI TU TỪ SẾP TỔNG:**  
-  > Cầu Long Biên đang ở cao độ `y = 4.2m` trên cao, bắt buộc phải có hệ thống tiếp cận trực quan, hoàn chỉnh để người chơi di chuyển tự nhiên từ mặt đất lên dầm cầu!
-  - **Dốc Dẫn Thoải (Main Bridge Ramp):**
-    - Điểm khởi đầu trên mặt đất: Tọa độ `x = 10.0m` (`y = 0.1m`).
-    - Điểm kết thúc trên dầm cầu: Tọa độ `x = 35.0m` (`y = 4.2m`).
-    - Chiều dài dốc: `25.0m`, chiều rộng dốc: `4.5m`.
-    - Độ dốc kỹ thuật chuẩn mực: `(4.2 - 0.1) / 25.0 = 16.4%` (độ dốc thoai thoải, lý tưởng cho người đi bộ dạo bước và xe đạp leo dốc không bị trượt).
-    - Mặt đường dốc: Lát bê tông đá dăm cổ có các rãnh khía ngang chống trơn trượt, hai bên có dầm thép hình chữ X Eiffel che chắn an toàn.
-  - **Cầu Thang Bộ Gạch Đá Phụ Trợ (Pedestrian Stone Staircase):**
-    - Vị trí: Đặt sát vỉa hè chân cầu từ phía phố dẫn thẳng lên lối đi bộ cánh dầm cầu.
-    - Cấu trúc: 24 bậc thang gạch chỉ trát đá rửa màu xám, chiều cao bậc `0.17m`, mặt bậc rộng `0.32m`, tay vịn bằng sắt ống sơn chống rỉ màu nâu đỏ.
-- **Không Gian Trên Cầu:**
-  - Nhịp dầm thép đan chéo vươn cao `12m` tạo thành đường hầm kết cấu kim loại hùng vĩ.
-  - Lối đi bộ lát ván gỗ lim phát tiếng kẽo kẹt theo từng bước chân.
-  - Đường ray xe lửa ở giữa với các tà vẹt gỗ ngâm hắc ín bóng loáng.
-- **Bãi Bồi Sông Hồng Phía Dưới:** Những vạt lau sậy trắng xóa đu đưa theo chiều gió sông thổi lồng lộng, sương khói lãng đãng từ mặt nước hòa vào ánh hoàng hôn nhuộm đỏ cả một góc trời phía Đông.
-- **Ký ức ngưng đọng:** Đoàn người gánh hàng hoa dong xe đạp qua cầu trong chiều lộng gió, tiếng thép ngân rung dưới bánh xe sắt.
+- **Tọa độ trung tâm:** `(100, 4.2, 100)`. Sàn dầm cầu tại cao độ `y = 4.2m`.
+- **Thiết Kế Tiếp Cận Cầu (Ramp & Stairs System):**
+  - **Dốc Dẫn Thoải (Main Bridge Ramp):** Dài 25m từ `x = 10.0m` (`y = 0.1m`) lên `x = 35.0m` (`y = 4.2m`), bề rộng dốc 4.5m, độ dốc 16.4% bước đi tự nhiên không bị trượt.
+  - **Cầu Thang Bộ Gạch Đá Phụ Trợ (Pedestrian Stairs):** 24 bậc thang trát đá rửa xám, chiều cao bậc 0.17m, mặt bậc rộng 0.32m, tay vịn sắt ống dầm Eiffel kiên cố.
+- **Bãi Bồi Sông Hồng:** Vạt lau sậy trắng xóa đu đưa theo gió, sóng nước phù sa đỏ cuộn trôi.
 
 ### 4.4. Phân khu 4: Khu Tập Thể Cũ & Ngõ Phố Hoàng Hôn (Zone D: Collective Housing)
-- **Tâm điểm:** Dãy nhà tập thể 5 tầng kiểu lắp ghép tấm lớn thập niên 80 (như Kim Liên, Trung Tự, Giảng Võ).
-- **Chi tiết môi trường:**
-  - Hệ thống "chuồng cọp" (lồng sắt cơi nới không gian) nhô ra ngoài chằng chịt cây cảnh, lồng chim sơn ca và dây phơi quần áo rực rỡ màu sắc.
-  - Tường nhà màu vàng hoàng cúc bạc phếch, in hằn vệt rêu đen sau những mùa mưa nồm ẩm.
-  - Cầu thang bộ ngoài trời bám rêu xanh, giàn hoa giấy đỏ rực rủ xuống lối đi chung.
-  - Dưới sân tập thể: bàn cờ tướng của các cụ già, xe đạp Thống Nhất cũ kỹ dựng chân chống nghiêng bên gốc bàng già.
-- **Ký ức ngưng đọng:** Tiếng loa phường phát bản tin chiều, mùi cơm sôi ngạt ngào từ các căn hộ tập thể thoảng ra lối đi hẹp.
+- **Tọa độ trung tâm:** `(-100, 0, -100)`.
+- **Tâm điểm:** Dãy nhà tập thể 5 tầng kiểu Kim Liên / Giảng Võ thập niên 80 với hệ thống "chuồng cọp" sắt vươn mình, dây phơi quần áo, lồng chim sơn ca, giàn hoa giấy đỏ rực rỡ buông rủ từ ban công tầng 3.
+- **Sân chung:** Bàn cờ tướng của các cụ hưu trí dưới gốc bàng già lá đỏ cuối thu, quán nước chè ấm tích giành tre của bà cụ.
 
 ---
 
 ## 5. HỆ THỐNG CAMERA KÉP (DUAL CAMERA SYSTEM: TPS & FPS)
 
-Hệ thống Camera được quản lý bởi `CameraController.js` với sự phối hợp chặt chẽ giữa góc nhìn thứ ba tự do và góc nhìn thứ nhất mô phỏng máy ảnh film.
-
 ```
        [PHÍM V / GIỮ CHUỘT PHẢI]
        ------------------------->
   TPS (Khám phá thế giới)          FPS (Khung ngắm máy ảnh film)
-  - Spring-Arm camera 4.5m         - Ẩn phần đầu/thân nhân vật
+  - Spring-Arm camera 4.5m         - Ẩn phần đầu/thân nhân vật 3D
   - Tự động tránh xuyên tường      - Bật Viewfinder HUD cơ khí
   - Parkour, nhảy leo vỉa hè       - Lưới Rule of Thirds / Tỷ lệ vàng
        <-------------------------  - Head-bobbing thở nhẹ chân thực
@@ -323,215 +281,337 @@ Hệ thống Camera được quản lý bởi `CameraController.js` với sự p
        (Chuyển đổi Lerp 0.3 giây)
 ```
 
-### 5.1. Chế độ Góc Nhìn Thứ Ba (TPS - Third Person Exploration)
-- **Mục đích:** Khám phá cảnh quan, điều khiển nhân vật chạy bộ dạo phố, tương tác không gian.
-- **Đặc tính kỹ thuật:**
-  - **Spring-Arm (Camera Boom):** Khoảng cách tiêu chuẩn 4.5m sau lưng nhân vật, góc chúc xuống `15 độ`.
-  - **Damping & Smooth Orbit:** Dùng nội suy `lerp` góc quay chuột (Yaw/Pitch) với tốc độ làm mềm `factor = 0.08`, chuyển động mượt mà không bị giật cục (camera jitter).
-  - **Chống xuyên tường (Collision Detection):** Bắn Raycast từ vị trí đầu nhân vật tới vị trí mong muốn của camera. Nếu va chạm với Mesh tĩnh của các tòa nhà hoặc dầm cầu, tự động kéo khoảng cách camera lại gần (khoảng cách tối thiểu 0.8m) để tránh hiện tượng camera nhìn xuyên tường (clipping).
-
-### 5.2. Chế độ Góc Nhìn Thứ Nhất (FPS - Viewfinder Máy Ảnh Film)
-- **Mục đích:** Săn khoảnh khắc, quan sát chi tiết hoa văn rêu phong, căn góc giải đố thị giác.
-- **Đặc tính kỹ thuật:**
-  - **Chuyển đổi êm ái (Smooth Transition):** Khi bấm phím `V` hoặc giữ chuột phải, Camera tự động `lerp` từ tọa độ TPS về tọa độ mắt nhân vật (`y = 1.65m`) trong vòng `0.3 giây` (sử dụng hàm easing `cubic-bezier(0.25, 1, 0.5, 1)`).
-  - **Ẩn Model để thông thoáng góc nhìn:** Tự động gán `playerMesh.visible = false` khi ở chế độ FPS, tránh tình trạng phần tóc hoặc mũ của nhân vật che khuất ống kính.
-  - **Head-Bobbing & Nhịp thở:** Khi nhân vật đứng yên hoặc bước đi trong FPS, áp dụng dao động điều hòa nhẹ nhàng theo trục Y (`Math.sin(time * 2.0) * 0.015`) mô phỏng nhịp thở người cầm máy cơ.
-  - **FOV (Field of View):** Giảm từ `65 độ` (TPS) xuống `45 độ` (FPS) mô phỏng tiêu cự ống kính chân dung 50mm cổ điển.
+- **Chế độ TPS (Third Person Exploration):**
+  - Spring-Arm Boom 4.5m sau lưng, góc chúc xuống 15 độ.
+  - Damping nội suy góc quay chuột mượt mà (`lerp factor = 0.08`).
+  - Raycast chống xuyên tường (Collision Detection), khoảng cách tối thiểu 0.8m.
+- **Chế độ FPS (Viewfinder Máy Ảnh Film):**
+  - Lerp mượt mà trong 0.3 giây từ TPS về tọa độ mắt người (`y = 1.65m`).
+  - FOV chuyển từ 65 độ xuống 45 độ (tiêu cự 50mm cổ điển).
+  - Tự động gán `playerMesh.visible = false` khi ở FPS để ống kính thông thoáng tuyệt đối.
 
 ---
 
 ## 6. CƠ CHẾ GAMEPLAY CỐT LÕI
 
-### 6.1. Cơ chế Giải đố Giao Điểm Thị Giác (Perspective Alignment Puzzle)
-Lấy cảm hứng từ *The Witness*, *Gorogoa* và *Superliminal*, người chơi phải di chuyển nhân vật đến một "Điểm Đứng Định Mệnh" (Fateful Standpoint) và hướng ống kính theo góc độ chính xác để các vật thể rời rạc ghép thành một biểu tượng hoàn chỉnh.
+### 6.1. Giải đố Giao Điểm Thị Giác (Perspective Alignment Puzzle)
+- Người chơi di chuyển đến vị trí định mệnh và căn góc ống kính để các vật thể phân tán ghép thành biểu tượng:
+  1. **Hồ Gươm:** Cành liễu ven hồ ghép với bóng Tháp Rùa tạo biểu tượng *Khuê Văn Các*.
+  2. **Phố Cổ:** Dây điện hẻm hẹp ghép với chim bồ câu mái ngói tạo 5 dòng kẻ nốt nhạc *"Người Hà Nội"*.
+  3. **Cầu Long Biên:** Dầm thép Eiffel rọi bóng xuống bãi cát sông Hồng tạo *Thăng Long Đệ Nhất Rồng*.
+  4. **Khu Tập Thể:** Song thưa chuồng cọp ghép với hoa giấy và vầng mặt trời đỏ tạo *Chim Bồ Câu Bay Khỏi Lồng Sắt*.
+- **Thuật toán kiểm tra:**
+  - Khoảng cách đứng: `dist(playerPosition, targetPosition) < 0.8m`.
+  - Hướng ngắm: `cameraDirection.dot(targetDirection) > 0.985` (sai số góc < 10 độ).
+  - Khi `alignmentScore >= 0.95`, kích hoạt `CORE:PUZZLE_DETECTED` (`isAligned = true`).
 
-```
-       Vật thể A (Tiền cảnh)            Vật thể B (Hậu cảnh)
-       [Nhánh cây liễu rủ]             [Vết nứt tường vôi vàng]
-                \                               /
-                 \                             /
-                  \                           /
-                   \                         /
-                    [Ống kính Viewfinder FPS]
-                   (Căn chuẩn góc -> Ghép thành biểu tượng KHUÊ VĂN CÁC)
-```
-
-#### 4 Câu Đố Biểu Tượng Của 4 Phân Khu:
-1. **Câu đố 1 (Hồ Gươm): "Văn Miếu Ký Ức"**  
-   - Cành liễu rủ ven hồ khi ngắm từ một ghế đá cổ ghép vừa khít với bóng phản chiếu của Tháp Rùa trên mặt nước, tạo thành hình bóng Khuê Văn Các uy nghiêm.
-2. **Câu đố 2 (Phố Cổ): "Giai Điệu Dây Điện"**  
-   - Những bó dây điện chằng chịt vắt ngang con hẻm nhỏ khi căn từ ban công tầng 2 quán cà phê ghép với các cánh chim bồ câu đậu trên mái ngói tạo thành 5 dòng kẻ và các nốt nhạc đầu tiên của bài hát "Người Hà Nội".
-3. **Câu đố 3 (Cầu Long Biên): "Rồng Bay Sông Hồng"**  
-   - Các thanh dầm thép Eiffel đan chéo vắt bóng xuống bãi cát bồi Sông Hồng vào lúc hoàng hôn buông xuống, tạo thành hình ảnh Thăng Long Đệ Nhất Rồng thiêng bay lượn.
-4. **Câu đố 4 (Khu Tập Thể): "Khát Vọng Chuồng Cọp"**  
-   - Những thanh sắt song thưa của lồng chuồng cọp tầng 4 ghép với giàn hoa giấy đỏ tầng 3 và mặt trời tròn đỏ lặn phía xa tạo thành hình cánh chim bồ câu vút bay khỏi lồng sắt.
-
-#### Thuật toán kiểm tra góc nhìn quang học (`PerspectivePuzzle.js`):
-- **Kiểm tra khoảng cách người chơi:** `distance(playerPosition, puzzle.targetPosition) < 0.8m`.
-- **Kiểm tra hướng nhìn Vector (Dot Product):**  
-  `dotProduct = cameraDirection.dot(puzzle.targetDirection) > 0.985` (tương đương sai số góc cho phép dưới 10 độ).
-- **Điểm căn chỉnh (`alignmentScore`):** Tính theo thang điểm từ `0.0` đến `1.0`. Khi `alignmentScore >= 0.95`, phát sự kiện `CORE:PUZZLE_DETECTED` với cờ `isAligned = true`.
-
-### 6.2. Săn Khoảnh Khắc Bằng Máy Ảnh Film (Vintage Shutter & Darkroom)
-- Khi đang ở chế độ FPS và bấm `Space` hoặc click chuột trái / nút chụp ảo:
-  1. **Hiệu ứng màn trập cơ học:** Màn hình chớp đen trong `0.08 giây` kèm âm thanh tanh tách đanh thép của máy cơ Leica M3.
-  2. **Trích xuất khung hình:** Lấy dữ liệu WebGL Canvas thông qua `renderer.domElement.toDataURL('image/jpeg', 0.85)`.
-  3. **Bộ lọc tráng phim Vintage:** Áp dụng hiệu ứng Film Grain, hạt màu bạc, tone vàng ấm Kodak Portra hoặc đen trắng Ilford Tri-X.
-  4. **Tự động gắn tem ký ức:** Gắn tem bưu chính Hà Nội, ngày giờ chụp, địa danh và một câu tản văn/thơ Hà Nội ngẫu hứng tương ứng.
-  5. **Lưu trữ vĩnh viễn:** Lưu vào `IndexedDB` để cuốn Album không bị mất khi tải lại trang.
-
-### 6.3. Mở Khóa Đường Tắt & Biến Đổi Không Gian (Shortcut Unlocking)
-Mỗi khi một câu đố giao điểm thị giác được chụp thành công:
-- **Biến đổi không gian 3D:** Một bức tường ngõ cụt rêu phong khẽ dịch chuyển hé mở một con ngõ sâu dẫn lối tắt qua phân khu khác.
-- **Hiệu ứng ánh sáng ký ức:** Đèn lồng phố cổ bừng sáng, hoa giấy bung nở rực rỡ, hoặc đoàn tàu hỏa hơi nước ký ức chầm chậm lướt qua màn sương đêm.
-- **Âm thanh ký ức:** Tiếng đàn vĩ cầm hoặc tiếng dương cầm ngân lên khúc ca hoài niệm giữa bầu không khí tĩnh mịch.
+### 6.2. Săn Khoảnh Khắc & Tráng Phim Ký Ức
+- Bấm `Space` hoặc nút chụp ảo: Chớp sáng màn trập kim loại cơ học (0.08s) -> Trích xuất Canvas WebGL -> Áp bộ lọc Grain/Portra -> Gắn tem bưu chính & câu thơ tản văn -> Lưu trữ vào `IndexedDB`.
 
 ---
 
-## 7. LUỒNG ONBOARDING & WEB PORTAL (WEB PORTAL FLOW)
+## 7. LUỒNG ONBOARDING & WEB PORTAL (3 BƯỚC HOÀN CHỈNH)
 
-Luồng tiếp cận người chơi được thiết kế chỉn chu, đậm chất hoài niệm với 3 bước phân tách độc lập:
-
-```
-[Mở Trang Web]
-      │
-      ▼
-┌───────────────────────────┐
-│ Bước 1: Age Gate (18+)    │ ---> Từ chối (< 18 tuổi): Chuyển sang màn hình thông điệp
-│ - Nhập ngày/tháng/năm     │
-│ - Cảnh báo Hà Nội đêm     │
-└─────────────┬─────────────┘
-              │ Đạt chuẩn (>= 18 tuổi)
-              ▼
-┌───────────────────────────┐
-│ Bước 2: Đăng Nhập         │
-│ - Google 1-Click (Mock)   │ ---> Đăng nhập thành công, lưu session vào LocalStorage
-│ - Email / Mật khẩu        │
-└─────────────┬─────────────┘
-              │
-              ▼
-┌───────────────────────────┐
-│ Bước 3: Tạo Nhân Vật      │
-│ - Tên "Kẻ Mộng Mơ"        │
-│ - Debounce 500ms check tên│ ---> Trùng tên: Rung lắc, viền đỏ, kèm 3 tên gợi ý
-│ - Chọn trang phục xưa     │      Hợp lệ: Viền xanh, bật sáng nút "Bước Vào Ký Ức"
-└─────────────┬─────────────┘
-              │ Bấm "Bước Vào Ký Ức"
-              ▼
-[Khởi Động 3D World & Nhập Cuộc]
-```
-
-### 7.1. Cổng Xác Nhận Độ Tuổi (Age Gate 18+)
-- **Nội dung cảnh báo:**  
-  *"Hà Nội về đêm chứa đựng những hoài niệm sâu lắng, những trầm tư và ký ức của thời gian. Trải nghiệm không gian mở này được tối ưu hóa cảm xúc cho người trưởng thành (trên 18 tuổi)."*
-- **Tương tác:** Người chơi chọn Ngày / Tháng / Năm sinh từ dropdown hoài niệm. Thuật toán kiểm tra chính xác mốc đủ 18 tuổi tính tới ngày hiện tại.
-- **Lưu trạng thái:** Khi xác nhận thành công, lưu `localStorage.setItem('hanoi_age_verified', 'true')` để không làm phiền người chơi trong các phiên truy cập sau.
-
-### 7.2. Đăng Nhập Tài Khoản
-- **Phương thức hỗ trợ:**
-  - Nút **"Đăng nhập bằng Google"** (1-click mô phỏng hoàn chỉnh cơ chế SSO, tự động sinh tên đại diện).
-  - Tùy chọn **"Đăng ký / Đăng nhập bằng Email & Mật khẩu"** phong cách bìa sổ hộ khẩu / thẻ căn cước vintage.
-  - Tùy chọn **"Dạo chơi ẩn danh (Khách mộng mơ)"** cho phép trải nghiệm ngay lập tức.
-- **Lưu trữ dữ liệu:** Thông tin tài khoản được lưu trữ an toàn trong `localStorage.getItem('hanoi_auth_user')`.
-
-### 7.3. Tạo Nhân Vật & Kiểm Tra Trùng Tên Thời Gian Thực (Debounce 500ms)
-- **Input Tên nhân vật:** Giới hạn từ `3 đến 16 ký tự`, không chứa ký tự đặc biệt nguy hiểm.
-- **Cơ chế Debounce 0.5 giây:** Khi người dùng dừng gõ phím đúng 500ms, hàm `window.GameAPI.checkCharacterNameAvailability(name)` sẽ được gọi.
-- **Danh sách tên đã đăng ký sẵn (Mock/Pre-reserved):** `["admin", "hanoian", "kemongmo", "thaprua", "longbien", "hoanghon", "phoco", "trangan", "nguoihanoi"]`.
-- **Trường hợp TRÙNG TÊN:**
-  - Viền ô nhập đổi sang màu đỏ bã trầu nhấp nháy (`border: 2px solid #e74c3c; animation: shake 0.4s ease-in-out`).
-  - Icon cảnh báo đỏ kèm dòng chữ: *"Tên này đã có lãng tử sử dụng!"*.
-  - Tự động hiển thị 3 gợi ý tên độc đáo: ví dụ `[Tên]_1990`, `LãngTử_[Tên]`, `[Tên]_PhốCổ`. Click vào gợi ý sẽ tự điền vào ô input.
-- **Trường hợp TÊN HỢP LỆ:**
-  - Viền ô đổi sang màu xanh ngọc bích vintage (`border: 2px solid #2ecc71`).
-  - Icon tick xanh kèm thông báo: *"Tên lãng tử rất tuyệt vời!"*.
-  - Nút **"Bước Vào Ký Ức"** được kích hoạt sáng lên từ màu xám sang màu vàng đồng hoàng gia (`#f39c12`), có hiệu ứng hào quang nhẹ.
-- **Tùy chọn trang phục:**
-  - *Áo Dài Trắng Thanh Lịch* (Áo dài học trò Hà Nội xưa).
-  - *Áo Phao Mùa Đông Phố Cũ* (Phong cách mùa đông rét buốt).
-  - *Áo Khoác Da Bomber Cổ Điển* (Lãng tử thập niên 90).
-  - *Sơ Mi Trắng Quần Tây Thống Nhất* (Trang phục thanh niên trí thức).
+1. **Bước 1: Age Gate (18+):** Kiểm tra ngày tháng năm sinh đạt >= 18 tuổi. Dưới 18 tuổi hiện thông báo lịch sự từ chối truy cập không gian đêm.
+2. **Bước 2: Đăng Nhập:** Hỗ trợ Google SSO 1-Click (Mock), Email/Mật khẩu vintage, Khách vãng lai.
+3. **Bước 3: Tạo Nhân Vật:**
+   - Ô nhập tên: 3 - 16 ký tự.
+   - **Debounce 500ms:** Gọi `window.GameAPI.checkCharacterNameAvailability(name)`.
+   - Nếu trùng: Viền đỏ rung lắc, hiện 3 gợi ý tên (`[Tên]_1990`, `LãngTử_[Tên]`, `[Tên]_PhốCổ`).
+   - Nếu hợp lệ: Viền xanh, bật sáng nút vàng đồng "Bước Vào Ký Ức".
+   - Cho phép chọn 1 trong 4 nhân vật 3D hoàn chỉnh.
 
 ---
 
-## 8. PHÂN CHIA NHIỆM VỤ CHO 3 MŨI NHỌN SẢN XUẤT
+## 8. ĐẶC TẢ KIẾN TRÚC MÔ HÌNH CON NGƯỜI 3D THẬT SỰ (TRUE 3D HUMANOID RIGGED MESH)
 
-| Mũi Nhọn | Phân Vùng File Đảm Trách | Nhiệm Vụ Cụ Thể | Tiêu Chuẩn Nghiệm Thu |
+> **CHỈ THỊ KHẨN CẤP TỪ SẾP TỔNG:**  
+> *"Tôi bảo là làm nhân vật 3D chứ không phải là làm hình ảnh biết di chuyển. Mô hình con người 3D! Cấm tiệt billboard 2D plane cho nhân vật người chơi. Toàn bộ cơ thể phải được dựng bằng hình học 3D thật sự, có khung xương phân cấp và khớp xoay sinh học tự nhiên."*
+
+```
+                     [3D Head Mesh + Mũ / Nón Lá 3D]
+                                    |
+                             [Neck Joint]
+                                    |
+      [L_Shoulder] ---------- [Chest Joint] ---------- [R_Shoulder]
+           |                        |                        |
+     [L_UpperArm]             [Torso Mesh]             [R_UpperArm]
+           |                   (Áo Dài 3D)                   |
+      [L_Elbow]                     |                   [R_Elbow]
+           |                  [Pelvis / Hips]                |
+     [L_LowerArm]            /               \         [R_LowerArm]
+           |           [L_Hip Joint]     [R_Hip Joint]       |
+        [L_Hand]             |                 |          [R_Hand]
+                       [L_UpperLeg]       [R_UpperLeg]
+                             |                 |
+                         [L_Knee]          [R_Knee]
+                             |                 |
+                       [L_LowerLeg]       [R_LowerLeg]
+                             |                 |
+                         [L_Foot]          [R_Foot]
+```
+
+### 8.1. Cấu trúc Khớp Phân Cấp (Hierarchical Skeletal Rig Tree)
+Mô hình nhân vật người chơi được xây dựng trong [src/core/CharacterFactory.js](file:///d:/H%C3%80%20N%E1%BB%98I%20CH%E1%BA%A0M%20V%C3%80O%20K%C3%9D%20%E1%BB%A8C%20,HANOI%20OPEN%20REVERIE/src/core/CharacterFactory.js) theo cây phân cấp Three.js Groups chuẩn sau:
+
+- `rootGroup` (Vị trí gốc `(0, 0, 0)`)
+  - `shadowMesh` (Bóng tiếp xúc mặt đất chân thực dạng đĩa tròn mờ)
+  - `pelvisGroup` (Khung chậu / Hips, cao độ chuẩn `y = 0.95m`)
+    - `torsoGroup` (Thân mình, cao độ tương đối `y = 0.0m` so với Pelvis)
+      - `torsoMesh` (Hình học thân 3D bo tròn mềm mại)
+      - `clothingGroup` (Tà áo dài 3D trước/sau uốn lượn, hoặc áo bà ba, hoặc áo vest)
+        - `frontFlapGroup` (Khớp tà áo trước xoay tự nhiên)
+        - `backFlapGroup` (Khớp tà áo sau bay theo gió)
+      - `chestGroup` (Lồng ngực nhấp nhô theo nhịp thở)
+        - `neckGroup` (Khớp cổ)
+          - `headGroup` (Đầu người 3D, mắt, mũi, miệng tỉ lệ vàng)
+            - `accessoryHeadGroup` (Nón lá 3D, mũ phớt 3D, hoặc tóc kiểu Hà Nội)
+      - `leftShoulderGroup` (Khớp vai trái tại `x = -0.22m, y = 0.38m`)
+        - `leftUpperArmGroup` (Cánh tay trên - bắp tay)
+          - `leftElbowGroup` (Khớp khuỷu tay tại `y = -0.28m`)
+            - `leftLowerArmGroup` (Cẳng tay)
+              - `leftHandGroup` (Bàn tay 3D)
+      - `rightShoulderGroup` (Khớp vai phải tại `x = 0.22m, y = 0.38m`)
+        - `rightUpperArmGroup` (Cánh tay trên)
+          - `rightElbowGroup` (Khớp khuỷu tay tại `y = -0.28m`)
+            - `rightLowerArmGroup` (Cẳng tay)
+              - `rightHandGroup` (Bàn tay 3D)
+    - `leftHipGroup` (Khớp háng trái tại `x = -0.12m, y = -0.05m`)
+      - `leftUpperLegGroup` (Đùi 3D)
+        - `leftKneeGroup` (Khớp đầu gối gập tự nhiên tại `y = -0.42m`)
+          - `leftLowerLegGroup` (Bắp chân / Cẳng chân 3D)
+            - `leftFootGroup` (Bàn chân / Giày dép 3D tại `y = -0.40m`)
+    - `rightHipGroup` (Khớp háng phải tại `x = 0.12m, y = -0.05m`)
+      - `rightUpperLegGroup` (Đùi 3D)
+        - `rightKneeGroup` (Khớp đầu gối gập tự nhiên tại `y = -0.42m`)
+          - `rightLowerLegGroup` (Bắp chân / Cẳng chân 3D)
+            - `rightFootGroup` (Bàn chân / Giày dép 3D tại `y = -0.40m`)
+
+### 8.2. Hệ Thống Hình Học 3D (Organic 3D Geometries)
+Tuyệt đối không dùng hình hộp vuông sắc cạnh làm cơ thể người. Áp dụng kết hợp các hình học 3D hữu cơ:
+- **Đầu & Khuôn mặt:** `SphereGeometry(0.13, 16, 16)` bo tròn mềm mại với chất liệu da Á Đông (`color: 0xf5cfb3, roughness: 0.55`).
+- **Thân & Lồng ngực:** `CylinderGeometry(0.18, 0.22, 0.65, 16)` bo thon eo tự nhiên.
+- **Tứ chi (Bắp tay, Cẳng tay, Đùi, Cẳng chân):** `CapsuleGeometry(radius, length, 8, 16)` hoặc `CylinderGeometry` bo đỉnh, tạo đường cong cơ bắp sinh học.
+- **Bàn chân / Giày:** `BoxGeometry` vát mũi hoặc `CapsuleGeometry` nằm ngang.
+
+---
+
+### 8.3. Chi Tiết Thiết Kế 4 Nhân Vật Người Chơi 3D Hoàn Chỉnh
+
+#### 1. `char_nu_sinh_ao_dai`: Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá
+- **Hình tượng:** Nữ sinh Hà thành thanh lịch, nét đẹp thuần khiết biểu tượng nghìn năm Thăng Long.
+- **Thân áo dài 3D:** Chất liệu lụa trắng tơ tằm (`color: 0xfcfdfd, roughness: 0.35, sheen: 0.8`). Thân trên ôm sát eo thon thả.
+- **Tà áo dài 3D trước & sau (3D Flowing Flaps):**
+  - Dựng bằng `PlaneGeometry(0.38, 0.88, 4, 8)` uốn cong đa phân đoạn (Multi-segment) hoặc chuỗi dải lụa mỏng bo viền.
+  - Tà trước thả dài qua gối (`y = -0.15m` đến `-0.90m`).
+  - Khớp xoay `frontFlapGroup` và `backFlapGroup` đung đưa mềm mại theo bước chân và luồng gió hồ Gươm.
+- **Quần lụa trắng 3D:** Ống suông mềm mại (`color: 0xf4f4f6`), rủ chấm gót guốc mộc.
+- **Nón lá 3D hoàn chỉnh:**
+  - Chóp nón: `ConeGeometry(0.34, 0.22, 24)` đan nan tre vàng óng (`color: 0xeedbb2, roughness: 0.75`).
+  - Vành nón rộng: Vành nan tre mảnh chạy quanh chu vi tạo nét e ấp duyên dáng.
+  - Quai nón: Dải lụa hồng cánh sen buông nhẹ dưới cằm.
+
+#### 2. `char_co_gai_ao_ba_ba`: Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen Khăn Rằn
+- **Hình tượng:** Cô gái phố cổ mộc mạc, hiếu khách, gánh gánh hoa sớm qua Ô Quan Chưởng.
+- **Áo bà ba 3D:** Màu hồng cánh sen ngọt ngào (`color: 0xdf648a, roughness: 0.65`), cổ tròn xẻ ngực truyền thống, vạt áo xẻ hai bên hông đặc trưng.
+- **Khăn rằn 3D:** Khăn rằn caro đen trắng dệt thủ công vắt chéo qua vai (`TorusGeometry` uốn cong hoặc `TubeGeometry` ôm quanh cổ và rủ xuống trước ngực).
+- **Quần lụa đen 3D:** Quần lụa đen tuyền (`color: 0x1a1a1a, roughness: 0.55`) ống rộng thoải mái bước đi.
+- **Nón lá quai thao / Nón lá đeo sau lưng:** Nón lá tre máng sau lưng thanh thoát.
+
+#### 3. `char_nam_tri_thuc_suit`: Trí Thức Hiện Đại • Âu Phục Suit Navy Lịch Lãm
+- **Hình tượng:** Kiến trúc sư trẻ lịch lãm, hào hoa, nghiên cứu kết cấu dầm thép Eiffel cầu Long Biên.
+- **Bộ Suit Jacket 3D:** Màu xanh navy hoàng gia (`color: 0x1e2e4a, roughness: 0.58`), ve áo chữ V (Notch Lapel) dựng nổi 3D ôm sát cổ.
+- **Áo sơ mi & Cà vạt 3D:** Sơ mi trắng cắm thùng, cà vạt màu đỏ mận hoặc xanh thẫm vát nhọn trước ngực.
+- **Quần tây âu 3D:** Quần âu xếp ly thẳng thớm cùng tông màu navy.
+- **Giày tây da bóng 3D:** Giày Oxford đen bóng loáng (`roughness: 0.25, metalness: 0.2`).
+
+#### 4. `char_nam_ao_dai_gam`: Quý Nam Hà Thành • Áo Dài Gấm Xanh Ngũ Thân
+- **Hình tượng:** Nghệ nhân di sản, quý ông Tràng An mực thước am tường lịch sử Tháp Rùa và Đền Ngọc Sơn.
+- **Áo dài ngũ thân 3D:** Chất liệu gấm dệt hoa văn cổ màu xanh lam sapphire (`color: 0x1b3b6f, roughness: 0.42, metalness: 0.15`), khuy cài ngọc bích bên ngực phải.
+- **Tà áo nam 3D rộng rãi:** Vạt áo buông thẳng dài qua đầu gối, uy nghiêm đĩnh đạc, tà áo khẽ lay động khi dạo bước.
+- **Quần âu trắng 3D:** Ống quần đứng dáng màu trắng ngà.
+- **Khăn đóng / Khăn xếp 3D:** Khăn xếp truyền thống quấn nhiều nếp màu đen hoặc xanh thẫm đội đầu trang nghiêm.
+
+---
+
+### 8.4. Xác Nhận Bảo Toàn Tuyệt Đối 100% NPC Cũ Trong `WorldManager.js`
+Theo đúng mệnh lệnh của Sếp Tổng:
+- **GIỮ NGUYÊN 100%** toàn bộ mô hình và logic NPC sẵn có trong `src/core/WorldManager.js`:
+  1. `_createBanhMiVendorNPC()`: Bác Hùng bán bánh mì dạo xe đạp Thống Nhất.
+  2. `_createFlowerVendorNPC()`: Chị gánh hàng hoa sen hồng và cúc vàng.
+  3. `_createTeaStallVendorNPC()`: Bà cụ quán nước chè xanh giành tre vỉa hè.
+  4. `_createChessPlayersNPC()`: Hai cụ già đánh cờ tướng sân khu tập thể.
+  5. `_createCitizenNPC()`: Bác dân phố cổ dạo bộ mũ phớt.
+  6. `_createCoffeePatronNPC()`: Thanh niên uống cà phê ngắm tàu chạy.
+  7. Toàn bộ tương tác trong nhà (Thầy lang bốc thuốc Lãn Ông, Thợ may Lương Văn Can, Quán phở 1954, Quán bia hơi, Tiệm sửa đồng hồ Liên Xô, Tiệm cắt tóc bình dân).
+  8. Hệ thống đàn cá chép vàng bơi lội `lakeFish` trong lòng Hồ Gươm.
+- **CHỈ THAY THẾ DUY NHẤT:** Mô hình nhân vật người chơi (`PlayerController.js` và `CharacterFactory.js`) từ dạng 2D Billboard/Plane sang Mô hình người 3D thật sự có Rig phân cấp và Skeletal Animation System.
+
+---
+
+## 9. ĐẶC TẢ MODULE HOẠT HỌA 3D `src/core/animations.js` (CHO ANIMATION MASTER)
+
+Hệ thống hoạt họa chuyển động con người được đóng gói độc lập trong [src/core/animations.js](file:///d:/H%C3%80%20N%E1%BB%98I%20CH%E1%BA%A0M%20V%C3%80O%20K%C3%9D%20%E1%BB%A8C%20,HANOI%20OPEN%20REVERIE/src/core/animations.js), phụ trách toàn bộ chuyển động của 4 nhân vật 3D ở tốc độ khung hình 60 FPS mượt mà.
+
+### 9.1. Lớp Điều Khiển Hoạt Họa: `HumanoidAnimator`
+`HumanoidAnimator` quản lý các trạng thái (`idle`, `walk`, `run`, `jump`) và thực hiện blending mượt mà giữa các trạng thái thông qua hàm `update(delta, moveSpeed, isGrounded)`.
+
+```javascript
+export class HumanoidAnimator {
+  /**
+   * Khởi tạo Animator gắn kết với mô hình nhân vật 3D
+   * @param {THREE.Group} characterGroup - Root Group của nhân vật chứa đầy đủ cây xương phân cấp
+   * @param {Object} options - Cấu hình biên độ { walkSpeedScale, armSwingScale, clothFlapScale }
+   */
+  constructor(characterGroup, options = {}) {
+    this.char = characterGroup;
+    this.rig = characterGroup.rig; // Tham chiếu đến các Joints: pelvis, torso, chest, shoulders, elbows, hips, knees, flaps
+    this.animTime = 0;
+    this.currentWeight = { idle: 1.0, walk: 0.0, run: 0.0 };
+    this.baseTorsoY = 0.95;
+  }
+
+  /**
+   * Cập nhật hoạt ảnh 60 FPS từng frame (Zero-Allocation Loop)
+   * @param {number} delta - Thời gian giữa 2 frames (seconds)
+   * @param {number} speed - Vận tốc di chuyển hiện tại (0: đứng yên, >0: đi bộ, >6: chạy nhanh)
+   * @param {boolean} isGrounded - Đang tiếp đất hay đang nhảy trên không
+   */
+  update(delta, speed, isGrounded) {
+    // 1. Tính toán trọng số chuyển đổi trạng thái (Cross-Fade Weights)
+    // 2. Cập nhật góc quay xương Walk Cycle / Run Cycle / Idle
+    // 3. Uốn lượn tà áo dài 3D và phụ kiện
+  }
+
+  /**
+   * Kích hoạt hiệu ứng vung tay chào hoặc tương tác
+   */
+  playGesture(gestureName) {}
+
+  /**
+   * Reset tư thế về trạng thái cân bằng chuẩn
+   */
+  resetPose() {}
+}
+```
+
+### 9.2. Chi Tiết Hoạt Ảnh 3 Chu Kỳ Cốt Lõi
+
+#### 1. Chu Kỳ Đi Bộ (Walk Cycle - 60 FPS)
+- **Tần số bước:** `frequency = 6.2 rad/s` (tỉ lệ thuận với tốc độ di chuyển).
+- **Vung chân nhịp nhàng:**
+  - Chân trái và chân phải lệch pha đúng `Math.PI` (180 độ).
+  - Khớp háng (`leftHip`, `rightHip`): Xoay góc `pitch` từ `-0.45` đến `+0.45 rad`.
+  - Khớp đầu gối (`leftKnee`, `rightKnee`): Khi chân lăng về sau gập tự nhiên một góc `0.55 rad * Math.max(0, -Math.sin(phase))`, khi chạm đất duỗi thẳng êm ái.
+- **Vung tay ngược pha (Counter-Balancing Arm Swing):**
+  - Tay trái vung cùng pha với chân phải, tay phải cùng pha với chân trái giúp cân bằng mô-men xoắn cơ thể người.
+  - Khớp vai (`leftShoulder`, `rightShoulder`): Xoay biên độ `-0.35` đến `+0.35 rad`.
+  - Khớp khuỷu tay (`leftElbow`, `rightElbow`): Khẽ gập tự nhiên một góc `0.20 rad` khi vung ra trước.
+- **Nhún thân sinh học (Pelvis Bobbing & Torso Sway):**
+  - Trọng tâm hạ thấp khi hai chân dạng rộng nhất và nâng cao khi một chân chống thẳng: `pelvis.position.y = baseTorsoY + Math.abs(Math.sin(walkTime * 2.0)) * 0.035 - 0.02`.
+  - Lắc hông nhẹ theo trục Z: `pelvis.rotation.z = Math.sin(walkTime) * 0.03`.
+
+#### 2. Chu Kỳ Chạy Nhanh (Run Cycle - 60 FPS)
+- **Tần số sải bước:** `frequency = 9.5 rad/s`.
+- **Biên độ sải bước rộng:**
+  - Khớp háng xoay từ `-0.85` đến `+0.85 rad`.
+  - Đầu gối gập mạnh ra sau tới `1.15 rad` khi chân nhấc khỏi mặt đất.
+- **Cánh tay co góc nhọn:**
+  - Khuỷu tay gập cố định góc `0.85 rad` (~50 độ), vai vung mạnh mẽ biên độ `0.65 rad`.
+- **Độ nhún & nghiêng mình (Forward Lean):**
+  - Thân mình nghiêng về phía trước theo hướng chạy: `torso.rotation.x = 0.18 rad`.
+  - Độ nhún trọng tâm bật nảy mạnh hơn: `Math.abs(Math.sin(runTime * 2.0)) * 0.07`.
+
+#### 3. Trạng Thái Thở Khi Đứng Yên & Chuyển Trọng Tâm (Idle Breathing & Weight Shift)
+- **Lồng ngực phập phồng (Breathing Cycle):**
+  - Chu kỳ thở chậm rãi: `breathTime = time * 2.2`.
+  - `chestGroup.scale.set(1 + Math.sin(breathTime) * 0.025, 1 + Math.sin(breathTime) * 0.03, 1 + Math.sin(breathTime) * 0.025)`.
+  - Vai khẽ nhấp nhô theo nhịp lấy hơi: `pelvis.position.y = baseTorsoY + Math.sin(breathTime) * 0.008`.
+- **Chuyển trọng tâm (Weight Shift):**
+  - Sau mỗi 4-6 giây, nhân vật khẽ dồn trọng tâm sang một bên chân (`pelvis.rotation.z` lệch `0.02 rad`, đầu khẽ nghiêng e ấp).
+- **Tà áo dài & Nón lá bay theo gió (Cloth & Accessory Wind Flapping):**
+  - Gió hồ Gươm thổi nhẹ: Tà áo trước và sau uốn lượn hình sin với độ trễ:  
+    `frontFlapGroup.rotation.x = Math.sin(time * 3.0) * 0.08 + Math.cos(time * 1.5) * 0.04`.  
+    `backFlapGroup.rotation.x = -Math.sin(time * 3.0 + 0.5) * 0.10`.
+  - Nón lá khẽ nhấp nhô nghiêng góc theo gió: `nonLaGroup.rotation.z = Math.sin(time * 1.8) * 0.03`.
+
+---
+
+## 10. PHÂN CHIA NHIỆM VỤ CHO 4 MŨI NHỌN SẢN XUẤT
+
+| Mũi Nhọn | Phân Vùng File Đảm Trách | Nhiệm Vụ Kỹ Thuật Trọng Tâm | Tiêu Chuẩn Nghiệm Thu |
 | :--- | :--- | :--- | :--- |
-| **Coder Chính**<br>(`coder-chinh`) | `src/core/*`<br>`src/bridge/*` | 1. Xây dựng Game Loop Three.js mượt 60 FPS.<br>2. Xây dựng 4 phân khu thế giới mở với ranh giới tọa độ rõ ràng.<br>3. Triển khai Camera Kép (TPS Spring-Arm chống xuyên tường & FPS Viewfinder).<br>4. Lập trình thuật toán căn góc Perspective Alignment & Shutter Canvas Capture.<br>5. Cung cấp đầy đủ các API trong `window.GameAPI` và kết nối sự kiện `window.GameEventBus`. | Đảm bảo chuyển động camera không rung lắc, FPS không lộ đầu model, căn góc chính xác, API trả về đúng schema. |
-| **UI Polish**<br>(`ui-polish`) | `src/ui/*`<br>`styles/*`<br>`index.html` | 1. Thiết kế giao diện Onboarding (Age Gate 18+, Login Modal, Character Creator).<br>2. Viết logic Debounce 500ms kiểm tra trùng tên, rung lắc đỏ & gợi ý tên.<br>3. Thiết kế Viewfinder HUD máy ảnh film với thước đo, lưới bố cục tỷ lệ vàng.<br>4. Thiết kế Album Ký Ức (Scrapbook) phong cách sổ tay cổ dán tem.<br>5. Bắn và đón đúng các sự kiện theo bảng hợp đồng `GameEventBus`. | Giao diện đậm phong cách hoài niệm, không vỡ layout trên mọi kích thước màn hình, thao tác mượt mà. |
-| **Họa Sĩ**<br>(`nano-banana`) | `assets/textures/*`<br>`assets/ui/*`<br>`assets/photos/*`<br>`assets/audio/*` | 1. Tạo đầy đủ textures 3D (nước Hồ Gươm, rêu Tháp Rùa, tường vôi vàng, thép Long Biên).<br>2. Tạo UI assets (Khung ngắm máy ảnh 35mm, nút shutter, tem bưu chính, vé tàu).<br>3. Tạo bộ 4 ảnh film ký ức mẫu độ phân giải tiêu chuẩn.<br>4. Cung cấp âm thanh màn trập máy ảnh, tiếng còi tàu, ambient phố Hà Nội. | Ảnh đúng định dạng, không hỏng đường dẫn (không bị 404), màu sắc đậm chất thơ và chất cổ kính Hà Nội. |
+| **Coder Chính**<br>(`coder-chinh`) | `src/core/*`<br>(trừ animations.js)<br>`src/bridge/*` | 1. Dựng 4 mô hình người 3D thật sự có cây xương phân cấp trong `CharacterFactory.js`.<br>2. Tích hợp `HumanoidAnimator` vào `PlayerController.js` điều khiển di chuyển.<br>3. Giữ nguyên 100% NPC cũ trong `WorldManager.js`.<br>4. Quản lý Game Loop, Camera Kép, Va chạm AABB, Căn góc quang học và Canvas Shutter Capture.<br>5. Cung cấp API và EventBus bất biến. | Nhân vật là khối 3D thật sự, chân bước chạm đất không trượt trơn, 60 FPS ổn định, zero 404, bảo toàn 100% NPC cũ. |
+| **Animation Master**<br>(`animation-master`) | `src/core/animations.js` | 1. Lập trình class `HumanoidAnimator` chuẩn 60 FPS.<br>2. Xây dựng Walk Cycle (vung tay chân ngược pha, gập gối, nhún thân).<br>3. Xây dựng Run Cycle (sải rộng, khuỷu tay gập, nghiêng thân).<br>4. Xây dựng Idle Breathing & Cloth Wind Flap (thở phập phồng, tà áo và nón lá lay động).<br>5. Viết thuật toán Easing chuyển động mượt mà không bị giật cục. | Chuyển động sinh học tự nhiên, không giật khung hình, tà áo dài 3D uốn lượn thướt tha, hòa quyện với di chuyển WASD. |
+| **UI Polish**<br>(`ui-polish`) | `src/ui/*`<br>`styles/*`<br>`index.html` | 1. Thiết kế Onboarding 3 bước (Age Gate 18+, Login, Character Creator).<br>2. Viết logic Debounce 500ms check tên kèm rung lắc đỏ và 3 tên gợi ý.<br>3. Cho phép người chơi xem trước và chọn 4 nhân vật 3D mới.<br>4. Xây dựng Viewfinder HUD máy ảnh film, Scrapbook Album dán tem, Modal đối thoại NPC.<br>5. Bắt và bắn đúng chuẩn 100% các sự kiện EventBus. | Giao diện hoài niệm sang trọng, responsive mọi độ phân giải, không lỗi console, ăn khớp hoàn toàn với Core. |
+| **Họa Sĩ**<br>(`nano-banana`) | `assets/textures/*`<br>`assets/ui/*`<br>`assets/photos/*`<br>`assets/audio/*` | 1. Cung cấp đầy đủ Textures PBR (nước Hồ Gươm, rêu Tháp Rùa, tường vôi vàng, thép cầu, giàn hoa giấy).<br>2. Cung cấp UI Assets (khung ngắm, nút shutter kim loại, tem bưu chính Hà Nội, vé tàu).<br>3. Cung cấp 4 ảnh film ký ức mẫu.<br>4. Cung cấp bộ âm thanh ambient hồ Gươm, còi tàu đường ray, tiếng rao đêm, tiếng màn trập cơ học. | Tất cả tài nguyên tồn tại thực tế trên đĩa cứng, đúng kích thước, không một đường link nào bị lỗi 404. |
 
 ---
 
-## 9. DANH SÁCH TÀI NGUYÊN (ASSET REQUIREMENTS)
+## 11. DANH SÁCH TÀI NGUYÊN (ASSET REQUIREMENTS)
 
-### 9.1. Textures Môi Trường & Nội Thất 3D (`assets/textures/`)
+### 11.1. Textures Môi Trường & Nhân Vật 3D (`assets/textures/`)
 1. `lake_water_norm.jpg`: Normal map mặt nước Hồ Gươm gợn sóng lăn tăn (512x512 Seamless).
 2. `turtle_tower_moss.jpg`: Texture đá phủ rêu xanh cổ kính của Tháp Rùa và Đền Ngọc Sơn (1024x1024).
 3. `old_wall_yellow.jpg`: Vôi quét tường màu vàng hoàng cúc bong tróc loang lổ (1024x1024).
 4. `rusty_iron_beam.jpg`: Bề mặt dầm thép rỉ sét màu nâu cánh gián cầu Long Biên (1024x1024).
 5. `hanoi_brick_ground.jpg`: Đá xanh lát vỉa hè và gạch chỉ vỉa hè phố cổ ẩm ướt (1024x1024).
 6. `vintage_posters.jpg`: Bản ghép các áp phích cổ, biểu ngữ văn hóa thập niên 80-90 (1024x1024).
-7. `wood_counter_varnish.jpg`: Mặt gỗ lim đánh vec-ni cánh gián bóng loáng viền đồng quầy bar cà phê (1024x1024).
-8. `bat_trang_ceramic.jpg`: Men rạn gốm Bát Tràng cổ kính cắm hoa sen và bình trà (512x512).
-9. `indochine_rug.jpg`: Họa tiết dệt hoa văn hình học thổ cẩm thảm trải sàn Đông Dương (1024x1024).
-10. `rang_dong_thermos.jpg`: Vỏ nhôm in hoa cúc phích nước Rạng Đông và men sứ Hải Phòng (512x512).
-11. `soviet_poster.jpg`: Áp phích cổ động mậu dịch thời bao cấp và bảng tem phiếu (1024x1024).
-12. `bridge_ramp_stone.jpg`: Bề mặt bê tông đá dăm khía rãnh chống trượt dốc dẫn cầu Long Biên (1024x1024).
+7. `wood_counter_varnish.jpg`: Mặt gỗ lim đánh vec-ni cánh gián bóng loáng viền đồng (1024x1024).
+8. `bridge_ramp_stone.jpg`: Bề mặt bê tông đá dăm khía rãnh chống trượt dốc dẫn cầu Long Biên (1024x1024).
+9. `bougainvillea_blossom.png`: Giàn hoa giấy đỏ hồng rực rỡ buông rủ (PNG trong suốt).
 
-### 9.2. UI Elements & Biểu Tượng (`assets/ui/`)
-1. `viewfinder_frame.png`: Khung viền quang học máy ảnh cơ 35mm kèm vạch đo sáng và thước tiêu cự (PNG trong suốt 1920x1080).
-2. `shutter_button.png`: Nút chụp máy ảnh kim loại vân tròn cổ điển (PNG tròn 128x128).
-3. `stamp_hanoi.png`: Con tem bưu chính xưa in hình chùa Một Cột và Tháp Rùa mép răng cưa (PNG 256x256).
-4. `logo_reverie.png`: Logo chữ thư pháp hoài niệm "Hà Nội: Chạm Vào Ký Ức" viền vàng đồng (PNG 512x256).
-5. `train_ticket_retro.png`: Tấm vé tàu hỏa giấy nâu mộc mạc Hà Nội - Hải Phòng xưa (PNG 400x200).
+### 11.2. UI Elements & Biểu Tượng (`assets/ui/`)
+1. `viewfinder_frame.png`: Khung viền quang học máy ảnh cơ 35mm kèm vạch đo sáng và thước tiêu cự.
+2. `shutter_button.png`: Nút chụp máy ảnh kim loại vân tròn cổ điển.
+3. `stamp_hanoi.png`: Con tem bưu chính xưa in hình chùa Một Cột và Tháp Rùa mép răng cưa.
+4. `logo_reverie.png`: Logo chữ thư pháp hoài niệm "Hà Nội: Chạm Vào Ký Ức" viền vàng đồng.
+5. `train_ticket_retro.png`: Tấm vé tàu hỏa giấy nâu mộc mạc Hà Nội - Hải Phòng xưa.
 
-### 9.3. Bộ Ký Ức & Ảnh Film Hoàn Chỉnh (`assets/photos/`)
-1. `memory_turtle_mist.jpg`: Ảnh film Tháp Rùa huyền ảo trong màn sương chớm đông, rặng liễu rủ mờ xa.
-2. `memory_train_street.jpg`: Ảnh chụp đoàn tàu hỏa chạy lướt sát những mái ngói rêu phong phố Phùng Hưng.
-3. `memory_long_bien.jpg`: Ảnh dầm thép cầu Long Biên nhuộm đỏ trong ánh hoàng hôn chiều muộn sông Hồng.
-4. `memory_apartment.jpg`: Ảnh ban công khu tập thể cũ với lồng chuồng cọp và giàn hoa giấy rực cháy.
+### 11.3. Bộ Ký Ức & Ảnh Film Hoàn Chỉnh (`assets/photos/`)
+1. `memory_turtle_mist.jpg`: Ảnh film Tháp Rùa huyền ảo trong màn sương chớm đông.
+2. `memory_train_street.jpg`: Đoàn tàu hỏa chạy lướt sát những mái ngói rêu phong phố Phùng Hưng.
+3. `memory_long_bien.jpg`: Dầm thép cầu Long Biên nhuộm đỏ trong ánh hoàng hôn sông Hồng.
+4. `memory_apartment.jpg`: Ban công khu tập thể cũ với lồng chuồng cọp và giàn hoa giấy rực cháy.
 
-### 9.4. Âm Thanh Môi Trường & Hiệu Ứng (`assets/audio/`)
+### 11.4. Âm Thanh Môi Trường & Hiệu Ứng (`assets/audio/`)
 1. `ambient_lake.mp3`: Tiếng sóng hồ vỗ bờ đá nhẹ, gió rặng liễu, tiếng chuông chùa xa xăm.
 2. `ambient_train.mp3`: Tiếng còi tàu hơi nước vang vọng trong ngõ hẹp, tiếng rít kim loại đường ray.
-3. `ambient_street.mp3`: Tiếng ve râm ran trưa hè, tiếng rao hàng rong: "Ai xôi lạc bánh khúc đê...".
-4. `shutter_click.mp3`: Tiếng chớp màn trập cơ học kim loại đanh thép của máy ảnh cơ.
+3. `ambient_street.mp3`: Tiếng ve râm ran trưa hè, tiếng rao hàng rong bánh khúc/xôi lạc.
+4. `shutter_click.mp3`: Tiếng chớp màn trập cơ học kim loại đanh thép của máy ảnh cơ Leica M3.
 5. `photo_develop.mp3`: Tiếng lật tráng giấy ảnh và tiếng nước chảy trong phòng tối tráng phim.
-6. `gramophone_melody.mp3`: Tiếng máy hát loa kèn phát nhạc tiền chiến Hà Nội rè rè ấm áp trong quán cà phê.
-7. `clock_pendulum.mp3`: Tiếng tích tắc gõ nhịp của đồng hồ quả lắc gỗ sồi.
-8. `bicycle_bell.mp3`: Tiếng chuông "kính coong" vang giòn của chiếc xe đạp Thống Nhất.
 
 ---
 
-## 10. TIÊU CHUẨN KIỂM DUYỆT CHẤT LƯỢNG (QA CHECKLIST)
+## 12. TIÊU CHUẨN KIỂM DUYỆT CHẤT LƯỢNG (QA CHECKLIST)
 
 Trước khi nghiệm thu dự án đạt mức độ "PASSED 100%", subagent `kiem-duyet-qa` phải kiểm tra lần lượt các tiêu chí:
 
-- [ ] **Kiểm tra phân vùng file:** Không có file nào của `coder-chinh` bị ghi đè bởi `ui-polish` và ngược lại.
-- [ ] **Khâu kiểm duyệt API:** Mọi sự kiện phát ra từ `GameEventBus` và mọi hàm trong `GameAPI` đều trùng khớp 100% từng chữ hoa chữ thường với mục 3 của tài liệu này.
+- [ ] **Kiểm tra phân vùng file:** Không có file nào của `coder-chinh` bị ghi đè bởi `ui-polish` hay `animation-master` và ngược lại.
+- [ ] **Khâu kiểm duyệt API & Events:** Mọi sự kiện phát ra từ `GameEventBus` và mọi hàm trong `GameAPI` đều trùng khớp 100% từng chữ hoa chữ thường với mục 3 của tài liệu này.
+- [ ] **Khâu kiểm duyệt Mô hình Người 3D Thật Sự (True 3D Humanoid):**
+  - Tuyệt đối KHÔNG còn tấm billboard 2D Plane cho nhân vật người chơi.
+  - Mô hình có đầy đủ cấu trúc khung xương phân cấp: Pelvis -> Torso -> Chest -> Neck -> Head; Shoulders -> Upper Arms -> Elbows -> Lower Arms -> Hands; Hips -> Upper Legs -> Knees -> Lower Legs -> Feet.
+  - 4 nhân vật có đủ phụ kiện hình học 3D (Áo dài trắng 3D uốn lượn, Nón lá 3D, Áo bà ba 3D hồng sen, Khăn rằn 3D, Suit navy 3D có ve áo, Áo dài gấm xanh ngũ thân 3D).
+- [ ] **Chốt kiểm duyệt Hoạt Họa 60 FPS (`animations.js`):**
+  - Walk Cycle: vung tay chân ngược pha, đầu gối gập tự nhiên, thân nhún nhịp nhàng theo từng bước chân.
+  - Run Cycle: sải chân biên độ lớn, khuỷu tay gập nhọn, thân hơi đổ về trước.
+  - Idle: lồng ngực phập phồng hít thở, trọng tâm chuyển nhẹ, tà áo và nón lá lay động trước gió hồ Gươm.
+  - Hoạt ảnh chuyển trạng thái mượt mà (Blending/Cross-fade), không bị giật cục hay đơ cứng.
+- [ ] **Bảo toàn 100% NPC cũ trong `WorldManager.js`:**
+  - Bác bán bánh mì dạo xe đạp Thống Nhất, Chị gánh hoa, Bà cụ quán trà đá, Hai cụ đánh cờ, cùng toàn bộ các điểm đối thoại nội thất vẫn hoạt động nguyên vẹn 100%.
 - [ ] **Kiểm tra không gian nội thất tường mỏng (Thin-Wall Interior):**
-  - Tường bao các công trình đạt độ dày chuẩn 0.35m, không dùng khối đặc 4.5m bịt kín.
-  - Lòng nhà đạt diện tích thông thủy thực tế 11.3m x 15.3m, cao 4.2m rộng thênh thang.
-  - Đầy đủ chi tiết nội thất Tiệm Cà Phê Trứng & Trà Sen (quầy bar gỗ viền đồng, 6 phin nhôm nhỏ giọt, kệ hũ trà, máy hát loa kèn gramophone, đồng hồ quả lắc, sofa, thảm Đông Dương, gốm sen, tủ sách, gác lửng, đèn rọi 2700K).
-  - Đầy đủ chi tiết nội thất Cửa Hàng Bách Hóa Mậu Dịch (kệ hàng ca men, phích Rạng Đông, bánh quy Hải Châu, vải hoa, cân đĩa đồng, đài Liên Xô, quạt tai voi, xe đạp Thống Nhất, tranh cổ động).
-- [ ] **Kiểm tra dốc & bậc lên Cầu Long Biên (Bridge Ramp & Stairs):**
-  - Cầu Long Biên ở cao độ y = 4.2m có dốc dẫn thoải dài 25m từ x = 10 (y = 0.1m) lên x = 35 (y = 4.2m) với độ dốc ~16% bước êm ái.
-  - Có cầu thang bộ gạch đá từ vỉa hè lên dầm cầu, lan can dầm thép Eiffel bảo vệ an toàn, không bị kẹt hay rơi xuống vực.
-- [ ] **Kiểm tra dốc dẫn Cầu Thê Húc & Đắc Nguyệt Lâu:**
-  - Hai đầu cầu nối bờ hồ và Đảo Ngọc Sơn có dốc thoải mượt mà, người chơi bước chân qua cầu và đi qua cổng Đắc Nguyệt Lâu không bị vấp ngấn.
+  - Tường bao các công trình đạt độ dày chuẩn 0.35m, lòng nhà thông thủy 11.3m x 15.3m x 4.2m thoáng đãng, người chơi vào được bình thường.
+  - Tiệm Cà Phê Trứng & Quán Bách Hóa Mậu Dịch đầy đủ đồ đạc theo thiết kế.
+- [ ] **Kiểm tra dốc dẫn Cầu Long Biên & Cầu Thê Húc:**
+  - Cầu Long Biên (y = 4.2m) có dốc thoải dài 25m từ x = 10 lên x = 35 và cầu thang bộ gạch đá 24 bậc tiếp cận êm ái.
+  - Cầu Thê Húc có dốc êm nối bờ hồ và cổng Đắc Nguyệt Lâu, không vấp ngấn.
 - [ ] **Kiểm tra tài nguyên (Zero 404):** Toàn bộ file ảnh, âm thanh trong thư mục `assets/` đều tồn tại thực tế và có kích thước hợp lệ trên đĩa cứng.
-- [ ] **Kiểm tra Onboarding:**
-  - Nhập tuổi dưới 18 bị chặn kèm thông báo lịch sự.
-  - Nhập tên trùng báo đỏ, rung lắc và hiện gợi ý; nhập tên hợp lệ sáng nút vàng đồng.
-- [ ] **Kiểm tra Camera Kép:**
-  - Chuyển đổi TPS sang FPS mượt mà trong 0.3s.
-  - Ở FPS: ẩn đầu model nhân vật, hiện Viewfinder HUD.
-- [ ] **Kiểm tra Giải đố & Chụp ảnh:**
-  - Căn đúng góc nhìn xuất hiện chỉ số điểm `isAligned = true`.
-  - Bấm chụp màn hình chớp sáng, âm thanh màn trập phát ra, ảnh được lưu vào Album LocalStorage.
+- [ ] **Kiểm tra Onboarding & Debounce:**
+  - Tuổi < 18 bị chặn.
+  - Tên trùng rung lắc đỏ & hiện 3 gợi ý; tên hợp lệ sáng nút vàng đồng.
+- [ ] **Kiểm tra Camera Kép:** Chuyển đổi TPS sang FPS mượt mà trong 0.3s. Ở FPS ẩn đầu/mũ nhân vật, hiện Viewfinder HUD.
 - [ ] **Hiệu năng:** Duy trì 60 FPS ổn định trên màn hình Full HD, không rò rỉ bộ nhớ (Memory Leak) khi dạo chơi qua 4 phân khu.
 
 ---
-*Tài liệu này là chuẩn mực bất biến cho toàn bộ đội ngũ kỹ thuật trong suốt quá trình triển khai dự án.*
+*Bản tài liệu đặc tả này là pháp lệnh kỹ thuật cao nhất cho toàn bộ đội ngũ Game Studio.*

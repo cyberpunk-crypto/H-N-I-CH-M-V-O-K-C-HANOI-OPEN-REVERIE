@@ -105,13 +105,8 @@ export class UIManager {
     const btnRecreate = document.getElementById('btnRecreateCharacterHud');
     if (btnRecreate) {
       btnRecreate.addEventListener('click', () => {
-        if (confirm('Bạn có muốn đổi nhân vật hoặc tạo lại nhân vật mới không?')) {
-          localStorage.removeItem('hanoi_user_profile');
-          const hudLayer = document.getElementById('gameHudLayer');
-          if (hudLayer) hudLayer.classList.add('hidden');
-          if (this.onboarding) {
-            this.onboarding.showCharacterCreation();
-          }
+        if (this.onboarding) {
+          this.onboarding.showCharacterCreation({ isRecreate: true });
         }
       });
     }

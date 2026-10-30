@@ -1,11 +1,12 @@
 /**
  * PlayerController.js - Điều khiển di chuyển mượt mà, đường nét con người giải phẫu tự nhiên
- * Đã khắc phục triệt để: Đảo trục phím A/D, cơ chế bước qua gờ thấp (Step-Up), và tạo hình con người bo tròn mềm mại
+ * Đã khắc phục triệt để: Đảo trục phím A/D, cơ chế bước qua gờ thấp (Step-Up), và tích hợp HumanoidAnimator 60 FPS
  * Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
  */
 
 import { THREE } from './ThreeLib.js';
 import { createHanoiCharacter3D, CHARACTERS_META } from './CharacterFactory.js';
+import { HumanoidAnimator } from './animations.js';
 
 export class PlayerController {
   constructor(scene, worldManager, eventBus) {
@@ -55,6 +56,7 @@ export class PlayerController {
     // Biến cho hoạt ảnh sinh học con người
     this.walkCycle = 0;
     this.baseTorsoY = 0.95;
+    this.humanoidAnimator = null;
 
     // Điểm tương tác
     this.activeInteractable = null;
@@ -73,7 +75,7 @@ export class PlayerController {
     this.characterGroup = new THREE.Group();
     this.characterGroup.name = 'DreamerCharacter';
 
-    // Xác định nhân vật ban đầu từ hồ sơ lưu trữ hoặc mặc định là char_photographer
+    // Xác định nhân vật ban đầu từ hồ sơ lưu trữ hoặc mặc định là char_nu_sinh_ao_dai
     let savedCharId = 'char_nu_sinh_ao_dai';
     try {
       const profile = JSON.parse(localStorage.getItem('hanoi_user_profile') || '{}');
@@ -105,7 +107,7 @@ export class PlayerController {
 
   /**
    * Đổi nhân vật 3D sang 1 trong 4 nhân vật thực tế
-   * @param {string} characterId - 'char_photographer' | 'char_cultural_officer' | 'char_young_explorer' | 'char_hanoi_elder'
+   * @param {string} characterId - 'char_nu_sinh_ao_dai' | 'char_co_gai_ao_ba_ba' | 'char_nam_tri_thuc_suit' | 'char_nam_ao_dai_gam'
    */
   setCharacter(characterId) {
     if (!characterId) return;
@@ -124,7 +126,7 @@ export class PlayerController {
     // Tạo nhân vật mới từ CharacterFactory
     const newCharMesh = createHanoiCharacter3D(characterId, { isNPC: false });
 
-    // Trích xuất các pivot cho chu kỳ đi bộ (walkCycle)
+    // Trích xuất các pivot cho tương thích ngược
     this.torsoGroup = newCharMesh.torsoGroup;
     this.headGroup = newCharMesh.headGroup;
     this.leftArmPivot = newCharMesh.leftArmPivot;
@@ -133,6 +135,12 @@ export class PlayerController {
     this.rightLegPivot = newCharMesh.rightLegPivot;
     this.baseTorsoY = newCharMesh.baseTorsoY || 0.95;
 
+    // Gắn rig sang characterGroup
+    this.characterGroup.rig = newCharMesh.rig;
+    if (this.characterGroup.rig) {
+      this.characterGroup.rig.rootGroup = this.characterGroup;
+    }
+
     // Chuyển toàn bộ children từ newCharMesh sang this.characterGroup
     while (newCharMesh.children.length > 0) {
       this.characterGroup.add(newCharMesh.children[0]);
@@ -140,6 +148,9 @@ export class PlayerController {
 
     this.characterGroup.position.copy(curPos);
     this.characterGroup.rotation.y = curRot;
+
+    // Khởi tạo HumanoidAnimator chuẩn 60 FPS
+    this.humanoidAnimator = new HumanoidAnimator(this.characterGroup);
   }
 
   /**
@@ -577,35 +588,10 @@ export class PlayerController {
       // Xoay hướng mặt nhân vật tức thì theo hướng di chuyển
       const targetAngle = Math.atan2(finalDir.x, finalDir.z);
       this.characterGroup.rotation.y = targetAngle;
-
-      // --- HOẠT ẢNH SINH HỌC BƯỚC ĐI TỰ NHIÊN ---
-      this.walkCycle += delta * (currentSpeed / 4.8) * 11.5;
-      const swingAmp = this.keys.sprint ? 0.72 : 0.52;
-
-      // Chân sải bước nhịp nhàng
-      this.leftLegPivot.rotation.x = Math.sin(this.walkCycle) * swingAmp;
-      this.rightLegPivot.rotation.x = -Math.sin(this.walkCycle) * swingAmp;
-
-      // Tay vung so le tự nhiên
-      this.leftArmPivot.rotation.x = -Math.sin(this.walkCycle) * (swingAmp * 0.85);
-      this.rightArmPivot.rotation.x = Math.sin(this.walkCycle) * (swingAmp * 0.85);
-
-      // Nhấp nhô tự nhiên của cơ thể
-      this.torsoGroup.position.y = this.baseTorsoY + Math.abs(Math.sin(this.walkCycle * 2.0)) * 0.04;
     } else {
       // Dừng lại dứt khoát 100% ngay khi nhả phím - Triệt tiêu hoàn toàn hiện tượng trượt quán tính
       this.velocity.x = 0;
       this.velocity.z = 0;
-
-      // Trở về tư thế đứng nghỉ (Idle)
-      this.leftLegPivot.rotation.x = THREE.MathUtils.lerp(this.leftLegPivot.rotation.x, 0, 0.25);
-      this.rightLegPivot.rotation.x = THREE.MathUtils.lerp(this.rightLegPivot.rotation.x, 0, 0.25);
-      this.leftArmPivot.rotation.x = THREE.MathUtils.lerp(this.leftArmPivot.rotation.x, 0, 0.25);
-      this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(this.rightArmPivot.rotation.x, 0, 0.25);
-
-      // Nhịp thở phập phồng nhẹ nhàng
-      const time = performance.now() * 0.0025;
-      this.torsoGroup.position.y = this.baseTorsoY + Math.sin(time) * 0.012;
     }
 
     // 2. Trọng lực
@@ -692,7 +678,13 @@ export class PlayerController {
       }
     }
 
-    // 5. Kiểm tra tương tác gần nhất
+    // 5. CẬP NHẬT HOẠT HỌA 3D SKELETAL ANIMATOR 60 FPS
+    if (this.humanoidAnimator) {
+      const moveSpeed = this.velocity.length();
+      this.humanoidAnimator.update(delta, moveSpeed, this.isGrounded);
+    }
+
+    // 6. Kiểm tra tương tác gần nhất
     const nearby = this.worldManager.checkNearbyInteraction(this.characterGroup.position);
     if (nearby !== this.activeInteractable) {
       this.activeInteractable = nearby;

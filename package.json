@@ -4,7 +4,8 @@
   "description": "Hà Nội: Chạm Vào Ký Ức (Hanoi: Open Reverie) 3D Game",
   "type": "module",
   "scripts": {
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "test": "node tests/test_3d_humanoid_system.mjs"
   },
   "keywords": ["game", "threejs", "hanoi", "vietnam", "open-world", "retro"],
   "author": "Game Studio AI",
