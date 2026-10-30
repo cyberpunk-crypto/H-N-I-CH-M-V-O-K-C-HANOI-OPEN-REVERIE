@@ -363,13 +363,18 @@ export class WorldManager {
       metalness: 0.12
     });
 
-    // 10. Mặt nước Hồ Gươm xanh lục bảo phẳng lặng
-    this.materials.lakeWater = new THREE.MeshStandardMaterial({
-      color: 0x16423f,
-      roughness: 0.08,
-      metalness: 0.9,
+    // 10. Mặt nước Hồ Gươm xanh lục bảo long lanh trong trẻo
+    this.materials.lakeWater = new THREE.MeshPhysicalMaterial({
+      color: 0x0ea598, // Màu xanh lục bích Hồ Gươm rực rỡ, lung linh
+      emissive: 0x054840,
+      emissiveIntensity: 0.22,
+      roughness: 0.05,
+      metalness: 0.12,
+      transmission: 0.38, // Độ truyền quang trong suốt để nhìn rõ đáy hồ và đàn cá bơi lội
+      ior: 1.333,
       transparent: true,
-      opacity: 0.88
+      opacity: 0.74,
+      depthWrite: false
     });
 
     // 11. Phù sa đỏ Sông Hồng
@@ -514,8 +519,8 @@ export class WorldManager {
       roughness: 0.35
     });
 
-    // 22. Vôi vàng rêu phong Tháp Rùa theo ảnh 3D Master chính thức của Sếp Tổng
-    const thapRuaWallTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t1_long.png');
+    // 22. Vôi vàng rêu phong Tháp Rùa theo bản vẽ Blueprint chi tiết của Sếp Tổng
+    const thapRuaWallTex = this.textureLoader.load('assets/textures/thap_rua_bp_t1_front.png');
     thapRuaWallTex.wrapS = THREE.ClampToEdgeWrapping;
     thapRuaWallTex.wrapT = THREE.ClampToEdgeWrapping;
     this.materials.thapRuaWall = new THREE.MeshStandardMaterial({
@@ -524,27 +529,29 @@ export class WorldManager {
       metalness: 0.05
     });
 
-    const thapRuaT1SideTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t1_short.png');
+    const thapRuaT1SideTex = this.textureLoader.load('assets/textures/thap_rua_bp_t1_side.png');
     this.materials.thapRuaT1Side = new THREE.MeshStandardMaterial({
       map: thapRuaT1SideTex,
       roughness: 0.85,
       metalness: 0.05
     });
 
-    // 23. Bệ móng đá khối cổ Tháp Rùa (Ashlar Plinth) từ ảnh Master
-    const thapRuaPlinthTex = this.textureLoader.load('assets/textures/thap_rua_ortho_plinth.png');
+    // 23. Bệ móng đá khối cổ Tháp Rùa (Ashlar Plinth) từ bản vẽ Blueprint
+    const thapRuaPlinthTex = this.textureLoader.load('assets/textures/thap_rua_bp_ashlar.png');
     thapRuaPlinthTex.wrapS = THREE.RepeatWrapping;
     thapRuaPlinthTex.wrapT = THREE.RepeatWrapping;
+    thapRuaPlinthTex.repeat.set(4, 2);
     this.materials.thapRuaPlinth = new THREE.MeshStandardMaterial({
       map: thapRuaPlinthTex,
       roughness: 0.90,
       metalness: 0.05
     });
 
-    // 24. Mái ngói cong cổ Tháp Rùa rêu phong từ ảnh Master
-    const thapRuaRoofTopTex = this.textureLoader.load('assets/textures/roof_terracotta.jpg');
+    // 24. Mái ngói cong cổ Tháp Rùa rêu phong từ bản vẽ Blueprint
+    const thapRuaRoofTopTex = this.textureLoader.load('assets/textures/thap_rua_bp_roof_tiles.png');
     thapRuaRoofTopTex.wrapS = THREE.RepeatWrapping;
     thapRuaRoofTopTex.wrapT = THREE.RepeatWrapping;
+    thapRuaRoofTopTex.repeat.set(6, 6);
     this.materials.thapRuaRoof = new THREE.MeshStandardMaterial({
       map: thapRuaRoofTopTex,
       roughness: 0.78,
@@ -552,9 +559,10 @@ export class WorldManager {
       side: THREE.DoubleSide
     });
 
-    const thapRuaRoofMidTex = this.textureLoader.load('assets/textures/roof_terracotta.jpg');
+    const thapRuaRoofMidTex = this.textureLoader.load('assets/textures/thap_rua_bp_roof_tiles.png');
     thapRuaRoofMidTex.wrapS = THREE.RepeatWrapping;
     thapRuaRoofMidTex.wrapT = THREE.RepeatWrapping;
+    thapRuaRoofMidTex.repeat.set(8, 8);
     this.materials.thapRuaRoofMid = new THREE.MeshStandardMaterial({
       map: thapRuaRoofMidTex,
       roughness: 0.78,
@@ -562,37 +570,37 @@ export class WorldManager {
       side: THREE.DoubleSide
     });
 
-    // 25. Phù điêu hoa văn khắc nổi và Vòm Tầng 2 & Tầng 3
-    const thapRuaT2Tex = this.textureLoader.load('assets/textures/thap_rua_ortho_t2_long.png');
+    // 25. Phù điêu hoa văn khắc nổi và Vòm Tầng 2 & Tầng 3 từ Blueprint
+    const thapRuaT2Tex = this.textureLoader.load('assets/textures/thap_rua_bp_t2_front.png');
     this.materials.thapRuaFacadeT2 = new THREE.MeshStandardMaterial({
       map: thapRuaT2Tex,
       roughness: 0.82,
       metalness: 0.05
     });
 
-    const thapRuaT2SideTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t2_short.png');
+    const thapRuaT2SideTex = this.textureLoader.load('assets/textures/thap_rua_bp_t2_side.png');
     this.materials.thapRuaT2Side = new THREE.MeshStandardMaterial({
       map: thapRuaT2SideTex,
       roughness: 0.82,
       metalness: 0.05
     });
 
-    const thapRuaT3Tex = this.textureLoader.load('assets/textures/thap_rua_ortho_t3_long.png');
+    const thapRuaT3Tex = this.textureLoader.load('assets/textures/thap_rua_bp_t3_front.png');
     this.materials.thapRuaFacadeT3 = new THREE.MeshStandardMaterial({
       map: thapRuaT3Tex,
       roughness: 0.82,
       metalness: 0.05
     });
 
-    const thapRuaT3SideTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t3_short.png');
+    const thapRuaT3SideTex = this.textureLoader.load('assets/textures/thap_rua_bp_t3_front.png');
     this.materials.thapRuaFacadeT3Side = new THREE.MeshStandardMaterial({
       map: thapRuaT3SideTex,
       roughness: 0.82,
       metalness: 0.05
     });
 
-    // 26. Lan can đá ô chữ nhật
-    const thapRuaBalustradeTex = this.textureLoader.load('assets/textures/thap_rua_ortho_balustrade.png');
+    // 26. Lan can đá ô chữ nhật từ Blueprint
+    const thapRuaBalustradeTex = this.textureLoader.load('assets/textures/thap_rua_bp_balustrade.png');
     this.materials.thapRuaBalustrade = new THREE.MeshStandardMaterial({
       map: thapRuaBalustradeTex,
       transparent: true,
@@ -601,12 +609,50 @@ export class WorldManager {
       side: THREE.DoubleSide
     });
 
-    // 27. Biểu tượng Đĩa đá tròn đỉnh tháp (Summit Sun/Taiji Disc Emblem)
-    const thapRuaEmblemTex = this.textureLoader.load('assets/textures/thap_rua_ortho_medallion.png');
+    // 27. Biểu tượng Đĩa đá tròn đỉnh tháp (Summit Sun/Longevity Emblem) từ Blueprint
+    const thapRuaEmblemTex = this.textureLoader.load('assets/textures/thap_rua_bp_longevity.png');
     this.materials.thapRuaEmblem = new THREE.MeshStandardMaterial({
       map: thapRuaEmblemTex,
       roughness: 0.75,
       metalness: 0.10
+    });
+
+    // 27b. Vật liệu Nội thất Blueprint: Gạch nung Bát Tràng, vôi bóc để lộ gạch đỏ, và bàn thờ cổ
+    const bpBrickTex = this.textureLoader.load('assets/textures/thap_rua_bp_brick.png');
+    bpBrickTex.wrapS = THREE.RepeatWrapping;
+    bpBrickTex.wrapT = THREE.RepeatWrapping;
+    bpBrickTex.repeat.set(6, 3);
+    this.materials.thapRuaBpBrick = new THREE.MeshStandardMaterial({
+      map: bpBrickTex,
+      roughness: 0.85,
+      metalness: 0.04
+    });
+
+    const bpMossTex = this.textureLoader.load('assets/textures/thap_rua_bp_moss.png');
+    bpMossTex.wrapS = THREE.RepeatWrapping;
+    bpMossTex.wrapT = THREE.RepeatWrapping;
+    bpMossTex.repeat.set(3, 3);
+    this.materials.thapRuaBpMoss = new THREE.MeshStandardMaterial({
+      map: bpMossTex,
+      roughness: 0.90,
+      metalness: 0.02
+    });
+
+    const bpFloorTex = this.textureLoader.load('assets/textures/thap_rua_bp_floor_tile.png');
+    bpFloorTex.wrapS = THREE.RepeatWrapping;
+    bpFloorTex.wrapT = THREE.RepeatWrapping;
+    bpFloorTex.repeat.set(10, 8);
+    this.materials.thapRuaBpFloor = new THREE.MeshStandardMaterial({
+      map: bpFloorTex,
+      roughness: 0.85,
+      metalness: 0.02
+    });
+
+    const bpAltarTex = this.textureLoader.load('assets/textures/thap_rua_bp_interior_altar.png');
+    this.materials.thapRuaBpAltar = new THREE.MeshStandardMaterial({
+      map: bpAltarTex,
+      roughness: 0.80,
+      metalness: 0.08
     });
 
     // 28. Toàn cảnh 3D Master Tháp Rùa (Alpha Cutouts hai góc nhìn hoàn chỉnh)
@@ -1021,12 +1067,31 @@ export class WorldManager {
     const zoneGroup = new THREE.Group();
     zoneGroup.name = 'Zone1_HoanKiem';
 
-    // 1. Lòng Hồ Gươm (Mặt nước xanh lục bảo phẳng lặng dưới kè đá)
+    // 1. Lòng Hồ Gươm (Mặt nước xanh lục bảo long lanh dưới kè đá rêu phong)
     const waterGeo = new THREE.CircleGeometry(84.8, 64);
     waterGeo.rotateX(-Math.PI / 2);
     const waterMesh = new THREE.Mesh(waterGeo, this.materials.lakeWater);
     waterMesh.position.set(80, 0.08, -80);
     zoneGroup.add(waterMesh);
+    this.lakeWaterMesh = waterMesh;
+
+    // Vành sóng nước lấp lánh phản chiếu ánh nắng quanh Tháp Rùa (Caustic Sunlight Shimmer Ring)
+    const shimmerGeo = new THREE.RingGeometry(11.5, 42.0, 64);
+    shimmerGeo.rotateX(-Math.PI / 2);
+    const shimmerMat = new THREE.MeshStandardMaterial({
+      color: 0x4df2d8,
+      emissive: 0x228b7e,
+      emissiveIntensity: 0.35,
+      roughness: 0.1,
+      metalness: 0.3,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false
+    });
+    const shimmerMesh = new THREE.Mesh(shimmerGeo, shimmerMat);
+    shimmerMesh.position.set(80, 0.088, -80);
+    zoneGroup.add(shimmerMesh);
+    this.lakeShimmerMesh = shimmerMesh;
 
     // KÈ ĐÁ BỜ HỒ (STONE EMBANKMENT RETAINING WALL) TẠI R = 85.0M
     const lakeWallGeo = new THREE.CylinderGeometry(85.0, 85.0, 0.45, 64, 1, true);
@@ -1451,73 +1516,142 @@ export class WorldManager {
       }
     }
 
-    // VÁCH MẶT TÂY (CỬA CHÍNH ĐÓN KHÁCH TỪ CẦU KIM QUY VÀO NỘI ĐIỆN)
-    // Cửa giữa mở thông thoáng rộng 1.8m để người chơi bước thẳng vào trong!
-    const doorClearWidth = 1.8;
-    const wingWidth = (t1W - doorClearWidth) / 2; // ~3.1m mỗi cánh
+    // =========================================================================
+    // SÀN NỘI ĐIỆN GẠCH BÁT TRÀNG MỘC & ĐĂNG KÝ BƯỚC ĐI TỰ DO (WALKABLE INTERIOR FLOOR)
+    // =========================================================================
+    const interiorFloorGeo = new THREE.PlaneGeometry(t1W - 0.2, t1D - 0.2);
+    interiorFloorGeo.rotateX(-Math.PI / 2);
+    const interiorFloorMesh = new THREE.Mesh(interiorFloorGeo, this.materials.thapRuaBpFloor);
+    interiorFloorMesh.position.set(0, t1BaseY + 0.02, 0);
+    interiorFloorMesh.receiveShadow = true;
+    towerGroup.add(interiorFloorMesh);
 
-    // Khối kết cấu vách chịu lực 2 cánh & gờ trên cửa
+    // Collider sàn đi bộ phẳng bên trong Tháp Rùa
+    const walkFloorCol = new THREE.Mesh(new THREE.BoxGeometry(t1W - 0.2, 0.25, t1D - 0.2), this.materials.thapRuaBpFloor);
+    walkFloorCol.position.set(80, 1.55 + t1BaseY + 0.02, -80);
+    walkFloorCol.visible = false;
+    zoneGroup.add(walkFloorCol);
+    this.colliders.push(walkFloorCol);
+
+    // =========================================================================
+    // 1. CỬA VÒM MẶT TÂY (MẶT TRƯỚC - ĐÓN KHÁCH TỪ CẦU KIM QUY VÀO TRONG THÁP)
+    // Cửa vòm giữa rộng 2.0m, cao 3.2m THÔNG THUỐNG ĐỂ NGƯỜI CHƠI BƯỚC VÀO TRONG!
+    // =========================================================================
+    const doorClearW = 2.0;
+    const wingW = (t1W - doorClearW) / 2; // 3.0m mỗi cánh vách hai bên
+
+    // Vách chịu lực hai cánh mặt Tây
     for (let sideX of [-1, 1]) {
-      const wingWallBox = new THREE.Mesh(new THREE.BoxGeometry(wingWidth, t1H, 0.35), this.materials.thapRuaPlinth);
-      const wingPosX = sideX * (t1W / 2 - wingWidth / 2);
-      wingWallBox.position.set(wingPosX, t1BaseY + t1H / 2, t1D / 2 - 0.175);
-      wingWallBox.castShadow = true;
-      wingWallBox.receiveShadow = true;
-      towerGroup.add(wingWallBox);
-      this._addBoxObstacle(80 + wingPosX, -80 + (t1D / 2 - 0.175), wingWidth, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+      const wingBox = new THREE.Mesh(new THREE.BoxGeometry(wingW, t1H, 0.35), this.materials.thapRuaPlinth);
+      const wingPosX = sideX * (t1W / 2 - wingW / 2);
+      wingBox.position.set(wingPosX, t1BaseY + t1H / 2, t1D / 2 - 0.175);
+      wingBox.castShadow = true;
+      wingBox.receiveShadow = true;
+      towerGroup.add(wingBox);
+      this._addBoxObstacle(80 + wingPosX, -80 + (t1D / 2 - 0.175), wingW, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+
+      // Mặt trong bộc lộ gạch đỏ Bát Tràng rêu phong theo Blueprint
+      const innerWing = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaBpBrick);
+      innerWing.position.set(wingPosX, t1BaseY + t1H / 2, t1D / 2 - 0.36);
+      innerWing.rotation.y = Math.PI;
+      towerGroup.add(innerWing);
     }
-    const doorLintelBox = new THREE.Mesh(new THREE.BoxGeometry(doorClearWidth + 0.1, 0.8, 0.35), this.materials.thapRuaPlinth);
-    doorLintelBox.position.set(0, t1BaseY + t1H - 0.4, t1D / 2 - 0.175);
-    doorLintelBox.castShadow = true;
-    towerGroup.add(doorLintelBox);
+    // Gờ vòm lanh-tô trên cửa chính mặt Tây
+    const westLintel = new THREE.Mesh(new THREE.BoxGeometry(doorClearW + 0.2, 0.7, 0.35), this.materials.thapRuaPlinth);
+    westLintel.position.set(0, t1BaseY + t1H - 0.35, t1D / 2 - 0.175);
+    westLintel.castShadow = true;
+    towerGroup.add(westLintel);
 
-    // MẶT TIỀN TÂY CHÂN THỰC: 3 Vòm Gothic từ ảnh Master trải đều trên 8m
-    // Cánh trái (x = -4.0 đến -0.9): U = 0.0 -> 0.3875
-    const leftWingPlaneGeom = new THREE.PlaneGeometry(wingWidth, t1H);
-    setPlaneUVs(leftWingPlaneGeom, 0.0, 0.3875, 0.0, 1.0);
-    const leftWingPlane = new THREE.Mesh(leftWingPlaneGeom, this.materials.thapRuaWall);
-    leftWingPlane.position.set(-t1W / 2 + wingWidth / 2, t1BaseY + t1H / 2, t1D / 2 + 0.02);
-    towerGroup.add(leftWingPlane);
+    // Mặt tiền Tây chính diện phủ ảnh Blueprint tầng 1 (3 vòm Gothic)
+    const westLeftPlane = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaWall);
+    setPlaneUVs(westLeftPlane.geometry, 0.0, 0.375, 0.0, 1.0);
+    westLeftPlane.position.set(-t1W / 2 + wingW / 2, t1BaseY + t1H / 2, t1D / 2 + 0.02);
+    towerGroup.add(westLeftPlane);
 
-    // Cánh phải (x = 0.9 đến 4.0): U = 0.6125 -> 1.0
-    const rightWingPlaneGeom = new THREE.PlaneGeometry(wingWidth, t1H);
-    setPlaneUVs(rightWingPlaneGeom, 0.6125, 1.0, 0.0, 1.0);
-    const rightWingPlane = new THREE.Mesh(rightWingPlaneGeom, this.materials.thapRuaWall);
-    rightWingPlane.position.set(t1W / 2 - wingWidth / 2, t1BaseY + t1H / 2, t1D / 2 + 0.02);
-    towerGroup.add(rightWingPlane);
+    const westRightPlane = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaWall);
+    setPlaneUVs(westRightPlane.geometry, 0.625, 1.0, 0.0, 1.0);
+    westRightPlane.position.set(t1W / 2 - wingW / 2, t1BaseY + t1H / 2, t1D / 2 + 0.02);
+    towerGroup.add(westRightPlane);
 
-    // Gờ trán vòm cửa chính (x = -0.9 đến 0.9, y = 3.0 đến 3.8): U = 0.3875 -> 0.6125, V = 0.79 -> 1.0
-    const lintelPlaneGeom = new THREE.PlaneGeometry(doorClearWidth, 0.8);
-    setPlaneUVs(lintelPlaneGeom, 0.3875, 0.6125, 0.79, 1.0);
-    const lintelPlane = new THREE.Mesh(lintelPlaneGeom, this.materials.thapRuaWall);
-    lintelPlane.position.set(0, t1BaseY + t1H - 0.4, t1D / 2 + 0.02);
-    towerGroup.add(lintelPlane);
+    const westLintelPlane = new THREE.Mesh(new THREE.PlaneGeometry(doorClearW, 0.7), this.materials.thapRuaWall);
+    setPlaneUVs(westLintelPlane.geometry, 0.375, 0.625, 0.81, 1.0);
+    westLintelPlane.position.set(0, t1BaseY + t1H - 0.35, t1D / 2 + 0.02);
+    towerGroup.add(westLintelPlane);
 
-    // VÁCH MẶT ĐÔNG (MẶT SAU HƯỚNG RA HỒ ĐÓN BÌNH MINH)
-    const eastWallBox = new THREE.Mesh(new THREE.BoxGeometry(t1W - 0.9, t1H, 0.35), this.materials.thapRuaPlinth);
-    eastWallBox.position.set(0, t1BaseY + t1H / 2, -t1D / 2 + 0.175);
-    eastWallBox.castShadow = true;
-    eastWallBox.receiveShadow = true;
-    towerGroup.add(eastWallBox);
-    this._addBoxObstacle(80, -80 - (t1D / 2 - 0.175), t1W - 0.9, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
-
-    const eastPlaneGeom = new THREE.PlaneGeometry(t1W - 0.9, t1H);
-    const eastPlane = new THREE.Mesh(eastPlaneGeom, this.materials.thapRuaWall);
-    eastPlane.position.set(0, t1BaseY + t1H / 2, -t1D / 2 - 0.02);
-    eastPlane.rotation.y = Math.PI;
-    towerGroup.add(eastPlane);
-
-    // VÁCH MẶT BẮC & NAM (MẶT NGẮN 2 VÒM GOTHIC VÀ PHÙ ĐIÊU TỪ ẢNH MASTER)
+    // =========================================================================
+    // 2. CỬA VÒM MẶT ĐÔNG (MẶT SAU - NHÌN RA LÒNG HỒ GƯƠM & ĐÓN BÌNH MINH)
+    // Cửa vòm giữa rộng 2.0m THÔNG SUỐT ĐỂ NGƯỜI CHƠI BƯỚC XUYÊN TỪ TÂY SANG ĐÔNG!
+    // =========================================================================
     for (let sideX of [-1, 1]) {
-      const sideWallBox = new THREE.Mesh(new THREE.BoxGeometry(0.35, t1H, t1D - 0.9), this.materials.thapRuaPlinth);
-      const sidePosX = sideX * (t1W / 2 - 0.175);
-      sideWallBox.position.set(sidePosX, t1BaseY + t1H / 2, 0);
-      sideWallBox.castShadow = true;
-      sideWallBox.receiveShadow = true;
-      towerGroup.add(sideWallBox);
-      this._addBoxObstacle(80 + sidePosX, -80, 0.45, t1D - 0.9, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+      const eastWingBox = new THREE.Mesh(new THREE.BoxGeometry(wingW, t1H, 0.35), this.materials.thapRuaPlinth);
+      const wingPosX = sideX * (t1W / 2 - wingW / 2);
+      eastWingBox.position.set(wingPosX, t1BaseY + t1H / 2, -t1D / 2 + 0.175);
+      eastWingBox.castShadow = true;
+      eastWingBox.receiveShadow = true;
+      towerGroup.add(eastWingBox);
+      this._addBoxObstacle(80 + wingPosX, -80 - (t1D / 2 - 0.175), wingW, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
 
-      const sidePlaneGeom = new THREE.PlaneGeometry(t1D - 0.9, t1H);
+      // Mặt trong bộc lộ gạch đỏ Bát Tràng
+      const innerEastWing = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaBpBrick);
+      innerEastWing.position.set(wingPosX, t1BaseY + t1H / 2, -t1D / 2 + 0.36);
+      towerGroup.add(innerEastWing);
+    }
+    const eastLintel = new THREE.Mesh(new THREE.BoxGeometry(doorClearW + 0.2, 0.7, 0.35), this.materials.thapRuaPlinth);
+    eastLintel.position.set(0, t1BaseY + t1H - 0.35, -t1D / 2 + 0.175);
+    eastLintel.castShadow = true;
+    towerGroup.add(eastLintel);
+
+    const eastLeftPlane = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaWall);
+    setPlaneUVs(eastLeftPlane.geometry, 0.0, 0.375, 0.0, 1.0);
+    eastLeftPlane.position.set(-t1W / 2 + wingW / 2, t1BaseY + t1H / 2, -t1D / 2 - 0.02);
+    eastLeftPlane.rotation.y = Math.PI;
+    towerGroup.add(eastLeftPlane);
+
+    const eastRightPlane = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaWall);
+    setPlaneUVs(eastRightPlane.geometry, 0.625, 1.0, 0.0, 1.0);
+    eastRightPlane.position.set(t1W / 2 - wingW / 2, t1BaseY + t1H / 2, -t1D / 2 - 0.02);
+    eastRightPlane.rotation.y = Math.PI;
+    towerGroup.add(eastRightPlane);
+
+    const eastLintelPlane = new THREE.Mesh(new THREE.PlaneGeometry(doorClearW, 0.7), this.materials.thapRuaWall);
+    setPlaneUVs(eastLintelPlane.geometry, 0.375, 0.625, 0.81, 1.0);
+    eastLintelPlane.position.set(0, t1BaseY + t1H - 0.35, -t1D / 2 - 0.02);
+    eastLintelPlane.rotation.y = Math.PI;
+    towerGroup.add(eastLintelPlane);
+
+    // =========================================================================
+    // 3. CÁC CỬA VÒM MẶT BẮC & NAM (MẶT NGẮN - MỞ CỬA BƯỚC RA THỀM ĐÁ TAM CẤP HAI BÊN)
+    // =========================================================================
+    const sideDoorClear = 1.8;
+    const sidePierLen = (t1D - sideDoorClear) / 2; // 2.1m mỗi trụ cánh hai bên
+
+    for (let sideX of [-1, 1]) {
+      const sidePosX = sideX * (t1W / 2 - 0.175);
+      // Hai trụ chịu lực hai bên cửa vòm bên
+      for (let sZ of [-1, 1]) {
+        const pierPosZ = sZ * (t1D / 2 - sidePierLen / 2);
+        const pierBox = new THREE.Mesh(new THREE.BoxGeometry(0.35, t1H, sidePierLen), this.materials.thapRuaPlinth);
+        pierBox.position.set(sidePosX, t1BaseY + t1H / 2, pierPosZ);
+        pierBox.castShadow = true;
+        pierBox.receiveShadow = true;
+        towerGroup.add(pierBox);
+        this._addBoxObstacle(80 + sidePosX, -80 + pierPosZ, 0.45, sidePierLen, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+
+        // Mặt trong bộc lộ gạch đỏ
+        const innerSide = new THREE.Mesh(new THREE.PlaneGeometry(sidePierLen, t1H), this.materials.thapRuaBpBrick);
+        innerSide.position.set(sideX * (t1W / 2 - 0.36), t1BaseY + t1H / 2, pierPosZ);
+        innerSide.rotation.y = sideX === 1 ? -Math.PI / 2 : Math.PI / 2;
+        towerGroup.add(innerSide);
+      }
+
+      // Lanh-tô trên vòm cửa bên
+      const sideLintel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.7, sideDoorClear + 0.1), this.materials.thapRuaPlinth);
+      sideLintel.position.set(sidePosX, t1BaseY + t1H - 0.35, 0);
+      sideLintel.castShadow = true;
+      towerGroup.add(sideLintel);
+
+      // Ngoại thất mặt bên phủ hoa văn 2 vòm Gothic từ Blueprint
+      const sidePlaneGeom = new THREE.PlaneGeometry(t1D, t1H);
       const sidePlane = new THREE.Mesh(sidePlaneGeom, this.materials.thapRuaT1Side);
       sidePlane.position.set(sideX * (t1W / 2 + 0.02), t1BaseY + t1H / 2, 0);
       sidePlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
@@ -1525,39 +1659,123 @@ export class WorldManager {
     }
 
     // =========================================================================
-    // NỘI ĐIỆN BÊN TRONG THÁP RÙA: BÀN THỜ KIM QUY, BIA ĐÁ CỔ, ÁNH SÁNG & ĐÈN LỒNG
+    // 4. KIẾN TRÚC GỖ NỘI ĐIỆN THEO BLUEPRINT: 4 CỘT GỖ LIM, XÀ NGANG & CẦU THANG GỖ CỔ
     // =========================================================================
-    // 1. Bàn thờ đá cổ thâm nghiêm
-    const thapRuaAltar = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 1.1), this.materials.thapRuaPlinth);
+    // Bốn Cột Gỗ Lim tròn nâng đỡ bộ vì kèo gỗ
+    const timberColMat = new THREE.MeshStandardMaterial({
+      color: 0x3d2719, // Gỗ lim sẫm màu cổ kính
+      roughness: 0.72,
+      metalness: 0.10
+    });
+
+    for (let cx of [-2.2, 2.2]) {
+      for (let cz of [-1.5, 1.5]) {
+        // Chân tảng đá hoa sen
+        const stoneBase = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.25, 12), this.materials.thapRuaPlinth);
+        stoneBase.position.set(cx, t1BaseY + 0.125, cz);
+        towerGroup.add(stoneBase);
+
+        // Thân cột gỗ lim
+        const timberCol = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, t1H - 0.25, 12), timberColMat);
+        timberCol.position.set(cx, t1BaseY + 0.25 + (t1H - 0.25) / 2, cz);
+        timberCol.castShadow = true;
+        towerGroup.add(timberCol);
+        this._addBoxObstacle(80 + cx, -80 + cz, 0.42, 0.42, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+      }
+    }
+
+    // Hệ xà ngang và xà dọc gỗ lim liên kết khung chịu lực
+    const beamY = t1BaseY + t1H - 0.25;
+    for (let cz of [-1.5, 1.5]) {
+      const longBeam = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.22, 0.22), timberColMat);
+      longBeam.position.set(0, beamY, cz);
+      longBeam.castShadow = true;
+      towerGroup.add(longBeam);
+    }
+    for (let cx of [-2.2, 2.2]) {
+      const crossBeam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 3.2), timberColMat);
+      crossBeam.position.set(cx, beamY, 0);
+      crossBeam.castShadow = true;
+      towerGroup.add(crossBeam);
+    }
+
+    // CẦU THANG GỖ LIM CỔ NỐI LÊN TẦNG 2 (THEO MẶT CẮT BLUEPRINT INTERIOR CUTAWAY)
+    // Tọa độ góc Đông-Bắc (x: 2.3 -> 3.2, z: -2.3 -> -0.7)
+    const stairGroup = new THREE.Group();
+    const numStairSteps = 10;
+    const stairStepW = 0.85;
+    const stairStepRise = (t1H - 0.4) / numStairSteps;
+    const stairStepRun = 1.6 / numStairSteps;
+
+    for (let s = 0; s < numStairSteps; s++) {
+      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(stairStepW, 0.08, stairStepRun + 0.04), timberColMat);
+      stepMesh.position.set(2.7, t1BaseY + 0.04 + s * stairStepRise, -2.1 + s * stairStepRun);
+      stepMesh.castShadow = true;
+      stairGroup.add(stepMesh);
+    }
+    // Lan can và tay vịn cầu thang gỗ
+    const handrail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.2), timberColMat);
+    handrail.position.set(2.25, t1BaseY + 0.9 + (t1H - 1.2) / 2, -1.3);
+    handrail.rotation.x = -Math.atan2(t1H - 0.8, 1.6);
+    stairGroup.add(handrail);
+    towerGroup.add(stairGroup);
+    this._addBoxObstacle(80 + 2.7, -80 - 1.3, 1.0, 1.8, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+
+    // =========================================================================
+    // 5. NỘI ĐIỆN BÊN TRONG THÁP RÙA: BÀN THỜ KIM QUY, BIA ĐÁ CỔ, ÁNH SÁNG & ĐÈN LỒNG
+    // Đặt lùi về phía sau (z = -1.4) chừa lối đi thông thoáng ở giữa để bước xuyên qua!
+    // =========================================================================
+    // Bàn thờ đá cổ chạm khắc hoa văn từ Blueprint
+    const thapRuaAltar = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.85, 0.8), this.materials.thapRuaPlinth);
     thapRuaAltar.name = 'thapRuaAltar';
-    thapRuaAltar.position.set(0, t1BaseY + 0.425, -0.9);
+    thapRuaAltar.position.set(0, t1BaseY + 0.425, -1.4);
     thapRuaAltar.castShadow = true;
     towerGroup.add(thapRuaAltar);
-    this._addBoxObstacle(80, -80.9, 2.3, 1.2, 1.55 + t1BaseY, 1.55 + t1BaseY + 1.8);
 
-    // 2. Tượng Thần Kim Quy (Rùa Vàng) cõng bia đá cổ
-    const turtleStatue = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 1.3), this.materials.templeGold);
-    turtleStatue.position.set(0, t1BaseY + 0.85 + 0.175, -0.9);
+    // Mặt trước chạm trổ hoa văn cổ bàn thờ từ bản vẽ Blueprint
+    const altarFront = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.85), this.materials.thapRuaBpAltar);
+    altarFront.position.set(0, t1BaseY + 0.425, -1.4 + 0.405);
+    towerGroup.add(altarFront);
+    this._addBoxObstacle(80, -80 - 1.4, 2.1, 0.9, 1.55 + t1BaseY, 1.55 + t1BaseY + 1.8);
+
+    // Tượng Thần Kim Quy (Rùa Vàng) cõng bia đá cổ
+    const turtleStatue = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.32, 1.15), this.materials.templeGold);
+    turtleStatue.position.set(0, t1BaseY + 0.85 + 0.16, -1.4);
     turtleStatue.castShadow = true;
     towerGroup.add(turtleStatue);
 
-    // 3. Tấm bia đá cổ "Quy Sơn Linh Tháp" ghi dấu nghìn năm
-    const steleMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.15), this.materials.thapRuaPlinth);
-    steleMesh.position.set(0, t1BaseY + 0.85 + 0.35 + 0.55, -0.9);
+    // Tấm bia đá cổ "Quy Sơn Linh Tháp" ghi dấu nghìn năm
+    const steleMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.0, 0.14), this.materials.thapRuaPlinth);
+    steleMesh.position.set(0, t1BaseY + 0.85 + 0.32 + 0.50, -1.4);
     steleMesh.castShadow = true;
     towerGroup.add(steleMesh);
 
-    // 4. Lư hương đồng tỏa khói trầm tôn nghiêm
+    // Lư hương đồng tỏa khói trầm tôn nghiêm
     const incenseCenser = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.35, 8), this.materials.templeGold);
-    incenseCenser.position.set(0, t1BaseY + 0.85 + 0.18, -0.3);
+    incenseCenser.position.set(0, t1BaseY + 0.85 + 0.18, -0.9);
     towerGroup.add(incenseCenser);
 
-    // 5. Nguồn sáng vàng ấm áp thiêng liêng rọi sáng nội điện Tháp Rùa
-    const towerInteriorLight = new THREE.PointLight(0xffdf80, 1.8, 14);
+    // Chân nến đồng hai bên bàn thờ
+    for (let cX of [-0.65, 0.65]) {
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.45, 6), this.materials.templeGold);
+      candle.position.set(cX, t1BaseY + 0.85 + 0.225, -1.4);
+      towerGroup.add(candle);
+
+      const candleFlame = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), new THREE.MeshStandardMaterial({
+        color: 0xffaa00,
+        emissive: 0xff6600,
+        emissiveIntensity: 1.5
+      }));
+      candleFlame.position.set(cX, t1BaseY + 0.85 + 0.48, -1.4);
+      towerGroup.add(candleFlame);
+    }
+
+    // Nguồn sáng vàng ấm áp thiêng liêng rọi sáng nội điện Tháp Rùa
+    const towerInteriorLight = new THREE.PointLight(0xffd070, 2.2, 16);
     towerInteriorLight.position.set(80, 1.55 + t1BaseY + 2.5, -80);
     zoneGroup.add(towerInteriorLight);
 
-    // 6. Bốn đèn lồng đồng thả từ vòm trần bên trong
+    // Bốn đèn lồng đồng thả từ vì kèo bên trong
     for (let lx of [-1.8, 1.8]) {
       for (let lz of [-1.2, 1.2]) {
         const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.2, 4), this.materials.darkIron);
@@ -1575,16 +1793,16 @@ export class WorldManager {
     }
 
     // =========================================================================
-    // 🐢 NPC NHÀ SỬ HỌC THÁP RÙA - BÁC NGUYỄN VĂN AN (ĐỨNG TRONG NỘI ĐIỆN)
+    // 🐢 NPC NHÀ SỬ HỌC THÁP RÙA - BÁC NGUYỄN VĂN AN (ĐỨNG BÊN CẠNH BÀN THỜ)
     // =========================================================================
     const historianNPC = this._createCitizenNPC(0, 0, 0x223a5e, 'kính lão');
-    historianNPC.position.set(80, 1.55 + t1BaseY, -79.2);
-    historianNPC.rotation.y = Math.PI; // Hướng mặt đón khách bước vào cửa chính
+    historianNPC.position.set(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0);
+    historianNPC.rotation.y = Math.PI * 0.75; // Đứng chếch chào đón người chơi
     zoneGroup.add(historianNPC);
-    this._addNpcCollider(80, -79.2, 0.65);
+    this._addNpcCollider(80 - 1.5, -80 - 1.0, 0.65);
 
     this.interactables.push({
-      position: new THREE.Vector3(80, 1.55 + t1BaseY, -79.2),
+      position: new THREE.Vector3(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0),
       radius: 3.2,
       promptText: 'Lắng nghe Lịch sử Tháp Rùa cổ kính cùng Nhà Sử Học',
       actionKey: 'E',
@@ -1873,18 +2091,44 @@ export class WorldManager {
     this.colliders.push(islandLandingPlaza);
 
     // =========================================================================
-    // 🐟 ĐÀN CÁ CHÉP VÀNG & CÁ KOI HỒ GƯƠM BƠI LỘI DƯỚI MẶT NƯỚC (LIVING LAKE FISH)
+    // 🐟 ĐÀN CÁ CHÉP VÀNG & CÁ KOI HỒ GƯƠM BƠI LỘI LONG LANH QUANH THÁP RÙA
     // =========================================================================
-    const fishGoldMat = new THREE.MeshStandardMaterial({ color: 0xff8c00, roughness: 0.35, metalness: 0.2 });
-    const fishRedMat = new THREE.MeshStandardMaterial({ color: 0xd63031, roughness: 0.35, metalness: 0.2 });
-    const fishCalicoMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
-    const fishMatList = [fishGoldMat, fishRedMat, fishCalicoMat];
+    const fishGoldMat = new THREE.MeshStandardMaterial({
+      color: 0xffaa00, // Vảy vàng kim óng ánh
+      roughness: 0.12,
+      metalness: 0.55,
+      emissive: 0x553300,
+      emissiveIntensity: 0.35
+    });
+    const fishRedMat = new THREE.MeshStandardMaterial({
+      color: 0xee1111, // Đỏ chu sa truyền thống
+      roughness: 0.15,
+      metalness: 0.35,
+      emissive: 0x550808,
+      emissiveIntensity: 0.30
+    });
+    const fishPlatinumMat = new THREE.MeshStandardMaterial({
+      color: 0xf5f6fa, // Trắng bạc bạch kim phát sáng
+      roughness: 0.08,
+      metalness: 0.65,
+      emissive: 0x112233,
+      emissiveIntensity: 0.25
+    });
+    const fishOrangeMat = new THREE.MeshStandardMaterial({
+      color: 0xff6b00, // Cam hoàng hôn rực rỡ
+      roughness: 0.14,
+      metalness: 0.45,
+      emissive: 0x441c00,
+      emissiveIntensity: 0.30
+    });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
+    const fishMatList = [fishGoldMat, fishRedMat, fishPlatinumMat, fishOrangeMat];
 
     const fishSchools = [
-      { count: 7, cx: 80, cz: -80, rMin: 22, rMax: 32, speedBase: 0.22 },
-      { count: 7, cx: 45, cz: -45, rMin: 10, rMax: 18, speedBase: -0.28 },
-      { count: 7, cx: 142, cz: -55, rMin: 12, rMax: 20, speedBase: 0.25 },
-      { count: 7, cx: 85, cz: -45, rMin: 18, rMax: 30, speedBase: -0.20 }
+      { count: 14, cx: 80, cz: -80, rMin: 13, rMax: 26, speedBase: 0.32 }, // Đàn cá bơi sát quanh Đảo Tháp Rùa
+      { count: 8, cx: 45, cz: -45, rMin: 10, rMax: 20, speedBase: -0.28 },
+      { count: 10, cx: 142, cz: -55, rMin: 12, rMax: 24, speedBase: 0.26 },
+      { count: 12, cx: 80, cz: -80, rMin: 38, rMax: 65, speedBase: -0.22 }
     ];
 
     fishSchools.forEach((school, sIdx) => {
@@ -1892,32 +2136,39 @@ export class WorldManager {
         const fishGroup = new THREE.Group();
         const mat = fishMatList[(sIdx + f) % fishMatList.length];
 
-        // Thân cá chép uốn lượn hình thoi
-        const bodyGeo = new THREE.ConeGeometry(0.18, 0.85, 6);
+        // Thân cá chép uốn lượn thon gọn khí động học
+        const bodyGeo = new THREE.ConeGeometry(0.24, 1.15, 8);
         bodyGeo.rotateX(Math.PI / 2);
-        bodyGeo.scale(0.55, 0.75, 1.0);
+        bodyGeo.scale(0.58, 0.82, 1.0);
         const bodyMesh = new THREE.Mesh(bodyGeo, mat);
         fishGroup.add(bodyMesh);
 
-        // Vây lưng cá
-        const dorsalGeo = new THREE.BoxGeometry(0.02, 0.16, 0.30);
+        // Mắt cá đen láy
+        for (let side of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeMat);
+          eye.position.set(side * 0.12, 0.05, 0.38);
+          fishGroup.add(eye);
+        }
+
+        // Vây lưng cá cong vút đón nắng
+        const dorsalGeo = new THREE.BoxGeometry(0.025, 0.22, 0.42);
         const dorsal = new THREE.Mesh(dorsalGeo, mat);
-        dorsal.position.set(0, 0.14, -0.05);
+        dorsal.position.set(0, 0.19, -0.06);
         fishGroup.add(dorsal);
 
         // Vây bơi hai bên
         for (let side of [-1, 1]) {
-          const fin = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 0.15), mat);
-          fin.position.set(side * 0.12, -0.04, 0.15);
-          fin.rotation.z = side * 0.3;
+          const fin = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.22), mat);
+          fin.position.set(side * 0.16, -0.04, 0.20);
+          fin.rotation.z = side * 0.35;
           fishGroup.add(fin);
         }
 
-        // Đuôi cá có khớp lắc
+        // Đuôi cá có khớp lắc bơi lội sinh động
         const tailPivot = new THREE.Group();
-        tailPivot.position.set(0, 0, -0.42);
-        const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.28, 0.35), mat);
-        tailFin.position.set(0, 0, -0.15);
+        tailPivot.position.set(0, 0, -0.58);
+        const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.38, 0.48), mat);
+        tailFin.position.set(0, 0, -0.22);
         tailPivot.add(tailFin);
         fishGroup.add(tailPivot);
 
@@ -1927,7 +2178,7 @@ export class WorldManager {
 
         fishGroup.position.set(
           school.cx + Math.cos(angle) * radius,
-          0.04,
+          0.065,
           school.cz + Math.sin(angle) * radius
         );
         zoneGroup.add(fishGroup);
@@ -3459,25 +3710,26 @@ export class WorldManager {
     const npcGroup = new THREE.Group();
     npcGroup.name = 'LivingHanoiNPCs';
 
-    // 1. CHỊ LAN - GÁNH HÀNG HOA TƯƠI DẠO VEN HỒ (TỰ ĐỘNG DI CHUYỂN QUANH BỜ HỒ GƯƠM)
-    const flowerVendorMesh = this._createFlowerVendorNPC(42, -48, 0.4);
+    // 1. CHỊ LAN - GÁNH HÀNG HOA TƯƠI DẠO VEN HỒ (TUẦN TRA TRÊN ĐƯỜNG ĐÁ KHÔ RÁO VEN HỒ, TUYỆT ĐỐI KHÔNG DƯỚI NƯỚC)
+    const lakeR = 89.0; // Bán kính đường đi bộ ven hồ r: 85.0m -> 98.0m (tâm 80, -80)
+    const flowerWaypoints = [];
+    for (let i = 0; i < 12; i++) {
+      const theta = (i / 12) * Math.PI * 2;
+      flowerWaypoints.push(new THREE.Vector3(
+        80 + Math.cos(theta) * lakeR,
+        0.45,
+        -80 + Math.sin(theta) * lakeR
+      ));
+    }
+
+    const initX = flowerWaypoints[0].x;
+    const initZ = flowerWaypoints[0].z;
+    const flowerVendorMesh = this._createFlowerVendorNPC(initX, initZ, 0.45);
     npcGroup.add(flowerVendorMesh);
 
-    // Đăng ký collider ban đầu
+    // Đăng ký collider ban đầu trên vỉa hè ven hồ
     const flowerColliderIndex = this.npcColliders.length;
-    this._addNpcCollider(42, -48, 0.7);
-
-    // Lộ trình tuần tra quanh bờ Hồ Gươm (8 Waypoints)
-    const flowerWaypoints = [
-      new THREE.Vector3(42, 0, -48),
-      new THREE.Vector3(46, 0, -88),
-      new THREE.Vector3(52, 0, -130),
-      new THREE.Vector3(88, 0, -160),
-      new THREE.Vector3(130, 0, -152),
-      new THREE.Vector3(154, 0, -98),
-      new THREE.Vector3(122, 0, -42),
-      new THREE.Vector3(72, 0, -35)
-    ];
+    this._addNpcCollider(initX, initZ, 0.7);
 
     this.roamingNpcs.push({
       id: 'chi_lan_hoa',
@@ -3505,6 +3757,7 @@ export class WorldManager {
         } else {
           const dir = this._npcDir.subVectors(targetWp, currentPos).normalize();
           currentPos.addScaledVector(dir, npc.speed * delta);
+          currentPos.y = 0.45; // Luôn đi trên mặt đường đá bờ hồ khô ráo, tuyệt đối không chìm xuống nước
 
           const targetAngle = Math.atan2(dir.x, dir.z);
           flowerVendorMesh.rotation.y = THREE.MathUtils.lerp(flowerVendorMesh.rotation.y, targetAngle, 0.12);
@@ -3601,6 +3854,7 @@ export class WorldManager {
         } else {
           const dir = this._npcDir.subVectors(targetWp, currentPos).normalize();
           currentPos.addScaledVector(dir, npc.speed * delta);
+          currentPos.y = 0.45; // Luôn đi trên mặt đường đá bờ hồ khô ráo, tuyệt đối không chìm xuống nước
 
           const targetAngle = Math.atan2(dir.x, dir.z);
           banhMiVendorMesh.rotation.y = THREE.MathUtils.lerp(banhMiVendorMesh.rotation.y, targetAngle, 0.12);
@@ -4704,7 +4958,7 @@ export class WorldManager {
       const r = fish.orbitRadius + Math.sin(time * 1.5 + fish.swimPhase) * 2.2;
       fish.group.position.x = fish.centerX + Math.cos(fish.orbitAngle) * r;
       fish.group.position.z = fish.centerZ + Math.sin(fish.orbitAngle) * r;
-      fish.group.position.y = 0.04 + Math.sin(time * 2.2 + fish.swimPhase) * 0.012;
+      fish.group.position.y = 0.065 + Math.sin(time * 2.2 + fish.swimPhase) * 0.012;
 
       // Hướng quay tiếp tuyến quỹ đạo kèm uốn lượn hình sin
       const tangent = fish.orbitAngle + (Math.PI / 2) * Math.sign(fish.orbitSpeed);
@@ -4715,6 +4969,16 @@ export class WorldManager {
       if (fish.tail) {
         fish.tail.rotation.y = Math.sin(time * 7.5 + fish.swimPhase) * 0.45;
       }
+    }
+
+    // 5. Hiệu ứng sóng nước và ánh nắng lấp lánh phản chiếu trên mặt Hồ Gươm (Water Caustic Shimmer)
+    if (this.lakeShimmerMesh) {
+      this.lakeShimmerMesh.rotation.z = time * 0.05;
+      const pulse = 0.22 + Math.sin(time * 1.8) * 0.08;
+      this.lakeShimmerMesh.material.opacity = pulse;
+    }
+    if (this.lakeWaterMesh) {
+      this.lakeWaterMesh.rotation.z = Math.sin(time * 0.3) * 0.002;
     }
   }
 
