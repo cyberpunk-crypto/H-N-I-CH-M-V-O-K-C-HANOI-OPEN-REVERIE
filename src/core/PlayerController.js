@@ -74,7 +74,7 @@ export class PlayerController {
     this.characterGroup.name = 'DreamerCharacter';
 
     // Xác định nhân vật ban đầu từ hồ sơ lưu trữ hoặc mặc định là char_photographer
-    let savedCharId = 'char_photographer';
+    let savedCharId = 'char_nu_sinh_ao_dai';
     try {
       const profile = JSON.parse(localStorage.getItem('hanoi_user_profile') || '{}');
       if (profile.characterId) savedCharId = profile.characterId;

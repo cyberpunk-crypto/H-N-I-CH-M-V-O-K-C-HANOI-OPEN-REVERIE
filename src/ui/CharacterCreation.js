@@ -23,7 +23,7 @@ export class CharacterCreation {
     this.onCharacterConfirmed = options.onCharacterConfirmed || (() => {});
     this.element = null;
 
-    this.selectedOutfitId = 'char_photographer';
+    this.selectedOutfitId = 'char_nu_sinh_ao_dai';
     this.selectedCameraId = 'leica_m3';
     this.isNameValid = false;
     this.currentName = this.initialName;

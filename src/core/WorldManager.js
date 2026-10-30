@@ -1852,26 +1852,26 @@ export class WorldManager {
     }
 
     // =========================================================================
-    // 🐢 1. NPC LỊCH SỬ THÁP RÙA - BÀ CỤ HÀ NỘI XƯA (BÀ NGOẠI PHỐ CỔ - CHAR 4)
+    // 🐢 1. NPC LỊCH SỬ THÁP RÙA - QUÝ NAM HÀ THÀNH (BÁC VĂN AN - ÁO DÀI GẤM XANH)
     // =========================================================================
-    const elderMeta = CHARACTERS_META.find(c => c.id === 'char_hanoi_elder') || CHARACTERS_META[3];
-    const hanoiElderNPC = createHanoiCharacter3D('char_hanoi_elder', { isNPC: true });
-    hanoiElderNPC.position.set(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0);
-    hanoiElderNPC.rotation.y = Math.PI * 0.75; // Đứng chào đón người chơi
-    zoneGroup.add(hanoiElderNPC);
-    this.historicalNpcs.push(hanoiElderNPC);
-    this._addNpcCollider(80 - 1.5, -80 - 1.0, 0.65);
+    const anMeta = CHARACTERS_META.find(c => c.id === 'char_nam_ao_dai_gam') || CHARACTERS_META[3];
+    const vanAnNPC = createHanoiCharacter3D('char_nam_ao_dai_gam', { isNPC: true });
+    vanAnNPC.position.set(80, 1.55 + t1BaseY, -80 + 1.2);
+    vanAnNPC.rotation.y = 0; // Đứng nghênh đón người chơi trước cửa vòm Tháp Rùa
+    zoneGroup.add(vanAnNPC);
+    this.historicalNpcs.push(vanAnNPC);
+    this._addNpcCollider(80, -80 + 1.2, 0.65);
 
     this.interactables.push({
-      position: new THREE.Vector3(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0),
+      position: new THREE.Vector3(80, 1.55 + t1BaseY, -80 + 1.2),
       radius: 3.2,
-      promptText: 'Trò chuyện cùng Bà Cụ Hà Nội Xưa • Sự Tích Tháp Rùa',
+      promptText: 'Lắng nghe Điển Tích & Lịch Sử Tháp Rùa • Bác Văn An',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', elderMeta);
+          this.eventBus.emit('UI:OPEN_DIALOGUE', anMeta);
         } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
-          window.GameAPI.openNPCDialogue(elderMeta);
+          window.GameAPI.openNPCDialogue(anMeta);
         }
       }
     });
@@ -2753,27 +2753,27 @@ export class WorldManager {
     this._addBoxObstacle(116.5, -66.2, 1.8, 3.0, 0, 1.8);
 
     // =========================================================================
-    // ⛩️ 2. NPC LỊCH SỬ ĐỀN NGỌC SƠN - NỮ CÁN BỘ VĂN HÓA TRÀNG AN (CHAR 2)
+    // ⛩️ 2. NPC LỊCH SỬ ĐỀN NGỌC SƠN - NỮ SINH TRÀNG AN (CÔ HƯƠNG - ÁO DÀI TRẮNG NÓN LÁ)
     // =========================================================================
-    const officerMeta = CHARACTERS_META.find(c => c.id === 'char_cultural_officer') || CHARACTERS_META[1];
-    const culturalOfficerNPC = createHanoiCharacter3D('char_cultural_officer', { isNPC: true });
-    culturalOfficerNPC.position.set(-1.2, 0.88, -4.2);
-    culturalOfficerNPC.rotation.y = Math.PI * 0.15;
-    templeGroup.add(culturalOfficerNPC);
-    this.historicalNpcs.push(culturalOfficerNPC);
-    this._addNpcCollider(116 - 1.2, -70 - 4.2, 0.65);
+    const huongMeta = CHARACTERS_META.find(c => c.id === 'char_nu_sinh_ao_dai') || CHARACTERS_META[0];
+    const nuSinhNPC = createHanoiCharacter3D('char_nu_sinh_ao_dai', { isNPC: true });
+    nuSinhNPC.position.set(0.0, 0.88, 3.5);
+    nuSinhNPC.rotation.y = Math.PI;
+    templeGroup.add(nuSinhNPC);
+    this.historicalNpcs.push(nuSinhNPC);
+    this._addNpcCollider(116, -70 + 3.5, 0.65);
 
-    // Điểm tương tác phím E trò chuyện với Cán Bộ Văn Hóa Tràng An
+    // Điểm tương tác phím E trò chuyện với Nữ Sinh Tràng An
     this.interactables.push({
-      position: new THREE.Vector3(116 - 1.2, 0.88, -70 - 4.2),
+      position: new THREE.Vector3(116, 0.88, -70 + 3.5),
       radius: 3.0,
-      promptText: 'Trò chuyện cùng Cán Bộ Văn Hóa • Lịch Sử Cầu Thê Húc & Đền Ngọc Sơn',
+      promptText: 'Trò chuyện cùng Cô Hương • Lịch Sử Cầu Thê Húc & Đền Ngọc Sơn',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', officerMeta);
+          this.eventBus.emit('UI:OPEN_DIALOGUE', huongMeta);
         } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
-          window.GameAPI.openNPCDialogue(officerMeta);
+          window.GameAPI.openNPCDialogue(huongMeta);
         }
       }
     });
@@ -2976,26 +2976,26 @@ export class WorldManager {
     this._addBoxObstacle(-78, 68, 1.0, 8.2, 0, 5.0);
 
     // =========================================================================
-    // 📸 4. NPC LỊCH SỬ PHỐ CỔ - NAM NHIẾP ẢNH GIA DI SẢN (CHÚ TUẤN - CHAR 1)
+    // 🌸 3. NPC LỊCH SỬ PHỐ CỔ - CÔ GÁI PHỐ THỊ (CHỊ LAN - ÁO BÀ BA HỒNG KHĂN RẰN)
     // =========================================================================
-    const photoMeta = CHARACTERS_META.find(c => c.id === 'char_photographer') || CHARACTERS_META[0];
-    const photographerNPC = createHanoiCharacter3D('char_photographer', { isNPC: true });
-    photographerNPC.position.set(-48.0, 0.5, 54.0);
-    photographerNPC.rotation.y = Math.PI * 0.35;
-    zoneGroup.add(photographerNPC);
-    this.historicalNpcs.push(photographerNPC);
-    this._addNpcCollider(-48.0, 54.0, 0.65);
+    const lanMeta = CHARACTERS_META.find(c => c.id === 'char_co_gai_ao_ba_ba') || CHARACTERS_META[1];
+    const coGaiNPC = createHanoiCharacter3D('char_co_gai_ao_ba_ba', { isNPC: true });
+    coGaiNPC.position.set(-48.0, 0.5, 59.5);
+    coGaiNPC.rotation.y = 0;
+    zoneGroup.add(coGaiNPC);
+    this.historicalNpcs.push(coGaiNPC);
+    this._addNpcCollider(-48.0, 59.5, 0.65);
 
     this.interactables.push({
-      position: new THREE.Vector3(-48.0, 0.5, 54.0),
+      position: new THREE.Vector3(-48.0, 0.5, 59.5),
       radius: 3.2,
-      promptText: 'Gặp gỡ Nhiếp Ảnh Gia Di Sản • Lịch Sử 36 Phố Phường',
+      promptText: 'Khám phá 36 Phố Phường & Ô Quan Chưởng cùng Chị Lan',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', photoMeta);
+          this.eventBus.emit('UI:OPEN_DIALOGUE', lanMeta);
         } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
-          window.GameAPI.openNPCDialogue(photoMeta);
+          window.GameAPI.openNPCDialogue(lanMeta);
         }
       }
     });
@@ -3796,32 +3796,32 @@ export class WorldManager {
     npcLongBienGroup.add(pipeMesh);
 
     // =========================================================================
-    // 🚂 3. NPC LỊCH SỬ CẦU LONG BIÊN - NAM PHƯỢT THỦ / BẢO LÃNG TỬ (CHAR 3)
+    // 🚂 4. NPC LỊCH SỬ CẦU LONG BIÊN - TRÍ THỨC HIỆN ĐẠI (KTS MINH TUẤN - ÂU PHỤC SUIT NAVY)
     // =========================================================================
-    const explorerMeta = CHARACTERS_META.find(c => c.id === 'char_young_explorer') || CHARACTERS_META[2];
-    const youngExplorerNPC = createHanoiCharacter3D('char_young_explorer', { isNPC: true });
-    youngExplorerNPC.position.set(0, 0, 0); // Đặt chính giữa nhóm bục nghỉ ngơi
-    youngExplorerNPC.rotation.y = Math.PI * 0.15;
-    npcLongBienGroup.add(youngExplorerNPC);
-    this.historicalNpcs.push(youngExplorerNPC);
+    const tuanMeta = CHARACTERS_META.find(c => c.id === 'char_nam_tri_thuc_suit') || CHARACTERS_META[2];
+    const tuanNPC = createHanoiCharacter3D('char_nam_tri_thuc_suit', { isNPC: true });
+    tuanNPC.position.set(0, 0, 0);
+    tuanNPC.rotation.y = Math.PI * 0.15;
+    npcLongBienGroup.add(tuanNPC);
+    this.historicalNpcs.push(tuanNPC);
 
     npcLongBienGroup.rotation.y = Math.PI / 2;
     zoneGroup.add(npcLongBienGroup);
 
-    // Đăng ký Collider cho Bảo Lãng Tử để người chơi không đi xuyên qua
+    // Đăng ký Collider cho KTS Minh Tuấn để người chơi không đi xuyên qua
     this._addNpcCollider(npcX, npcZ, 0.65);
 
     // Đăng ký Tương tác chiêm bái & Trò chuyện lịch sử
     this.interactables.push({
       position: new THREE.Vector3(npcX, npcY + 0.8, npcZ),
       radius: 3.2,
-      promptText: 'Trò chuyện cùng Bảo Lãng Tử • Ký Ức Cầu Long Biên 1972',
+      promptText: 'Tìm hiểu Kết Cấu Thép Cầu Long Biên cùng KTS Minh Tuấn',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', explorerMeta);
+          this.eventBus.emit('UI:OPEN_DIALOGUE', tuanMeta);
         } else if (window.GameAPI && window.GameAPI.openNPCDialogue) {
-          window.GameAPI.openNPCDialogue(explorerMeta);
+          window.GameAPI.openNPCDialogue(tuanMeta);
         }
       }
     });
