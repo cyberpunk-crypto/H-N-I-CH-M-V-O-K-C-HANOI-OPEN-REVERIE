@@ -124,7 +124,7 @@ export class WorldManager {
 
       // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (72, -72), bán kính an toàn 3.8m
       const dKimQuy = this._pointToSegmentDistSq(x, z, 16, -16, 72, -72);
-      if (dKimQuy <= 3.8 * 3.8 && y >= 0.15) {
+      if (dKimQuy <= 2.2 * 2.2 && y >= 0.15) {
         return false; // An toàn tuyệt đối trên Cầu Kim Quy và lối dẫn
       }
 
@@ -2230,7 +2230,7 @@ export class WorldManager {
     for (let ip = 0; ip < islandPostCount; ip++) {
       const iAngle = (ip / islandPostCount) * Math.PI * 2;
       // Chừa lối vào từ Cầu Thê Húc (Góc Đông Nam: angle khoảng 0.05 đến 0.65)
-      if (iAngle > 0.05 && iAngle < 0.65) continue;
+      if (iAngle >= -0.15 && iAngle <= 0.95) continue; // Mở rộng lối vào Cầu Thê Húc lên đảo Ngọc Sơn thênh thang 100%
 
       const ix = 128 + Math.cos(iAngle) * 21.5;
       const iz = -68 + Math.sin(iAngle) * 21.5;
@@ -2366,23 +2366,36 @@ export class WorldManager {
     this.colliders.push(islandRamp);
 
     // ĐẮC NGUYỆT LÂU (Lầu Đón Trăng - Cổng Đền Ngọc Sơn 2 tầng mái cong)
+    // Tự căn chỉnh góc đón chính xác theo trục Cầu Thê Húc hạ dốc (vectơ (-0.8, -0.6)), mở rộng lối đi thông thoáng 4.2m
     const dacNguyetLau = new THREE.Group();
     dacNguyetLau.position.set(130, 0.9, -67);
-    const dnlPillars = [
-      [-1.8, -1.8], [1.8, -1.8], [-1.8, 1.8], [1.8, 1.8]
+    const bridgeAngle = Math.atan2(-6, -8); // Góc đón từ cầu
+    dacNguyetLau.rotation.y = -bridgeAngle;
+
+    // 4 cột gỗ son đặt 2 bên mép hành lang (offset vuông góc ±2.1m, mở lối giữa rộng 4.2m thênh thang)
+    const localPillars = [
+      [-2.1, -1.2], [-2.1, 1.2],
+      [2.1, -1.2], [2.1, 1.2]
     ];
-    dnlPillars.forEach(p => {
+    const cosA = Math.cos(-bridgeAngle);
+    const sinA = Math.sin(-bridgeAngle);
+
+    localPillars.forEach(p => {
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 4.5, 8), this.materials.theHucRed);
       col.position.set(p[0], 2.25, p[1]);
       dacNguyetLau.add(col);
-      // Obstacle nhỏ cho từng cột để người chơi không đi xuyên cột mà vẫn bước đi thênh thang ở giữa
-      this._addBoxObstacle(130 + p[0], -67 + p[1], 0.55, 0.55, 0, 5.0);
+
+      // Tính tọa độ world chính xác của từng cột sau khi xoay
+      const wx = 130 + (p[0] * cosA - p[1] * sinA);
+      const wz = -67 + (p[0] * sinA + p[1] * cosA);
+      this._addBoxObstacle(wx, wz, 0.50, 0.50, 0.5, 5.0);
     });
-    const dnlRoof1 = new THREE.Mesh(new THREE.ConeGeometry(3.6, 1.4, 4), this.materials.roofTile);
+
+    const dnlRoof1 = new THREE.Mesh(new THREE.ConeGeometry(4.2, 1.4, 4), this.materials.roofTile);
     dnlRoof1.rotation.y = Math.PI / 4;
     dnlRoof1.position.y = 4.8;
     dacNguyetLau.add(dnlRoof1);
-    const dnlRoof2 = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.1, 4), this.materials.roofTile);
+    const dnlRoof2 = new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.1, 4), this.materials.roofTile);
     dnlRoof2.rotation.y = Math.PI / 4;
     dnlRoof2.position.y = 5.8;
     dacNguyetLau.add(dnlRoof2);
