@@ -144,6 +144,37 @@ export class WorldManager {
   }
 
   /**
+   * KIỂM TRA TỌA ĐỘ NẰM TRONG LÒNG NƯỚC MỞ CỦA HỒ GƯƠM
+   * Trả về true NẾU VÀ CHỈ NẾU tọa độ nằm an toàn trong lòng nước sâu của Hồ Gươm,
+   * cách xa tất cả bờ kè, đảo Tháp Rùa, Đảo Ngọc Sơn, Cầu Kim Quy và Cầu Thê Húc.
+   * Dùng riêng để đảm bảo cá tuyệt đối KHÔNG BAO GIỜ xuất hiện trên mặt đường, đảo hay cầu.
+   */
+  isPointInOpenLakeWater(x, z) {
+    const dx = x - 80;
+    const dz = z - (-80);
+    const distLakeSq = dx * dx + dz * dz;
+
+    // Phải nằm bên trong lòng hồ (cách kè đá bờ hồ ít nhất 6.0m: R <= 78.8m)
+    if (distLakeSq >= 78.8 * 78.8) return false;
+
+    // Phải cách xa mép Đảo Tháp Rùa ít nhất 3.5m (bán kính đảo 18.5m -> cấm trong R <= 22.0m)
+    if (distLakeSq <= 22.0 * 22.0) return false;
+
+    // Phải cách xa Đảo Ngọc Sơn ít nhất 4.0m (tâm 128, -68, cấm trong R <= 29.0m)
+    const dNgocX = x - 128;
+    const dNgocZ = z - (-68);
+    if (dNgocX * dNgocX + dNgocZ * dNgocZ <= 29.0 * 29.0) return false;
+
+    // Phải cách xa hành lang Cầu Kim Quy ít nhất 6.0m (đoạn (16, -16) đến (72, -72))
+    if (this._pointToSegmentDistSq(x, z, 16, -16, 72, -72) <= 6.0 * 6.0) return false;
+
+    // Phải cách xa hành lang Cầu Thê Húc ít nhất 6.0m (đoạn (160, -40) đến (130, -66))
+    if (this._pointToSegmentDistSq(x, z, 160, -40, 130, -66) <= 6.0 * 6.0) return false;
+
+    return true;
+  }
+
+  /**
    * Tạo texture canvas giả lập độ phân giải cao làm fallback nếu file ảnh chưa tải kịp
    */
   _createCanvasFallback(drawFn, width = 512, height = 512) {
@@ -363,18 +394,14 @@ export class WorldManager {
       metalness: 0.12
     });
 
-    // 10. Mặt nước Hồ Gươm xanh lục bảo long lanh trong trẻo
-    this.materials.lakeWater = new THREE.MeshPhysicalMaterial({
-      color: 0x0ea598, // Màu xanh lục bích Hồ Gươm rực rỡ, lung linh
-      emissive: 0x054840,
-      emissiveIntensity: 0.22,
-      roughness: 0.05,
+    // 10. Mặt nước Hồ Gươm xanh lục thủy phẳng lặng, tự nhiên (Serene Mirror Lake)
+    this.materials.lakeWater = new THREE.MeshStandardMaterial({
+      color: 0x165a52, // Xanh lục thủy truyền thống Hồ Gươm thanh bình, tĩnh lặng
+      roughness: 0.16,
       metalness: 0.12,
-      transmission: 0.38, // Độ truyền quang trong suốt để nhìn rõ đáy hồ và đàn cá bơi lội
-      ior: 1.333,
       transparent: true,
-      opacity: 0.74,
-      depthWrite: false
+      opacity: 0.84,
+      depthWrite: true
     });
 
     // 11. Phù sa đỏ Sông Hồng
@@ -1067,31 +1094,14 @@ export class WorldManager {
     const zoneGroup = new THREE.Group();
     zoneGroup.name = 'Zone1_HoanKiem';
 
-    // 1. Lòng Hồ Gươm (Mặt nước xanh lục bảo long lanh dưới kè đá rêu phong)
+    // 1. Lòng Hồ Gươm (Mặt nước xanh lục thủy phẳng lặng tự nhiên dưới kè đá rêu phong)
     const waterGeo = new THREE.CircleGeometry(84.8, 64);
     waterGeo.rotateX(-Math.PI / 2);
     const waterMesh = new THREE.Mesh(waterGeo, this.materials.lakeWater);
     waterMesh.position.set(80, 0.08, -80);
     zoneGroup.add(waterMesh);
     this.lakeWaterMesh = waterMesh;
-
-    // Vành sóng nước lấp lánh phản chiếu ánh nắng quanh Tháp Rùa (Caustic Sunlight Shimmer Ring)
-    const shimmerGeo = new THREE.RingGeometry(11.5, 42.0, 64);
-    shimmerGeo.rotateX(-Math.PI / 2);
-    const shimmerMat = new THREE.MeshStandardMaterial({
-      color: 0x4df2d8,
-      emissive: 0x228b7e,
-      emissiveIntensity: 0.35,
-      roughness: 0.1,
-      metalness: 0.3,
-      transparent: true,
-      opacity: 0.28,
-      depthWrite: false
-    });
-    const shimmerMesh = new THREE.Mesh(shimmerGeo, shimmerMat);
-    shimmerMesh.position.set(80, 0.088, -80);
-    zoneGroup.add(shimmerMesh);
-    this.lakeShimmerMesh = shimmerMesh;
+    this.lakeShimmerMesh = null;
 
     // KÈ ĐÁ BỜ HỒ (STONE EMBANKMENT RETAINING WALL) TẠI R = 85.0M
     const lakeWallGeo = new THREE.CylinderGeometry(85.0, 85.0, 0.45, 64, 1, true);
@@ -2124,11 +2134,16 @@ export class WorldManager {
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
     const fishMatList = [fishGoldMat, fishRedMat, fishPlatinumMat, fishOrangeMat];
 
+    // CÁC ĐÀN CÁ CHÉP VÀNG & CÁ KOI HOÀN KIẾM:
+    // Tuyệt đối chỉ bơi ở các vùng lòng hồ nước sâu, khoáng đạt,
+    // cách xa Cầu Kim Quy (>45m), Cầu Thê Húc (>50m), Đảo Rùa (>10m) và vỉa hè (>30m).
     const fishSchools = [
-      { count: 14, cx: 80, cz: -80, rMin: 13, rMax: 26, speedBase: 0.32 }, // Đàn cá bơi sát quanh Đảo Tháp Rùa
-      { count: 8, cx: 45, cz: -45, rMin: 10, rMax: 20, speedBase: -0.28 },
-      { count: 10, cx: 142, cz: -55, rMin: 12, rMax: 24, speedBase: 0.26 },
-      { count: 12, cx: 80, cz: -80, rMin: 38, rMax: 65, speedBase: -0.22 }
+      // Đàn 1: Lòng hồ sâu phía Nam Tháp Rùa (Vùng nước rộng mở nhất Hồ Gươm)
+      { count: 14, cx: 80, cz: -125, rMin: 6, rMax: 14, speedBase: -0.24 },
+      // Đàn 2: Lòng hồ phía Đông - Đông Nam giữa Tháp Rùa và bờ Đông
+      { count: 10, cx: 110, cz: -102, rMin: 5, rMax: 9, speedBase: 0.26 },
+      // Đàn 3: Lòng hồ phía Tây Nam (Cách Cầu Kim Quy hơn 50m về phía Nam)
+      { count: 10, cx: 52, cz: -108, rMin: 5, rMax: 9, speedBase: -0.25 }
     ];
 
     fishSchools.forEach((school, sIdx) => {
@@ -2136,39 +2151,39 @@ export class WorldManager {
         const fishGroup = new THREE.Group();
         const mat = fishMatList[(sIdx + f) % fishMatList.length];
 
-        // Thân cá chép uốn lượn thon gọn khí động học
-        const bodyGeo = new THREE.ConeGeometry(0.24, 1.15, 8);
+        // Thân cá chép uốn lượn thon gọn, kích thước tự nhiên
+        const bodyGeo = new THREE.ConeGeometry(0.16, 0.68, 8);
         bodyGeo.rotateX(Math.PI / 2);
-        bodyGeo.scale(0.58, 0.82, 1.0);
+        bodyGeo.scale(0.55, 0.75, 1.0);
         const bodyMesh = new THREE.Mesh(bodyGeo, mat);
         fishGroup.add(bodyMesh);
 
         // Mắt cá đen láy
         for (let side of [-1, 1]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeMat);
-          eye.position.set(side * 0.12, 0.05, 0.38);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), eyeMat);
+          eye.position.set(side * 0.08, 0.035, 0.22);
           fishGroup.add(eye);
         }
 
-        // Vây lưng cá cong vút đón nắng
-        const dorsalGeo = new THREE.BoxGeometry(0.025, 0.22, 0.42);
+        // Vây lưng cá
+        const dorsalGeo = new THREE.BoxGeometry(0.02, 0.12, 0.26);
         const dorsal = new THREE.Mesh(dorsalGeo, mat);
-        dorsal.position.set(0, 0.19, -0.06);
+        dorsal.position.set(0, 0.10, -0.04);
         fishGroup.add(dorsal);
 
         // Vây bơi hai bên
         for (let side of [-1, 1]) {
-          const fin = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.22), mat);
-          fin.position.set(side * 0.16, -0.04, 0.20);
+          const fin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.015, 0.16), mat);
+          fin.position.set(side * 0.11, -0.02, 0.12);
           fin.rotation.z = side * 0.35;
           fishGroup.add(fin);
         }
 
         // Đuôi cá có khớp lắc bơi lội sinh động
         const tailPivot = new THREE.Group();
-        tailPivot.position.set(0, 0, -0.58);
-        const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.38, 0.48), mat);
-        tailFin.position.set(0, 0, -0.22);
+        tailPivot.position.set(0, 0, -0.34);
+        const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.24, 0.32), mat);
+        tailFin.position.set(0, 0, -0.14);
         tailPivot.add(tailFin);
         fishGroup.add(tailPivot);
 
@@ -2176,11 +2191,15 @@ export class WorldManager {
         const angle = (f / school.count) * Math.PI * 2 + Math.random() * 0.5;
         const speed = school.speedBase * (0.85 + Math.random() * 0.3);
 
+        const spawnX = school.cx + Math.cos(angle) * radius;
+        const spawnZ = school.cz + Math.sin(angle) * radius;
+
         fishGroup.position.set(
-          school.cx + Math.cos(angle) * radius,
-          0.065,
-          school.cz + Math.sin(angle) * radius
+          spawnX,
+          -0.04, // Bơi ngập dưới mặt nước hồ (y = 0.08)
+          spawnZ
         );
+        fishGroup.visible = this.isPointInOpenLakeWater(spawnX, spawnZ);
         zoneGroup.add(fishGroup);
 
         this.lakeFish.push({
@@ -4955,30 +4974,30 @@ export class WorldManager {
     for (let i = 0; i < this.lakeFish.length; i++) {
       const fish = this.lakeFish[i];
       fish.orbitAngle += fish.orbitSpeed * delta;
-      const r = fish.orbitRadius + Math.sin(time * 1.5 + fish.swimPhase) * 2.2;
-      fish.group.position.x = fish.centerX + Math.cos(fish.orbitAngle) * r;
-      fish.group.position.z = fish.centerZ + Math.sin(fish.orbitAngle) * r;
-      fish.group.position.y = 0.065 + Math.sin(time * 2.2 + fish.swimPhase) * 0.012;
+      const r = fish.orbitRadius + Math.sin(time * 1.2 + fish.swimPhase) * 1.2;
+      const targetX = fish.centerX + Math.cos(fish.orbitAngle) * r;
+      const targetZ = fish.centerZ + Math.sin(fish.orbitAngle) * r;
 
-      // Hướng quay tiếp tuyến quỹ đạo kèm uốn lượn hình sin
-      const tangent = fish.orbitAngle + (Math.PI / 2) * Math.sign(fish.orbitSpeed);
-      const serpentine = Math.sin(time * 4.2 + fish.swimPhase) * 0.14;
-      fish.group.rotation.y = -tangent + Math.PI / 2 + serpentine;
+      // KIỂM TRA BẢO VỆ CHẮC CHẮN: Cá CHỈ bơi trong lòng nước mở, tuyệt đối không xuất hiện trên bờ, đảo hay cầu
+      const inSafeWater = this.isPointInOpenLakeWater(targetX, targetZ);
+      fish.group.visible = inSafeWater;
 
-      // Vẫy đuôi cá nhịp nhàng tự nhiên
-      if (fish.tail) {
-        fish.tail.rotation.y = Math.sin(time * 7.5 + fish.swimPhase) * 0.45;
+      if (inSafeWater) {
+        fish.group.position.x = targetX;
+        fish.group.position.z = targetZ;
+        // Bơi chìm dưới mặt nước hồ tĩnh lặng (-0.04m, nước phẳng ở mức 0.08m)
+        fish.group.position.y = -0.04 + Math.sin(time * 1.6 + fish.swimPhase) * 0.01;
+
+        // Hướng quay tiếp tuyến quỹ đạo kèm uốn lượn hình sin nhẹ nhàng
+        const tangent = fish.orbitAngle + (Math.PI / 2) * Math.sign(fish.orbitSpeed);
+        const serpentine = Math.sin(time * 3.2 + fish.swimPhase) * 0.10;
+        fish.group.rotation.y = -tangent + Math.PI / 2 + serpentine;
+
+        // Vẫy đuôi cá nhịp nhàng tự nhiên
+        if (fish.tail) {
+          fish.tail.rotation.y = Math.sin(time * 5.5 + fish.swimPhase) * 0.35;
+        }
       }
-    }
-
-    // 5. Hiệu ứng sóng nước và ánh nắng lấp lánh phản chiếu trên mặt Hồ Gươm (Water Caustic Shimmer)
-    if (this.lakeShimmerMesh) {
-      this.lakeShimmerMesh.rotation.z = time * 0.05;
-      const pulse = 0.22 + Math.sin(time * 1.8) * 0.08;
-      this.lakeShimmerMesh.material.opacity = pulse;
-    }
-    if (this.lakeWaterMesh) {
-      this.lakeWaterMesh.rotation.z = Math.sin(time * 0.3) * 0.002;
     }
   }
 
