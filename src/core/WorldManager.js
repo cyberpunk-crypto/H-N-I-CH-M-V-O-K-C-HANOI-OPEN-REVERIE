@@ -103,27 +103,28 @@ export class WorldManager {
       // Đang trong phạm vi mặt nước Hồ Gươm!
       // Kiểm tra xem có đang ở trên các khu vực an toàn (Đảo Rùa, Đảo Ngọc Sơn, Cầu Thê Húc, Cầu Kim Quy) không:
 
-      // a. Đảo Rùa tự nhiên: bán kính 18.5m quanh (80, -80)
-      if (distSq <= 18.5 * 18.5 && y >= 0.45) {
+      // a. Đảo Rùa tự nhiên: bán kính 19.5m quanh (80, -80)
+      if (distSq <= 19.5 * 19.5 && y >= 0.35) {
         return false; // An toàn trên Đảo Rùa
       }
 
-      // b. Đảo Ngọc Sơn: bán kính 24m quanh (128, -68)
+      // b. Đảo Ngọc Sơn: bán kính 26.5m quanh (128, -68)
       const dNgocX = x - 128;
       const dNgocZ = z - (-68);
-      if (dNgocX * dNgocX + dNgocZ * dNgocZ <= 24.5 * 24.5 && y >= 0.55) {
+      if (dNgocX * dNgocX + dNgocZ * dNgocZ <= 26.5 * 26.5 && y >= 0.35) {
         return false; // An toàn trên Đảo Ngọc Sơn
       }
 
-      // c. Cầu Thê Húc son đỏ: từ bờ (160, -40) đến Đắc Nguyệt Lâu (132, -66), bán kính an toàn 2.4m
-      const dTheHuc = this._pointToSegmentDistSq(x, z, 160, -40, 132, -66);
-      if (dTheHuc <= 2.4 * 2.4 && y >= 0.45) {
-        return false; // An toàn trên Cầu Thê Húc
+      // c. Cầu Thê Húc son đỏ & Toàn bộ hành lang lối dẫn vào cầu:
+      // Bao gồm hành lang Cầu Thê Húc từ quảng trường bờ đông (166, -36) qua vòm cong đến Đắc Nguyệt Lâu (128, -68)
+      const dTheHuc = this._pointToSegmentDistSq(x, z, 166, -36, 128, -68);
+      if (dTheHuc <= 6.0 * 6.0 && y >= 0.15) {
+        return false; // An toàn tuyệt đối trên Cầu Thê Húc và lối dẫn vào cầu!
       }
 
-      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (70, -70), bán kính an toàn 2.5m
-      const dKimQuy = this._pointToSegmentDistSq(x, z, 16, -16, 70, -70);
-      if (dKimQuy <= 2.5 * 2.5 && y >= 0.25) {
+      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (72, -72), bán kính an toàn 3.8m
+      const dKimQuy = this._pointToSegmentDistSq(x, z, 16, -16, 72, -72);
+      if (dKimQuy <= 3.8 * 3.8 && y >= 0.15) {
         return false; // An toàn tuyệt đối trên Cầu Kim Quy và lối dẫn
       }
 
@@ -2246,12 +2247,23 @@ export class WorldManager {
     // hàng song tiện sơn son thếp vàng búp sen thanh nhã, triệt tiêu 100% vòm ống cản trở!
     // =========================================================================
 
-    // 1. DỐC TIẾP CẬN THOẢI ĐẦU CẦU PHÍA BỜ HỒ (Thê Húc Bridge Approach Ramp) - BẢN RỘNG 3.8M
-    const theHucApproachGeo = new THREE.BoxGeometry(11.0, 0.28, 3.8);
+    // 1. QUẢNG TRƯỜNG ĐÁ BỜ ĐÔNG ĐẦU CẦU THÊ HÚC & THÁP BÚT - ĐÀI NGHIÊN (Walkable Shore Plaza)
+    // Nối thông suốt thênh thang từ vỉa hè đường dạo bộ ven hồ và lòng đường xe chạy vào thẳng đầu cầu
+    const theHucPlazaGeo = new THREE.BoxGeometry(16.0, 0.35, 16.0);
+    const theHucPlaza = new THREE.Mesh(theHucPlazaGeo, this.materials.mossStone);
+    theHucPlaza.position.set(164.0, 0.38, -36.0);
+    theHucPlaza.receiveShadow = true;
+    zoneGroup.add(theHucPlaza);
+    this.colliders.push(theHucPlaza); // ĐĂNG KÝ VÀO COLLIDERS ĐỂ ĐI LẠI THÊNH THANG 100%!
+
+    // DỐC THOẢI NỐI TỪ QUẢNG TRƯỜNG ĐÁ LÊN MẶT CẦU THÊ HÚC (Bridge Approach Ramp)
+    // Nối mượt mà liên tục từ y = 0.38 lên y = 0.58 tại đầu vòm cầu (158, -42), bản rộng 4.2m
+    const rampLength = Math.hypot(158 - 163, -42 - (-37)); // ~7.07m
+    const rampAngle = Math.atan2(-42 - (-37), 158 - 163);
+    const theHucApproachGeo = new THREE.BoxGeometry(rampLength + 0.6, 0.28, 4.2);
     const theHucApproachRamp = new THREE.Mesh(theHucApproachGeo, this.materials.theHucRed);
-    theHucApproachRamp.position.set(162, 0.52, -39);
-    theHucApproachRamp.rotation.y = -Math.atan2(-6, -8);
-    theHucApproachRamp.rotation.z = 0.05; // Độ dốc thoải < 8% nối êm từ hè lên mặt cầu
+    theHucApproachRamp.position.set(160.5, 0.48, -39.5);
+    theHucApproachRamp.rotation.y = -rampAngle;
     theHucApproachRamp.receiveShadow = true;
     zoneGroup.add(theHucApproachRamp);
     this.colliders.push(theHucApproachRamp);
@@ -2715,12 +2727,12 @@ export class WorldManager {
 
     // THÁP BÚT ("TẢ THANH THIÊN" - VIẾT LÊN TRỜI XANH) ĐẦU CẦU THÊ HÚC (Trên Núi Ngọc Bội ven bờ)
     const thapButGroup = new THREE.Group();
-    thapButGroup.position.set(168, 0, -30);
+    thapButGroup.position.set(172, 0, -28);
     // Núi Ngọc Bội bằng các phiến đá xếp chồng tự nhiên
-    const ngocBoiMount = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 3.8, 2.2, 12), this.materials.mossStone);
+    const ngocBoiMount = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, 2.2, 12), this.materials.mossStone);
     ngocBoiMount.position.y = 1.1;
     thapButGroup.add(ngocBoiMount);
-    this._addBoxObstacle(168, -30, 4.2, 4.2, 0, 15);
+    this._addBoxObstacle(172, -28, 3.2, 3.2, 0, 15);
 
     // Tháp 5 tầng bằng đá thon dần lên cao
     for (let f = 0; f < 5; f++) {
@@ -2738,13 +2750,13 @@ export class WorldManager {
 
     // ĐÀI NGHIÊN ĐÁ NÂNG BỞI 3 CHÚ CÓC ĐÁ
     const daiNghien = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 1.0), this.materials.mossStone);
-    daiNghien.position.set(165, 2.8, -34);
+    daiNghien.position.set(168, 2.8, -31);
     thapButGroup.add(daiNghien);
     zoneGroup.add(thapButGroup);
 
     // BIA KỶ NIỆM LỊCH SỬ THÁP BÚT - ĐÀI NGHIÊN & CẦU THÊ HÚC
     this.interactables.push({
-      position: new THREE.Vector3(166, 0.5, -34),
+      position: new THREE.Vector3(167, 0.5, -32),
       radius: 2.8,
       promptText: 'Chiêm ngưỡng Di Tích Tháp Bút & Cầu Thê Húc',
       actionKey: 'E',
@@ -3672,6 +3684,147 @@ export class WorldManager {
       zoneGroup.add(exitGuard);
       this._addBoxObstacle(220.0 + exitRampLength / 2, 60.0 + side, exitRampLength + 0.5, 0.4, 0, bridgeY + 2.0);
     }
+
+    // =========================================================================
+    // 🎖️ NPC LỊCH SỬ CẦU LONG BIÊN: BÁC HÙNG - CHIẾN SĨ TỰ VỆ GÁC CẦU 1972
+    // Đứng trên hành lang bộ dầm Eiffel nhịp số 4, nhìn ra sông Hồng cuộn phù sa
+    // =========================================================================
+    const npcLongBienGroup = new THREE.Group();
+    const npcX = 75.0;
+    const npcZ = 62.4; // Hành lang đi bộ phía Nam ngắm bãi giữa và dòng sông Hồng
+    const npcY = bridgeY + 0.32; // Mặt hành lang cầu y = 4.52m
+    npcLongBienGroup.position.set(npcX, npcY, npcZ);
+
+    // Ghế đẩu gỗ mộc mạc của bác
+    const stoolMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.35, 0.38), this.materials.retroWood);
+    stoolMesh.position.set(0.45, 0.175, 0);
+    npcLongBienGroup.add(stoolMesh);
+
+    // Ấm tích chè xanh bọc rơm ủ ấm truyền thống & bát sứ hoa tiêu
+    const teaPot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.24, 10), new THREE.MeshStandardMaterial({ color: 0x8a6d4b, roughness: 0.9 }));
+    teaPot.position.set(0.45, 0.47, 0);
+    npcLongBienGroup.add(teaPot);
+
+    const teaCup = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.05, 8), new THREE.MeshStandardMaterial({ color: 0xe8e8e0, roughness: 0.3 }));
+    teaCup.position.set(0.45, 0.38, 0.22);
+    npcLongBienGroup.add(teaCup);
+
+    // Chiếc điếu cày tre hun khói dựng bên thành cầu
+    const pipeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.028, 0.65, 8), this.materials.woodVarnish);
+    pipeMesh.position.set(0.72, 0.32, 0.15);
+    pipeMesh.rotation.z = 0.25;
+    npcLongBienGroup.add(pipeMesh);
+
+    // Nhân vật Bác Hùng - Cựu chiến binh tự vệ Cầu Long Biên
+    const vetMat = new THREE.MeshStandardMaterial({ color: 0x3d5438, roughness: 0.85 }); // Áo trấn thủ xanh quân đội
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x273623, roughness: 0.9 }); // Quần bộ đội
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.6 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0xa0a0a0, roughness: 0.9 }); // Tóc hoa râm
+
+    // Thân người (Áo trấn thủ bộ đội)
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.68, 0.28), vetMat);
+    torso.position.y = 1.04;
+    npcLongBienGroup.add(torso);
+
+    // Huân huy chương lấp lánh trên ngực áo
+    const medal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.02), this.materials.templeGold);
+    medal.position.set(-0.12, 1.22, 0.15);
+    npcLongBienGroup.add(medal);
+
+    // Chân & Quần bộ đội
+    for (let s of [-0.12, 0.12]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.70, 0.20), pantMat);
+      leg.position.set(s, 0.35, 0);
+      npcLongBienGroup.add(leg);
+    }
+
+    // Cánh tay áo
+    for (let s of [-0.28, 0.28]) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.60, 0.16), vetMat);
+      arm.position.set(s, 1.0, 0);
+      npcLongBienGroup.add(arm);
+    }
+
+    // Đầu & Cổ
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), skinMat);
+    head.position.y = 1.52;
+    npcLongBienGroup.add(head);
+
+    // Tóc hoa râm
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.10, 0.26), hairMat);
+    hair.position.y = 1.62;
+    npcLongBienGroup.add(hair);
+
+    // Mũ cối bộ đội cổ điển màu xanh rêu
+    const pithMat = new THREE.MeshStandardMaterial({ color: 0x2e422b, roughness: 0.8 });
+    const pithCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.16, 12), pithMat);
+    pithCrown.position.y = 1.70;
+    const pithBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 16), pithMat);
+    pithBrim.position.y = 1.63;
+    npcLongBienGroup.add(pithCrown);
+    npcLongBienGroup.add(pithBrim);
+
+    // Ngôi sao vàng nhỏ trên mũ cối
+    const star = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), this.materials.templeGold);
+    star.position.set(0, 1.70, 0.19);
+    npcLongBienGroup.add(star);
+
+    // Bi đông nước quân đội quàng qua vai
+    const canteen = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), pithMat);
+    canteen.position.set(-0.25, 0.85, 0.08);
+    canteen.rotation.z = 0.3;
+    npcLongBienGroup.add(canteen);
+
+    // Hướng nhìn ra sông Hồng
+    npcLongBienGroup.rotation.y = Math.PI / 2;
+    zoneGroup.add(npcLongBienGroup);
+
+    // Đăng ký Collider cho Bác Hùng để người chơi không đi xuyên qua
+    this._addNpcCollider(npcX, npcZ, 0.65);
+
+    // Đăng ký Tương tác chiêm bái & Trò chuyện lịch sử
+    this.interactables.push({
+      position: new THREE.Vector3(npcX, npcY + 0.8, npcZ),
+      radius: 3.2,
+      promptText: 'Trò chuyện cùng Bác Hùng • Ký Ức Cầu Long Biên 1972',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('UI:OPEN_DIALOGUE', {
+            name: 'Bác Hùng • Người Lính Gác Cầu Long Biên Lão Thành',
+            role: 'Chiến sĩ tự vệ bảo vệ cầu năm 1972 & Chứng nhân lịch sử trăm năm Thăng Long',
+            avatar: '🎖️',
+            greeting: '"Chào cháu, người lãng tử! Đứng ở nhịp cầu số 4 này đón gió sông Hồng, bác lại nhớ mùa đông năm 1972 khói lửa ngút trời... Khi ấy bom Mỹ dội ác liệt, nhưng mạch máu Long Biên không bao giờ được phép ngừng chảy!"',
+            monumentTitle: 'Cầu Long Biên (1898 - 1902) • Chứng Nhân Lịch Sử Thủ Đô',
+            historyText: `
+              <p><strong>Cầu Long Biên (Tên ban đầu: Cầu Doumer):</strong> Khởi công năm 1898, khánh thành năm 1902 do hãng Daydé & Pillé thi công theo kiến trúc dầm thép Eiffel độc đáo. Từng là cây cầu thép dài thứ hai thế giới (hơn 2.290m) bắc qua dòng sông Hồng cuộn đỏ phù sa.</p>
+              <p><strong>Trận Địa Pháo Cao Xạ & Huyết Mạch 1972:</strong> Trong chiến dịch 'Điện Biên Phủ trên không' 12 ngày đêm cuối năm 1972, không quân Mỹ đã thả hàng trăm quả bom điều khiển laser nhằm đánh sập cây cầu huyết mạch. Các khẩu đội pháo cao xạ 37mm của tự vệ công nhân hỏa xa đã bám trụ trên bãi giữa, bắn rách trời bảo vệ từng thanh ray tà vẹt.</p>
+              <p><strong>Vết Sẹo Kiêu Hãnh Của Lịch Sử:</strong> Những nhịp dầm chữ A và dầm dã chiến Bailey thay thế những nhịp bị bom đánh gãy chính là minh chứng sống động cho ý chí quật cường: <em>'Tim có thể ngừng đập, nhưng tàu qua cầu Long Biên chi viện miền Nam không bao giờ ngừng lại!'</em></p>
+            `,
+            dialogueOptions: [
+              {
+                text: 'Bác có thể kể lại khoảnh khắc bảo vệ cầu trong 12 ngày đêm 1972 không ạ?',
+                reply: 'Đêm 18/12/1972, trời Hà Nội rực sáng như ban ngày bởi bom đạn và pháo cao xạ. Bom cắt đứt nhịp cầu số 4, nhưng ngay trong đêm tối dưới làn bom nổ chậm, hàng trăm thợ cầu và công binh ta đã lao mình xuống dòng sông Hồng xiết lạnh, dùng gỗ tà vẹt và dầm thép dã chiến nối thông cầu trước rạng sáng để đoàn tàu quân lương kịp lăn bánh vào Nam!'
+              },
+              {
+                text: 'Tại sao các nhịp cầu ở đoạn giữa lại có hình dáng dầm khác với hai đầu ạ?',
+                reply: 'Đó chính là những "vết sẹo lịch sử" kiêu hãnh của cầu đấy cháu! Nhịp nguyên bản là kết cấu thép uốn lượn hình rồng bay của Eiffel. Những nhịp dầm giàn thép phẳng ở giữa là do công binh và công nhân cầu đường ta cấp tốc hàn dựng lại sau những trận bom ác liệt, tượng trưng cho sức sống mãnh liệt không gì khuất phục nổi.'
+              },
+              {
+                text: 'Đứng trên cầu nghe tiếng còi tàu hỏa hú vang vượt sông Hồng cảm giác thế nào thưa bác?',
+                reply: 'Tiếng sắt thép rung chuyển rầm rập dưới chân, tiếng còi tàu gióng giả xé tan sương sớm sông Hồng... Với người Hà Nội thế hệ bác, âm thanh ấy chính là nhịp đập trái tim của thủ đô, là tiếng gọi của quê hương không bao giờ phai mờ trong ký ức.'
+              }
+            ],
+            shopItems: [
+              { name: 'Huy Hiệu Cầu Long Biên Kháng Chiến', price: '15 Xu', desc: 'Huy hiệu kim loại in hình nhịp cầu thép và ngôi sao đỏ anh dũng', icon: '🎖️' },
+              { name: 'Trà Xanh Nóng & Kẹo Lạc Bác Hùng', price: '5 Xu', desc: 'Ấm chè xanh nóng hổi đậm đà tình người gác cầu, hồi phục sinh lực', icon: '🍵' },
+              { name: 'Bản Rập Thép Cổ "Daydé & Pillé 1899"', price: '20 Xu', desc: 'Bản in dập tấm biển đồng lịch sử gắn trên dầm cầu thép Eiffel', icon: '📜' },
+              { name: 'Ảnh Tư Liệu Cầu Long Biên 1972', price: '10 Xu', desc: 'Bức ảnh đen trắng ghi lại khoảnh khắc hào hùng thời hoa lửa', icon: '📷' }
+            ]
+          });
+        }
+      }
+    });
 
     this.worldGroup.add(zoneGroup);
   }

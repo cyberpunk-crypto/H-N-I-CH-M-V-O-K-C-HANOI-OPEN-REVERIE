@@ -10,7 +10,7 @@ import { MinimapHUD } from './MinimapHUD.js';
 import { ScrapbookModal } from './ScrapbookModal.js';
 import { ToastNotification } from './ToastNotification.js';
 import { AudioBGMController } from './AudioBGMController.js';
-import { DialogueModal } from './DialogueModal.js';
+import { DialogueModal } from './DialogueModal.js?v=3.9';
 import { ChatBoxHUD } from './ChatBoxHUD.js';
 
 export class UIManager {

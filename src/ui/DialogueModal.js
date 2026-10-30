@@ -147,7 +147,7 @@ export class DialogueModal {
     const shopContainer = this.element.querySelector('#shopItemsContainer');
 
     if (avatarEl) avatarEl.textContent = npcData.avatar || '👤';
-    if (nameEl) nameEl.textContent = npcData.name || 'Người Dân Hà Nội';
+    if (nameEl) nameEl.innerHTML = npcData.name || 'Người Dân Hà Nội';
     if (roleEl) roleEl.textContent = npcData.role || 'Cư dân phố cổ';
     if (textEl) textEl.textContent = npcData.greeting || '"Chào bạn lãng tử!"';
 
