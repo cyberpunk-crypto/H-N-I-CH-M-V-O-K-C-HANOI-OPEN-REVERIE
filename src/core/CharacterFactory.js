@@ -94,6 +94,7 @@ function createPBRMesh(geo, mat) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  mesh.visible = false; // Ẩn các khối hình học lập trình sơ khai để tôn vinh 100% hình ảnh 3D chính thức của Sếp
   return mesh;
 }
 
@@ -464,6 +465,42 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   const clothingGroup = new THREE.Group();
   clothingGroup.name = 'ClothingGroup';
   torsoGroup.add(clothingGroup);
+
+  // Hiển thị trực tiếp hình ảnh nhân vật chính thức của Sếp Tổng (Front & Back High-Resolution Render)
+  const charH = 1.84;
+  const charW = 0.92;
+  const frontTex = getCachedTexture(meta.bodyFront);
+  if (frontTex) {
+    const frontMat = new THREE.MeshBasicMaterial({
+      map: frontTex,
+      transparent: true,
+      alphaTest: 0.15,
+      side: THREE.FrontSide,
+      depthWrite: true
+    });
+    const frontVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), frontMat);
+    frontVisual.name = 'Visual_BodyFront';
+    frontVisual.position.set(0, (charH / 2) - baseTorsoY, 0.015);
+    frontVisual.castShadow = true;
+    clothingGroup.add(frontVisual);
+  }
+
+  const backTex = getCachedTexture(meta.bodyBack || meta.bodyFront);
+  if (backTex) {
+    const backMat = new THREE.MeshBasicMaterial({
+      map: backTex,
+      transparent: true,
+      alphaTest: 0.15,
+      side: THREE.FrontSide,
+      depthWrite: true
+    });
+    const backVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), backMat);
+    backVisual.name = 'Visual_BodyBack';
+    backVisual.rotation.y = Math.PI;
+    backVisual.position.set(0, (charH / 2) - baseTorsoY, -0.015);
+    backVisual.castShadow = true;
+    clothingGroup.add(backVisual);
+  }
 
   const frontFlapGroup = new THREE.Group();
   frontFlapGroup.name = 'Joint_FrontFlap';
