@@ -5,7 +5,7 @@
 
 import { THREE } from './ThreeLib.js';
 import { SceneManager } from './SceneManager.js';
-import { WorldManager } from './WorldManager.js';
+import { WorldManager } from './WorldManager.js?v=3.6';
 import { ZoneManager } from './ZoneManager.js';
 import { PlayerController } from './PlayerController.js';
 import { CameraController } from './CameraController.js';

@@ -514,138 +514,141 @@ export class WorldManager {
       roughness: 0.35
     });
 
-    // 22. Vôi vàng rêu phong Tháp Rùa theo tư liệu 3D Master
-    const thapRuaWallTex = this._loadTextureWithFallback(
-      'assets/textures/old_wall_yellow.jpg',
-      (ctx, w, h) => {
-        ctx.fillStyle = '#dfca96';
-        ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = 'rgba(125, 95, 45, 0.35)';
-        for (let i = 0; i < 50; i++) {
-          ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 40 + 10, Math.random() * 80 + 20);
-        }
-        ctx.fillStyle = 'rgba(60, 75, 45, 0.45)';
-        for (let i = 0; i < 30; i++) {
-          ctx.fillRect(Math.random() * w, h - Math.random() * 100, Math.random() * 50 + 20, 100);
-        }
-      },
-      3, 3
-    );
+    // 22. Vôi vàng rêu phong Tháp Rùa theo ảnh 3D Master chính thức của Sếp Tổng
+    const thapRuaWallTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t1_long.png');
+    thapRuaWallTex.wrapS = THREE.ClampToEdgeWrapping;
+    thapRuaWallTex.wrapT = THREE.ClampToEdgeWrapping;
     this.materials.thapRuaWall = new THREE.MeshStandardMaterial({
       map: thapRuaWallTex,
-      color: 0xe0cb97,
-      roughness: 0.88,
-      metalness: 0.04
-    });
-
-    // 23. Bệ móng đá khối cổ Tháp Rùa (Ashlar Plinth)
-    const thapRuaPlinthTex = this._loadTextureWithFallback(
-      'assets/textures/turtle_tower_moss.jpg',
-      (ctx, w, h) => {
-        ctx.fillStyle = '#6c7268';
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = '#3a4036';
-        ctx.lineWidth = 4;
-        for (let y = 0; y < h; y += 32) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
-          const offset = (y / 32) % 2 === 0 ? 0 : 32;
-          for (let x = offset; x < w; x += 64) {
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y + 32);
-            ctx.stroke();
-          }
-        }
-        ctx.fillStyle = 'rgba(55, 70, 40, 0.4)';
-        for (let i = 0; i < 40; i++) {
-          ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 30 + 10, Math.random() * 30 + 10);
-        }
-      },
-      3, 3
-    );
-    this.materials.thapRuaPlinth = new THREE.MeshStandardMaterial({
-      map: thapRuaPlinthTex,
-      roughness: 0.92,
+      roughness: 0.85,
       metalness: 0.05
     });
 
-    // 24. Mái ngói cong cổ Tháp Rùa rêu phong (Flared Curved Roof Tile)
-    const thapRuaRoofTex = this._loadTextureWithFallback(
-      'assets/textures/roof_terracotta.jpg',
-      (ctx, w, h) => {
-        ctx.fillStyle = '#454c38';
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = '#282d22';
-        ctx.lineWidth = 5;
-        for (let y = 0; y < h; y += 18) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
-        }
-        ctx.fillStyle = 'rgba(40, 55, 30, 0.55)';
-        for (let i = 0; i < 60; i++) {
-          ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 20 + 8, Math.random() * 20 + 8);
-        }
-      },
-      4, 4
-    );
+    const thapRuaT1SideTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t1_short.png');
+    this.materials.thapRuaT1Side = new THREE.MeshStandardMaterial({
+      map: thapRuaT1SideTex,
+      roughness: 0.85,
+      metalness: 0.05
+    });
+
+    // 23. Bệ móng đá khối cổ Tháp Rùa (Ashlar Plinth) từ ảnh Master
+    const thapRuaPlinthTex = this.textureLoader.load('assets/textures/thap_rua_ortho_plinth.png');
+    thapRuaPlinthTex.wrapS = THREE.RepeatWrapping;
+    thapRuaPlinthTex.wrapT = THREE.RepeatWrapping;
+    this.materials.thapRuaPlinth = new THREE.MeshStandardMaterial({
+      map: thapRuaPlinthTex,
+      roughness: 0.90,
+      metalness: 0.05
+    });
+
+    // 24. Mái ngói cong cổ Tháp Rùa rêu phong từ ảnh Master
+    const thapRuaRoofTopTex = this.textureLoader.load('assets/textures/roof_terracotta.jpg');
+    thapRuaRoofTopTex.wrapS = THREE.RepeatWrapping;
+    thapRuaRoofTopTex.wrapT = THREE.RepeatWrapping;
     this.materials.thapRuaRoof = new THREE.MeshStandardMaterial({
-      map: thapRuaRoofTex,
-      color: 0x4d5540,
+      map: thapRuaRoofTopTex,
+      roughness: 0.78,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    const thapRuaRoofMidTex = this.textureLoader.load('assets/textures/roof_terracotta.jpg');
+    thapRuaRoofMidTex.wrapS = THREE.RepeatWrapping;
+    thapRuaRoofMidTex.wrapT = THREE.RepeatWrapping;
+    this.materials.thapRuaRoofMid = new THREE.MeshStandardMaterial({
+      map: thapRuaRoofMidTex,
+      roughness: 0.78,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    // 25. Phù điêu hoa văn khắc nổi và Vòm Tầng 2 & Tầng 3
+    const thapRuaT2Tex = this.textureLoader.load('assets/textures/thap_rua_ortho_t2_long.png');
+    this.materials.thapRuaFacadeT2 = new THREE.MeshStandardMaterial({
+      map: thapRuaT2Tex,
       roughness: 0.82,
-      metalness: 0.08
+      metalness: 0.05
     });
 
-    // 25. Phù điêu hoa văn khắc nổi Tháp Rùa (Carved Relief Frieze Panels)
-    const thapRuaFriezeTex = this._createCanvasFallback((ctx, w, h) => {
-      ctx.fillStyle = '#dfcb99';
-      ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = '#7c6845';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(6, 6, w - 12, h - 12);
-      ctx.strokeRect(12, 12, w - 24, h - 24);
-      // Hoa văn chạm nổi cổ
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, w * 0.25, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = '#a68c5e';
-      ctx.fill();
-    });
-    this.materials.thapRuaFrieze = new THREE.MeshStandardMaterial({
-      map: thapRuaFriezeTex,
-      roughness: 0.76,
-      metalness: 0.1
+    const thapRuaT2SideTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t2_short.png');
+    this.materials.thapRuaT2Side = new THREE.MeshStandardMaterial({
+      map: thapRuaT2SideTex,
+      roughness: 0.82,
+      metalness: 0.05
     });
 
-    // 26. Biểu tượng Đĩa đá tròn đỉnh tháp (Summit Sun/Taiji Disc Emblem)
-    const thapRuaEmblemTex = this._createCanvasFallback((ctx, w, h) => {
-      ctx.fillStyle = '#9a9e96';
-      ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = '#4e524b';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, w * 0.42, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, w * 0.25, 0, Math.PI * 2);
-      ctx.stroke();
-      // Chữ Thọ cách điệu / hoa văn Thái Cực
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(w / 2, h * 0.25);
-      ctx.lineTo(w / 2, h * 0.75);
-      ctx.moveTo(w * 0.25, h / 2);
-      ctx.lineTo(w * 0.75, h / 2);
-      ctx.stroke();
+    const thapRuaT3Tex = this.textureLoader.load('assets/textures/thap_rua_ortho_t3_long.png');
+    this.materials.thapRuaFacadeT3 = new THREE.MeshStandardMaterial({
+      map: thapRuaT3Tex,
+      roughness: 0.82,
+      metalness: 0.05
     });
+
+    const thapRuaT3SideTex = this.textureLoader.load('assets/textures/thap_rua_ortho_t3_short.png');
+    this.materials.thapRuaFacadeT3Side = new THREE.MeshStandardMaterial({
+      map: thapRuaT3SideTex,
+      roughness: 0.82,
+      metalness: 0.05
+    });
+
+    // 26. Lan can đá ô chữ nhật
+    const thapRuaBalustradeTex = this.textureLoader.load('assets/textures/thap_rua_ortho_balustrade.png');
+    this.materials.thapRuaBalustrade = new THREE.MeshStandardMaterial({
+      map: thapRuaBalustradeTex,
+      transparent: true,
+      alphaTest: 0.15,
+      roughness: 0.88,
+      side: THREE.DoubleSide
+    });
+
+    // 27. Biểu tượng Đĩa đá tròn đỉnh tháp (Summit Sun/Taiji Disc Emblem)
+    const thapRuaEmblemTex = this.textureLoader.load('assets/textures/thap_rua_ortho_medallion.png');
     this.materials.thapRuaEmblem = new THREE.MeshStandardMaterial({
       map: thapRuaEmblemTex,
-      roughness: 0.78,
-      metalness: 0.12
+      roughness: 0.75,
+      metalness: 0.10
+    });
+
+    // 28. Toàn cảnh 3D Master Tháp Rùa (Alpha Cutouts hai góc nhìn hoàn chỉnh)
+    const thapRuaMasterLeftTex = this.textureLoader.load('assets/textures/thap_rua_master_left.png');
+    this.materials.thapRuaMasterLeft = new THREE.MeshStandardMaterial({
+      map: thapRuaMasterLeftTex,
+      transparent: true,
+      alphaTest: 0.1,
+      roughness: 0.85,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    const thapRuaMasterRightTex = this.textureLoader.load('assets/textures/thap_rua_master_right.png');
+    this.materials.thapRuaMasterRight = new THREE.MeshStandardMaterial({
+      map: thapRuaMasterRightTex,
+      transparent: true,
+      alphaTest: 0.1,
+      roughness: 0.85,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    // 29. Khối Thượng Tháp Rùa (Mái ngói, Lầu Vọng Nguyệt & Đĩa nguyệt cắt chuẩn từ ảnh Master)
+    const thapRuaUpperLeftTex = this.textureLoader.load('assets/textures/thap_rua_upper_left.png');
+    this.materials.thapRuaUpperLeft = new THREE.MeshStandardMaterial({
+      map: thapRuaUpperLeftTex,
+      transparent: true,
+      alphaTest: 0.12,
+      roughness: 0.82,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    const thapRuaUpperRightTex = this.textureLoader.load('assets/textures/thap_rua_upper_right.png');
+    this.materials.thapRuaUpperRight = new THREE.MeshStandardMaterial({
+      map: thapRuaUpperRightTex,
+      transparent: true,
+      alphaTest: 0.12,
+      roughness: 0.82,
+      metalness: 0.05,
+      side: THREE.DoubleSide
     });
   }
 
@@ -1206,6 +1209,96 @@ export class WorldManager {
     towerGroup.name = 'ThapRuaGroup';
     towerGroup.position.set(80, 1.55, -80);
 
+    const setPlaneUVs = (planeGeom, uMin, uMax, vMin, vMax) => {
+      const uvAttr = planeGeom.attributes.uv;
+      uvAttr.setXY(0, uMin, vMax);
+      uvAttr.setXY(1, uMax, vMax);
+      uvAttr.setXY(2, uMin, vMin);
+      uvAttr.setXY(3, uMax, vMin);
+      uvAttr.needsUpdate = true;
+    };
+
+    const createCurvedPagodaRoof = (w, d, h, flare, material) => {
+      const group = new THREE.Group();
+
+      const geom = new THREE.BufferGeometry();
+      const segs = 20;
+      const positions = [];
+      const uvs = [];
+      const indices = [];
+
+      for (let j = 0; j <= segs; j++) {
+        const v = j / segs;
+        const pz = (v - 0.5) * d;
+        for (let i = 0; i <= segs; i++) {
+          const u = i / segs;
+          const px = (u - 0.5) * w;
+
+          const nx = Math.abs(u - 0.5) * 2;
+          const nz = Math.abs(v - 0.5) * 2;
+          const r = Math.max(nx, nz);
+
+          let py = h * (1 - Math.pow(r, 1.25));
+          const corner = Math.pow(nx, 3.5) * Math.pow(nz, 3.5);
+          py += flare * corner;
+
+          positions.push(px, py, pz);
+          // Texture ngói âm dương lặp 4x4 tạo độ chi tiết cao
+          uvs.push(u * 4, v * 4);
+        }
+      }
+
+      for (let j = 0; j < segs; j++) {
+        for (let i = 0; i < segs; i++) {
+          const a = j * (segs + 1) + i;
+          const b = j * (segs + 1) + (i + 1);
+          const c = (j + 1) * (segs + 1) + i;
+          const d = (j + 1) * (segs + 1) + (i + 1);
+          indices.push(a, c, b);
+          indices.push(b, c, d);
+        }
+      }
+
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+
+      const roofTopMesh = new THREE.Mesh(geom, material);
+      roofTopMesh.castShadow = true;
+      roofTopMesh.receiveShadow = true;
+      group.add(roofTopMesh);
+
+      // Khối cổ diêm / dạ mái bên dưới để mái có độ dày 3D thực thụ, không bị hổng đáy
+      const soffitBox = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.94, 0.28, d * 0.94),
+        this.materials.thapRuaPlinth
+      );
+      soffitBox.position.set(0, -0.12, 0);
+      soffitBox.castShadow = true;
+      group.add(soffitBox);
+
+      // 4 Bờ đao mái uốn lượn từ đỉnh dốc xuống 4 góc và vút cong lên kiêu hãnh
+      for (let cx of [-1, 1]) {
+        for (let cz of [-1, 1]) {
+          const cornerCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, h * 0.96, 0),
+            new THREE.Vector3(cx * (w * 0.34), h * 0.42, cz * (d * 0.34)),
+            new THREE.Vector3(cx * (w * 0.47), 0.14, cz * (d * 0.47)),
+            new THREE.Vector3(cx * (w * 0.55), flare * 0.88 + 0.16, cz * (d * 0.55))
+          ]);
+          const hipMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(cornerCurve, 12, 0.09, 6, false),
+            this.materials.thapRuaPlinth
+          );
+          hipMesh.castShadow = true;
+          group.add(hipMesh);
+        }
+      }
+
+      return group;
+    };
+
     // 1. CHÂN ĐẾ MÓNG ĐÁ KHỐI CỔ (ASHLAR PLINTH) & SÂN THÁP
     const plinthW = 11.4;
     const plinthD = 9.2;
@@ -1329,23 +1422,23 @@ export class WorldManager {
     }
 
     // =========================================================================
-    // 2. TẦNG 1: KIẾN TRÚC MỞ 10 VÒM CUỐN GOTHIC & PHÙ ĐIÊU HOA VĂN CHẠM KHẮC
+    // =========================================================================
+    // 2. TẦNG 1: KIẾN TRÚC MỞ 10 VÒM CUỐN GOTHIC & PHÙ ĐIÊU TỪ ẢNH 3D MASTER
     // =========================================================================
     const t1W = 8.0;
     const t1D = 6.0;
     const t1H = 3.8;
-    const t1BaseY = plinthH; // Bắt đầu từ mặt thềm đá
+    const t1BaseY = plinthH; // 0.45m
 
-    // 4 Trụ góc đá rêu phong vững chãi chịu lực (Pilasters with molded capitals)
+    // 4 Trụ góc đá rêu phong vững chãi chịu lực (Pilasters with stone capitals)
     for (let cx of [-t1W / 2 + 0.45, t1W / 2 - 0.45]) {
       for (let cz of [-t1D / 2 + 0.45, t1D / 2 - 0.45]) {
-        const cornerCol = new THREE.Mesh(new THREE.BoxGeometry(0.95, t1H, 0.95), this.materials.thapRuaWall);
+        const cornerCol = new THREE.Mesh(new THREE.BoxGeometry(0.95, t1H, 0.95), this.materials.thapRuaPlinth);
         cornerCol.position.set(cx, t1BaseY + t1H / 2, cz);
         cornerCol.castShadow = true;
         cornerCol.receiveShadow = true;
         towerGroup.add(cornerCol);
 
-        // Chân đế và đầu cột chỉ phào cổ điển
         const baseMold = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.25, 1.15), this.materials.thapRuaPlinth);
         baseMold.position.set(cx, t1BaseY + 0.125, cz);
         towerGroup.add(baseMold);
@@ -1354,71 +1447,81 @@ export class WorldManager {
         capMold.position.set(cx, t1BaseY + t1H - 0.125, cz);
         towerGroup.add(capMold);
 
-        this._addBoxObstacle(80 + cx, -80 + cz, 0.8, 0.8, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+        this._addBoxObstacle(80 + cx, -80 + cz, 0.95, 0.95, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
       }
     }
 
-    // VÁCH CỬA MẶT TÂY (CỬA CHÍNH ĐÓN KHÁCH TỪ CẦU KIM QUY VÀO NỘI ĐIỆN)
-    // 3 Vòm Gothic: Cửa giữa mở thông thoáng rộng 1.5m để người chơi bước thẳng vào trong!
-    for (let vx of [-1.35, 1.35]) {
-      const pierW = new THREE.Mesh(new THREE.BoxGeometry(0.55, t1H, 0.45), this.materials.thapRuaWall);
-      pierW.position.set(vx, t1BaseY + t1H / 2, t1D / 2 - 0.225);
-      pierW.castShadow = true;
-      towerGroup.add(pierW);
-      this._addBoxObstacle(80 + vx, -80 + (t1D / 2 - 0.225), 0.6, 0.5, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
-    }
+    // VÁCH MẶT TÂY (CỬA CHÍNH ĐÓN KHÁCH TỪ CẦU KIM QUY VÀO NỘI ĐIỆN)
+    // Cửa giữa mở thông thoáng rộng 1.8m để người chơi bước thẳng vào trong!
+    const doorClearWidth = 1.8;
+    const wingWidth = (t1W - doorClearWidth) / 2; // ~3.1m mỗi cánh
 
-    // Các vòm cuốn Gothic và ô pano phù điêu chạm khắc phía trên vòm cửa Mặt Tây
-    for (let vx of [-2.45, 0, 2.45]) {
-      // Vòm cuốn trên
-      const archSpandrel = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.75, 0.42), this.materials.thapRuaWall);
-      archSpandrel.position.set(vx, t1BaseY + t1H - 0.95, t1D / 2 - 0.21);
-      towerGroup.add(archSpandrel);
-
-      // Ô Pano Phù Điêu hoa văn khắc nổi (Decorative Relief Frieze Panel)
-      const friezePlaque = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.48, 0.46), this.materials.thapRuaFrieze);
-      friezePlaque.position.set(vx, t1BaseY + t1H - 0.32, t1D / 2 - 0.20);
-      friezePlaque.castShadow = true;
-      towerGroup.add(friezePlaque);
-    }
-
-    // VÁCH CỬA MẶT ĐÔNG (HƯỚNG NHÌN RA HỒ PHÍA ĐÔNG ĐÓN BÌNH MINH)
-    for (let vx of [-1.35, 1.35]) {
-      const pierE = new THREE.Mesh(new THREE.BoxGeometry(0.55, t1H, 0.45), this.materials.thapRuaWall);
-      pierE.position.set(vx, t1BaseY + t1H / 2, -t1D / 2 + 0.225);
-      pierE.castShadow = true;
-      towerGroup.add(pierE);
-      this._addBoxObstacle(80 + vx, -80 - (t1D / 2 - 0.225), 0.6, 0.5, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
-    }
-    for (let vx of [-2.45, 0, 2.45]) {
-      const archSpandrel = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.75, 0.42), this.materials.thapRuaWall);
-      archSpandrel.position.set(vx, t1BaseY + t1H - 0.95, -t1D / 2 + 0.21);
-      towerGroup.add(archSpandrel);
-
-      const friezePlaque = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.48, 0.46), this.materials.thapRuaFrieze);
-      friezePlaque.position.set(vx, t1BaseY + t1H - 0.32, -t1D / 2 + 0.20);
-      friezePlaque.castShadow = true;
-      towerGroup.add(friezePlaque);
-    }
-
-    // VÁCH CỬA MẶT BẮC & NAM (MẶT NGẮN 2 VÒM GOTHIC)
+    // Khối kết cấu vách chịu lực 2 cánh & gờ trên cửa
     for (let sideX of [-1, 1]) {
-      const pierSide = new THREE.Mesh(new THREE.BoxGeometry(0.45, t1H, 0.55), this.materials.thapRuaWall);
-      pierSide.position.set(sideX * (t1W / 2 - 0.225), t1BaseY + t1H / 2, 0);
-      pierSide.castShadow = true;
-      towerGroup.add(pierSide);
-      this._addBoxObstacle(80 + sideX * (t1W / 2 - 0.225), -80, 0.5, 0.6, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+      const wingWallBox = new THREE.Mesh(new THREE.BoxGeometry(wingWidth, t1H, 0.35), this.materials.thapRuaPlinth);
+      const wingPosX = sideX * (t1W / 2 - wingWidth / 2);
+      wingWallBox.position.set(wingPosX, t1BaseY + t1H / 2, t1D / 2 - 0.175);
+      wingWallBox.castShadow = true;
+      wingWallBox.receiveShadow = true;
+      towerGroup.add(wingWallBox);
+      this._addBoxObstacle(80 + wingPosX, -80 + (t1D / 2 - 0.175), wingWidth, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+    }
+    const doorLintelBox = new THREE.Mesh(new THREE.BoxGeometry(doorClearWidth + 0.1, 0.8, 0.35), this.materials.thapRuaPlinth);
+    doorLintelBox.position.set(0, t1BaseY + t1H - 0.4, t1D / 2 - 0.175);
+    doorLintelBox.castShadow = true;
+    towerGroup.add(doorLintelBox);
 
-      for (let vz of [-1.45, 1.45]) {
-        const archSpandrel = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.75, 1.35), this.materials.thapRuaWall);
-        archSpandrel.position.set(sideX * (t1W / 2 - 0.21), t1BaseY + t1H - 0.95, vz);
-        towerGroup.add(archSpandrel);
+    // MẶT TIỀN TÂY CHÂN THỰC: 3 Vòm Gothic từ ảnh Master trải đều trên 8m
+    // Cánh trái (x = -4.0 đến -0.9): U = 0.0 -> 0.3875
+    const leftWingPlaneGeom = new THREE.PlaneGeometry(wingWidth, t1H);
+    setPlaneUVs(leftWingPlaneGeom, 0.0, 0.3875, 0.0, 1.0);
+    const leftWingPlane = new THREE.Mesh(leftWingPlaneGeom, this.materials.thapRuaWall);
+    leftWingPlane.position.set(-t1W / 2 + wingWidth / 2, t1BaseY + t1H / 2, t1D / 2 + 0.02);
+    towerGroup.add(leftWingPlane);
 
-        const friezePlaque = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.48, 1.15), this.materials.thapRuaFrieze);
-        friezePlaque.position.set(sideX * (t1W / 2 - 0.20), t1BaseY + t1H - 0.32, vz);
-        friezePlaque.castShadow = true;
-        towerGroup.add(friezePlaque);
-      }
+    // Cánh phải (x = 0.9 đến 4.0): U = 0.6125 -> 1.0
+    const rightWingPlaneGeom = new THREE.PlaneGeometry(wingWidth, t1H);
+    setPlaneUVs(rightWingPlaneGeom, 0.6125, 1.0, 0.0, 1.0);
+    const rightWingPlane = new THREE.Mesh(rightWingPlaneGeom, this.materials.thapRuaWall);
+    rightWingPlane.position.set(t1W / 2 - wingWidth / 2, t1BaseY + t1H / 2, t1D / 2 + 0.02);
+    towerGroup.add(rightWingPlane);
+
+    // Gờ trán vòm cửa chính (x = -0.9 đến 0.9, y = 3.0 đến 3.8): U = 0.3875 -> 0.6125, V = 0.79 -> 1.0
+    const lintelPlaneGeom = new THREE.PlaneGeometry(doorClearWidth, 0.8);
+    setPlaneUVs(lintelPlaneGeom, 0.3875, 0.6125, 0.79, 1.0);
+    const lintelPlane = new THREE.Mesh(lintelPlaneGeom, this.materials.thapRuaWall);
+    lintelPlane.position.set(0, t1BaseY + t1H - 0.4, t1D / 2 + 0.02);
+    towerGroup.add(lintelPlane);
+
+    // VÁCH MẶT ĐÔNG (MẶT SAU HƯỚNG RA HỒ ĐÓN BÌNH MINH)
+    const eastWallBox = new THREE.Mesh(new THREE.BoxGeometry(t1W - 0.9, t1H, 0.35), this.materials.thapRuaPlinth);
+    eastWallBox.position.set(0, t1BaseY + t1H / 2, -t1D / 2 + 0.175);
+    eastWallBox.castShadow = true;
+    eastWallBox.receiveShadow = true;
+    towerGroup.add(eastWallBox);
+    this._addBoxObstacle(80, -80 - (t1D / 2 - 0.175), t1W - 0.9, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+
+    const eastPlaneGeom = new THREE.PlaneGeometry(t1W - 0.9, t1H);
+    const eastPlane = new THREE.Mesh(eastPlaneGeom, this.materials.thapRuaWall);
+    eastPlane.position.set(0, t1BaseY + t1H / 2, -t1D / 2 - 0.02);
+    eastPlane.rotation.y = Math.PI;
+    towerGroup.add(eastPlane);
+
+    // VÁCH MẶT BẮC & NAM (MẶT NGẮN 2 VÒM GOTHIC VÀ PHÙ ĐIÊU TỪ ẢNH MASTER)
+    for (let sideX of [-1, 1]) {
+      const sideWallBox = new THREE.Mesh(new THREE.BoxGeometry(0.35, t1H, t1D - 0.9), this.materials.thapRuaPlinth);
+      const sidePosX = sideX * (t1W / 2 - 0.175);
+      sideWallBox.position.set(sidePosX, t1BaseY + t1H / 2, 0);
+      sideWallBox.castShadow = true;
+      sideWallBox.receiveShadow = true;
+      towerGroup.add(sideWallBox);
+      this._addBoxObstacle(80 + sidePosX, -80, 0.45, t1D - 0.9, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
+
+      const sidePlaneGeom = new THREE.PlaneGeometry(t1D - 0.9, t1H);
+      const sidePlane = new THREE.Mesh(sidePlaneGeom, this.materials.thapRuaT1Side);
+      sidePlane.position.set(sideX * (t1W / 2 + 0.02), t1BaseY + t1H / 2, 0);
+      sidePlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
+      towerGroup.add(sidePlane);
     }
 
     // =========================================================================
@@ -1486,20 +1589,14 @@ export class WorldManager {
       promptText: 'Lắng nghe Lịch sử Tháp Rùa cổ kính cùng Nhà Sử Học',
       actionKey: 'E',
       onInteract: () => {
-        if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', {
-            name: 'Bác Nguyễn Văn An • Nhà Nghiên Cứu Lịch Sử Tháp Rùa',
-            role: 'Chuyên gia Viện Lịch Sử & Người gìn giữ ký ức Tháp Rùa Hồ Gươm',
-            avatar: '🐢',
-            greeting: '"Kính chào bạn trẻ! Thật quý hóa khi được đón bạn bước chân vào tận bên trong chốn thâm nghiêm của Tháp Rùa - trái tim ngàn năm linh thiêng của Thủ đô."',
-            monumentTitle: 'Tháp Rùa Hồ Gươm - Dấu Ấn Lịch Sử & Biểu Tượng Ngàn Năm Thăng Long',
-            historyText: `
-              <p><strong>Giai thoại Hồ Tả Vọng & Thần Kim Quy (Năm 1428):</strong> Sau khi lãnh đạo khởi nghĩa Lam Sơn toàn thắng đuổi sạch giặc Minh, Đức Vua Lê Thái Tổ (Lê Lợi) ngự thuyền rồng dạo chơi trên hồ Tả Vọng. Rùa Vàng khổng lồ nổi lên đòi lại thanh gươm thần Thuận Thiên cứu nước. Nhà vua rút gươm trao trả, Rùa ngậm gươm rồi lặn sâu xuống đáy hồ. Từ đó, hồ đổi tên thành <em>Hồ Hoàn Kiếm (Hồ Trả Gươm)</em>.</p>
-              <p><strong>Lịch sử Xây dựng Tháp Rùa (Năm 1886):</strong> Được xây dựng trên gò Đảo Rùa (Quy Sơn) giữa hồ. Kiến trúc Tháp Rùa là sự kết tinh giao thoa Á - Âu độc đáo bậc nhất: hai tầng dưới mang hệ vòm cuốn nhọn phong cách <em>Gothic phương Tây</em>, trong khi tầng trên cùng và mái cong lợp ngói vảy lại mang đậm bản sắc <em>truyền thống phong kiến Á Đông</em>.</p>
-              <p><strong>Trái Tim của Thủ Đô Hà Nội:</strong> Dù trải qua mưa bom bão đạn và bao thăng trầm thời gian, bóng Tháp Rùa rêu phong soi bóng xuống làn nước xanh lục thủy vẫn mãi là biểu tượng thiêng liêng về lòng yêu chuộng hòa bình và khí phách bất khuất của dân tộc Việt Nam.</p>
-            `,
-            dialogueOptions: [
-              { text: 'Bác ơi, sự tích Vua Lê Lợi trả gươm thần diễn ra chính xác ở đâu ạ?', reply: 'Chính tại làn nước hồ nơi chúng ta đang đứng đây! Vua Lê Lợi ngự thuyền rồng, Rùa Vàng nổi lên đòi gươm rồi bơi về hướng hang sâu dưới lòng hồ. Đó là lời nhắc nhở thiêng liêng về truyền thống yêu chuộng hòa bình của dân tộc ta.' },
+        if (window.GameAPI && window.GameAPI.openNPCDialogue) {
+          window.GameAPI.openNPCDialogue({
+            name: 'Bác Nguyễn Văn An',
+            title: 'Nhà Nghiên Cứu Lịch Sử & Cố Vấn Văn Hóa Hà Nội',
+            greeting: 'Kính chào Tổng Giám Đốc và các bạn lãng tử! Bác đã ở bên Tháp Rùa này hơn bốn mươi năm. Từng thớ đá rêu phong, từng mái ngói cong vút ở đây đều mang theo hồn thiêng ngàn năm văn hiến của Thăng Long.',
+            avatar: 'assets/textures/turtle_tower_moss.jpg',
+            topics: [
+              { text: 'Bác có thể kể về truyền thuyết Thần Kim Quy trao gươm báu?', reply: 'Đầu thế kỷ 15, tại hồ Tả Vọng này, vua Lê Lợi đã hoàn trả gươm thần Thuận Thiên cho Rùa Vàng sau khi dẹp tan giặc ngoại xâm. Từ đó, hồ được đổi tên thành Hồ Hoàn Kiếm linh thiêng.' },
               { text: 'Kiến trúc Tháp Rùa có nét độc đáo nào về sự giao thoa Á - Âu thưa Bác?', reply: 'Tháp Rùa có 3 tầng: Tầng 1 và 2 mang các vòm cuốn Gothic Pháp thanh thoát, nhưng tầng 3 và phần mái lại lợp ngói mũi hài có bờ nóc cong vút uốn lượn theo mỹ thuật cung đình Việt. Đó là sự dung hợp văn hóa kỳ diệu cuối thế kỷ 19.' },
               { text: 'Bên trong Tháp Rùa lưu giữ những gì thưa Bác?', reply: 'Nơi đây lưu giữ Bàn Thờ Quy Sơn Linh Tháp, tượng Rùa Vàng đội bia đá và làn trầm hương nghi ngút cầu quốc thái dân an. Bước vào đây, lòng người bỗng lắng lại giữa nhịp sống hối hả ngoài kia.' }
             ],
@@ -1526,11 +1623,11 @@ export class WorldManager {
     this._addBoxObstacle(87, -74, 1.2, 1.2, 1.55, 6.0);
 
     // =========================================================================
-    // 3. GỜ PHÂN TẦNG 1 & HÀNG LAN CAN ĐÁ TẦNG THƯỢNG TẦNG 1 (SECOND FLOOR TERRACE)
+    // 3. GỜ PHÂN TẦNG 1 & HÀNG LAN CAN ĐÁ TẦNG THƯỢNG TẦNG 1
     // =========================================================================
     const cornice1H = 0.35;
     const cornice1Y = t1BaseY + t1H + cornice1H / 2;
-    const cornice1 = new THREE.Mesh(new THREE.BoxGeometry(t1W + 0.9, cornice1H, t1D + 0.9), this.materials.thapRuaPlinth);
+    const cornice1 = new THREE.Mesh(new THREE.BoxGeometry(t1W + 0.8, cornice1H, t1D + 0.8), this.materials.thapRuaPlinth);
     cornice1.position.set(0, cornice1Y, 0);
     cornice1.castShadow = true;
     towerGroup.add(cornice1);
@@ -1538,163 +1635,86 @@ export class WorldManager {
     // Hàng lan can đá bao quanh ban công tầng thượng tầng 1
     const balustradeY = t1BaseY + t1H + cornice1H;
     for (let sideX of [-1, 1]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, t1D + 0.7), this.materials.thapRuaPlinth);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, t1D + 0.7), this.materials.thapRuaBalustrade);
       rail.position.set(sideX * (t1W / 2 + 0.35), balustradeY + 0.325, 0);
       rail.castShadow = true;
       towerGroup.add(rail);
     }
     for (let sideZ of [-1, 1]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(t1W + 0.7, 0.65, 0.18), this.materials.thapRuaPlinth);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(t1W + 0.7, 0.65, 0.18), this.materials.thapRuaBalustrade);
       rail.position.set(0, balustradeY + 0.325, sideZ * (t1D / 2 + 0.35));
       rail.castShadow = true;
       towerGroup.add(rail);
     }
-    // 4 Trụ góc lan can ban công
-    for (let px of [-(t1W / 2 + 0.35), (t1W / 2 + 0.35)]) {
-      for (let pz of [-(t1D / 2 + 0.35), (t1D / 2 + 0.35)]) {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.78, 0.28), this.materials.thapRuaPlinth);
-        post.position.set(px, balustradeY + 0.39, pz);
-        towerGroup.add(post);
-      }
-    }
 
     // =========================================================================
-    // 4. THÁP RÙA: TẦNG 2 (THU NHỎ TỶ LỆ, VÒM GOTHIC VÀ Ô PANO PHÙ ĐIÊU HOA VĂN)
+    // 4. THÁP RÙA: TẦNG 2 (KIẾN TRÚC 4 MẶT TỪ ẢNH 3D MASTER)
     // =========================================================================
     const t2W = 6.0;
     const t2D = 4.4;
     const t2H = 3.0;
     const t2BaseY = balustradeY;
 
-    // Khối thân tường Tầng 2
-    const t2Body = new THREE.Mesh(new THREE.BoxGeometry(t2W, t2H, t2D), this.materials.thapRuaWall);
+    // Lõi thân Tầng 2
+    const t2Body = new THREE.Mesh(new THREE.BoxGeometry(t2W, t2H, t2D), this.materials.thapRuaPlinth);
     t2Body.position.set(0, t2BaseY + t2H / 2, 0);
     t2Body.castShadow = true;
     towerGroup.add(t2Body);
 
-    // 4 Trụ góc Tầng 2
-    for (let px of [-t2W / 2 + 0.35, t2W / 2 - 0.35]) {
-      for (let pz of [-t2D / 2 + 0.35, t2D / 2 - 0.35]) {
-        const col = new THREE.Mesh(new THREE.BoxGeometry(0.75, t2H, 0.75), this.materials.thapRuaWall);
-        col.position.set(px, t2BaseY + t2H / 2, pz);
-        towerGroup.add(col);
-      }
+    // Vách Mặt Tây & Mặt Đông Tầng 2 (mang hình 3 vòm Gothic & phù điêu hoa văn từ ảnh Master)
+    for (let sideZ of [-1, 1]) {
+      const t2Plane = new THREE.Mesh(new THREE.PlaneGeometry(t2W, t2H), this.materials.thapRuaFacadeT2);
+      t2Plane.position.set(0, t2BaseY + t2H / 2, sideZ * (t2D / 2 + 0.02));
+      t2Plane.rotation.y = sideZ === 1 ? 0 : Math.PI;
+      towerGroup.add(t2Plane);
     }
 
-    // Vòm cửa sổ và ô Pano Phù điêu hoa văn Tầng 2 Mặt Đông & Tây (3 vòm mỗi mặt)
-    const gothicDarkMat = new THREE.MeshStandardMaterial({ color: 0x181412, roughness: 0.95 });
-    for (let zSide of [-1, 1]) {
-      for (let vx of [-1.6, 0, 1.6]) {
-        // Hốc vòm cửa sổ
-        const archWindow = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.75, 0.22), gothicDarkMat);
-        archWindow.position.set(vx, t2BaseY + 1.25, zSide * (t2D / 2 + 0.05));
-        towerGroup.add(archWindow);
-
-        // Gờ chỉ vòm cửa
-        const archTrim = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.22, 0.26), this.materials.thapRuaPlinth);
-        archTrim.position.set(vx, t2BaseY + 2.12, zSide * (t2D / 2 + 0.06));
-        towerGroup.add(archTrim);
-
-        // Ô Pano phù điêu chạm khắc phía trên vòm Tầng 2
-        const frieze2 = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.24), this.materials.thapRuaFrieze);
-        frieze2.position.set(vx, t2BaseY + 2.55, zSide * (t2D / 2 + 0.06));
-        towerGroup.add(frieze2);
-      }
-    }
-
-    // Vòm cửa sổ và ô Pano Phù điêu Tầng 2 Mặt Bắc & Nam (2 vòm mỗi mặt)
-    for (let xSide of [-1, 1]) {
-      for (let vz of [-1.1, 1.1]) {
-        const archWindow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.75, 0.95), gothicDarkMat);
-        archWindow.position.set(xSide * (t2W / 2 + 0.05), t2BaseY + 1.25, vz);
-        towerGroup.add(archWindow);
-
-        const archTrim = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.22, 1.05), this.materials.thapRuaPlinth);
-        archTrim.position.set(xSide * (t2W / 2 + 0.06), t2BaseY + 2.12, vz);
-        towerGroup.add(archTrim);
-
-        const frieze2 = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.45, 0.85), this.materials.thapRuaFrieze);
-        frieze2.position.set(xSide * (t2W / 2 + 0.06), t2BaseY + 2.55, vz);
-        towerGroup.add(frieze2);
-      }
+    // Vách Mặt Bắc & Mặt Nam Tầng 2 (mang hình 2 vòm Gothic từ ảnh Master)
+    for (let sideX of [-1, 1]) {
+      const t2SidePlane = new THREE.Mesh(new THREE.PlaneGeometry(t2D, t2H), this.materials.thapRuaT2Side);
+      t2SidePlane.position.set(sideX * (t2W / 2 + 0.02), t2BaseY + t2H / 2, 0);
+      t2SidePlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
+      towerGroup.add(t2SidePlane);
     }
 
     // =========================================================================
     // 5. MÁI NGÓI TẦNG 2: MÁI CONG 4 GÓC ĐAO VÚT LÊN (TRUYỀN THỐNG Á ĐÔNG)
     // =========================================================================
     const roof2BaseY = t2BaseY + t2H;
-    const roof2W = 7.4;
-    const roof2D = 5.8;
+    const roof2W = 7.6;
+    const roof2D = 6.0;
     const roof2H = 1.35;
 
-    // Khối dốc ngói chính 4 mặt
-    const roof2Mesh = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(roof2W, roof2D) * 0.5, roof2H, 4), this.materials.thapRuaRoof);
-    roof2Mesh.rotateY(Math.PI / 4);
-    roof2Mesh.scale.set((roof2W / Math.hypot(roof2W, roof2D)) * 1.414, 1, (roof2D / Math.hypot(roof2W, roof2D)) * 1.414);
-    roof2Mesh.position.set(0, roof2BaseY + roof2H / 2, 0);
-    roof2Mesh.castShadow = true;
-    roof2Mesh.receiveShadow = true;
+    // Mái ngói cong 4 mặt uốn lượn có đao mái bay lên từ thuật toán Parametric Pagoda Roof
+    const roof2Mesh = createCurvedPagodaRoof(roof2W, roof2D, roof2H, 0.75, this.materials.thapRuaRoofMid);
+    roof2Mesh.position.set(0, roof2BaseY, 0);
     towerGroup.add(roof2Mesh);
-
-    // Gờ mép mái chìa ra đỡ mái
-    const eaveTrim2 = new THREE.Mesh(new THREE.BoxGeometry(roof2W + 0.2, 0.16, roof2D + 0.2), this.materials.thapRuaPlinth);
-    eaveTrim2.position.set(0, roof2BaseY + 0.08, 0);
-    towerGroup.add(eaveTrim2);
-
-    // 4 Góc đao mái Tầng 2 cong vút lên (Traditional Upturned Eaves Horns)
-    for (let cx of [-1, 1]) {
-      for (let cz of [-1, 1]) {
-        const cornerCurve = new THREE.CatmullRomCurve3([
-          new THREE.Vector3(cx * (roof2W * 0.38), roof2BaseY + roof2H * 0.4, cz * (roof2D * 0.38)),
-          new THREE.Vector3(cx * (roof2W * 0.48), roof2BaseY + 0.12, cz * (roof2D * 0.48)),
-          new THREE.Vector3(cx * (roof2W * 0.56), roof2BaseY + 0.35, cz * (roof2D * 0.56)) // Đầu đao cong hếch lên
-        ]);
-        const horn = new THREE.Mesh(new THREE.TubeGeometry(cornerCurve, 8, 0.12, 6, false), this.materials.thapRuaRoof);
-        horn.castShadow = true;
-        towerGroup.add(horn);
-      }
-    }
 
     // =========================================================================
     // 6. THÁP RÙA: TẦNG 3 (LẦU VỌNG NGUYỆT 4 CỬA VÒM)
     // =========================================================================
-    const t3W = 3.8;
-    const t3D = 3.0;
+    const t3W = 4.0;
+    const t3D = 3.2;
     const t3H = 2.2;
-    const t3BaseY = roof2BaseY + roof2H;
+    const t3BaseY = roof2BaseY + roof2H * 0.72; // Khớp chuẩn vào phần cổ diêm
 
-    const t3Body = new THREE.Mesh(new THREE.BoxGeometry(t3W, t3H, t3D), this.materials.thapRuaWall);
+    const t3Body = new THREE.Mesh(new THREE.BoxGeometry(t3W, t3H, t3D), this.materials.thapRuaPlinth);
     t3Body.position.set(0, t3BaseY + t3H / 2, 0);
     t3Body.castShadow = true;
     towerGroup.add(t3Body);
 
-    // 4 Trụ góc Tầng 3
-    for (let px of [-t3W / 2 + 0.25, t3W / 2 - 0.25]) {
-      for (let pz of [-t3D / 2 + 0.25, t3D / 2 - 0.25]) {
-        const col = new THREE.Mesh(new THREE.BoxGeometry(0.55, t3H, 0.55), this.materials.thapRuaWall);
-        col.position.set(px, t3BaseY + t3H / 2, pz);
-        towerGroup.add(col);
-      }
+    // 4 Vách Tầng 3 phủ hoa văn cửa vòm Vọng Nguyệt từ ảnh Master
+    for (let sideZ of [-1, 1]) {
+      const t3Plane = new THREE.Mesh(new THREE.PlaneGeometry(t3W, t3H), this.materials.thapRuaFacadeT3);
+      t3Plane.position.set(0, t3BaseY + t3H / 2, sideZ * (t3D / 2 + 0.02));
+      t3Plane.rotation.y = sideZ === 1 ? 0 : Math.PI;
+      towerGroup.add(t3Plane);
     }
-
-    // 4 Cửa vòm Vọng Nguyệt trên cả 4 mặt Tầng 3
-    for (let zSide of [-1, 1]) {
-      const archWin = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.45, 0.2), gothicDarkMat);
-      archWin.position.set(0, t3BaseY + 1.1, zSide * (t3D / 2 + 0.05));
-      towerGroup.add(archWin);
-
-      const archTrim = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.20, 0.24), this.materials.thapRuaPlinth);
-      archTrim.position.set(0, t3BaseY + 1.85, zSide * (t3D / 2 + 0.06));
-      towerGroup.add(archTrim);
-    }
-    for (let xSide of [-1, 1]) {
-      const archWin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.45, 1.0), gothicDarkMat);
-      archWin.position.set(xSide * (t3W / 2 + 0.05), t3BaseY + 1.1, 0);
-      towerGroup.add(archWin);
-
-      const archTrim = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.20, 1.15), this.materials.thapRuaPlinth);
-      archTrim.position.set(xSide * (t3W / 2 + 0.06), t3BaseY + 1.85, 0);
-      towerGroup.add(archTrim);
+    for (let sideX of [-1, 1]) {
+      const t3SidePlane = new THREE.Mesh(new THREE.PlaneGeometry(t3D, t3H), this.materials.thapRuaFacadeT3Side);
+      t3SidePlane.position.set(sideX * (t3W / 2 + 0.02), t3BaseY + t3H / 2, 0);
+      t3SidePlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
+      towerGroup.add(t3SidePlane);
     }
 
     // =========================================================================
@@ -1705,40 +1725,20 @@ export class WorldManager {
     const roof3D = 4.4;
     const roof3H = 1.65;
 
-    const roof3Mesh = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(roof3W, roof3D) * 0.5, roof3H, 4), this.materials.thapRuaRoof);
-    roof3Mesh.rotateY(Math.PI / 4);
-    roof3Mesh.scale.set((roof3W / Math.hypot(roof3W, roof3D)) * 1.414, 1, (roof3D / Math.hypot(roof3W, roof3D)) * 1.414);
-    roof3Mesh.position.set(0, roof3BaseY + roof3H / 2, 0);
-    roof3Mesh.castShadow = true;
-    roof3Mesh.receiveShadow = true;
+    const roof3Mesh = createCurvedPagodaRoof(roof3W, roof3D, roof3H, 0.90, this.materials.thapRuaRoof);
+    roof3Mesh.position.set(0, roof3BaseY, 0);
     towerGroup.add(roof3Mesh);
-
-    // 4 Góc đao mái Thượng uốn cong vút lên kiêu hãnh
-    for (let cx of [-1, 1]) {
-      for (let cz of [-1, 1]) {
-        const topCurve = new THREE.CatmullRomCurve3([
-          new THREE.Vector3(cx * (roof3W * 0.38), roof3BaseY + roof3H * 0.45, cz * (roof3D * 0.38)),
-          new THREE.Vector3(cx * (roof3W * 0.48), roof3BaseY + 0.14, cz * (roof3D * 0.48)),
-          new THREE.Vector3(cx * (roof3W * 0.57), roof3BaseY + 0.42, cz * (roof3D * 0.57)) // Đầu đao cong vút cao
-        ]);
-        const horn = new THREE.Mesh(new THREE.TubeGeometry(topCurve, 8, 0.11, 6, false), this.materials.thapRuaRoof);
-        horn.castShadow = true;
-        towerGroup.add(horn);
-      }
-    }
 
     // =========================================================================
     // 8. ĐỈNH CHÓP THÁP RÙA: BỆ ĐÁ GIẬT CẤP & ĐĨA NGUYỆT THÁI CỰC LINH THIÊNG
     // =========================================================================
-    const summitBaseY = roof3BaseY + roof3H;
+    const summitBaseY = roof3BaseY + roof3H * 0.85;
 
-    // Bệ đá giật cấp đỡ ngọc tháp
     const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.65, 0.38, 8), this.materials.thapRuaPlinth);
     pedestal.position.set(0, summitBaseY + 0.19, 0);
     pedestal.castShadow = true;
     towerGroup.add(pedestal);
 
-    // Đĩa nguyệt Thái Cực / Triều Dương bằng đá chạm nổi tròn (Mặt nguyệt đỉnh Tháp Rùa)
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.18, 32), this.materials.thapRuaEmblem);
     disc.rotation.x = Math.PI / 2;
     disc.position.set(0, summitBaseY + 0.38 + 0.58, 0);
