@@ -98,12 +98,13 @@ export class WorldManager {
    */
   getTheHucBridgeInfo(x, y, z) {
     const pts = [
-      { x: 164.0, y: 0.38, z: -36.0 }, // Quảng trường đá bờ đông
-      { x: 158.0, y: 0.58, z: -42.0 }, // Dốc nối lên đầu cầu
+      { x: 168.0, y: 0.38, z: -32.0 }, // Đường dạo vỉa hè tiếp cận
+      { x: 164.0, y: 0.45, z: -36.0 }, // Quảng trường đá bờ Đông
+      { x: 158.0, y: 0.65, z: -42.0 }, // Dốc nối lên đầu vòm cầu
       { x: 151.0, y: 1.42, z: -47.0 }, // Vòm lên 1
       { x: 146.0, y: 2.18, z: -52.0 }, // Đỉnh vòm cong cao nhất
       { x: 140.0, y: 1.42, z: -58.0 }, // Vòm xuống 2
-      { x: 134.0, y: 0.72, z: -64.0 }, // Hạ dốc đầu đảo
+      { x: 134.0, y: 0.75, z: -64.0 }, // Hạ dốc đầu đảo
       { x: 128.0, y: 0.80, z: -69.0 }  // Cập bến sân Đền Ngọc Sơn
     ];
     let minDistSq = Infinity;
@@ -161,15 +162,15 @@ export class WorldManager {
         return false; // An toàn trên Đảo Ngọc Sơn
       }
 
-      // c. Cầu Thê Húc son đỏ (Kiểm tra chuẩn xác cả mặt bằng tọa độ và độ cao bản ván cầu):
+      // c. Cầu Thê Húc son đỏ: Hành lang an toàn nối dọc toàn bộ vòm cong Cầu Thê Húc đến Đền Ngọc Sơn
       const theHucInfo = this.getTheHucBridgeInfo(x, y, z);
-      if (theHucInfo.onBridge) {
+      if (theHucInfo.dist <= 3.8 && y >= 0.18) {
         return false; // An toàn tuyệt đối trên Cầu Thê Húc!
       }
 
-      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (72, -72), bán kính an toàn 3.8m
+      // d. Cầu Kim Quy đá cổ dẫn tới Tháp Rùa: từ bờ (16, -16) đến Đảo Rùa (72, -72), bán kính an toàn 3.2m
       const dKimQuy = this._pointToSegmentDistSq(x, z, 16, -16, 72, -72);
-      if (dKimQuy <= 2.2 * 2.2 && y >= 0.15) {
+      if (dKimQuy <= 3.2 * 3.2 && y >= 0.15) {
         return false; // An toàn tuyệt đối trên Cầu Kim Quy và lối dẫn
       }
 
@@ -2303,28 +2304,16 @@ export class WorldManager {
     this.colliders.push(theHucPlaza); // ĐĂNG KÝ VÀO COLLIDERS ĐỂ ĐI LẠI THÊNH THANG 100%!
 
     // DỐC THOẢI NỐI TỪ QUẢNG TRƯỜNG ĐÁ LÊN MẶT CẦU THÊ HÚC (Bridge Approach Ramp)
-    // Nối mượt mà liên tục từ y = 0.38 lên y = 0.58 tại đầu vòm cầu (158, -42), bản rộng 4.2m
+    // Nối mượt mà liên tục từ y = 0.45 lên y = 0.65 tại đầu vòm cầu (158, -42), bản rộng 4.4m
     const rampLength = Math.hypot(158 - 163, -42 - (-37)); // ~7.07m
     const rampAngle = Math.atan2(-42 - (-37), 158 - 163);
-    const theHucApproachGeo = new THREE.BoxGeometry(rampLength + 0.6, 0.28, 4.2);
+    const theHucApproachGeo = new THREE.BoxGeometry(rampLength + 1.2, 0.32, 4.4);
     const theHucApproachRamp = new THREE.Mesh(theHucApproachGeo, this.materials.theHucRed);
-    theHucApproachRamp.position.set(160.5, 0.48, -39.5);
+    theHucApproachRamp.position.set(160.5, 0.54, -39.5);
     theHucApproachRamp.rotation.y = -rampAngle;
     theHucApproachRamp.receiveShadow = true;
     zoneGroup.add(theHucApproachRamp);
     this.colliders.push(theHucApproachRamp);
-
-    // Rào chắn bảo vệ 2 bên mép dốc tiếp cận bờ đông (Chống đi xuyên/rơi xuống mép nước)
-    const rampNormPerpX = -Math.sin(rampAngle);
-    const rampNormPerpZ = Math.cos(rampAngle);
-    for (let side of [-2.15, 2.15]) {
-      for (let s of [0.15, 0.38, 0.62, 0.85]) {
-        const ax = 164.0 + (158.0 - 164.0) * s + rampNormPerpX * side;
-        const az = -36.0 + (-42.0 - (-36.0)) * s + rampNormPerpZ * side;
-        const ay = 0.38 + (0.58 - 0.38) * s;
-        this._addBoxObstacle(ax, az, 0.85, 0.85, ay, ay + 2.2);
-      }
-    }
 
     // 2. VÒM CONG 15 NHỊP CẦU THÊ HÚC UỐN LƯỢN THANH THOÁT
     const theHucCurve = new THREE.CatmullRomCurve3([
@@ -2389,12 +2378,13 @@ export class WorldManager {
         }
 
         // Rào chắn bảo vệ liên tục khép kín (Solid continuous barrier - ZERO GAPS)
-        // 4 khối va chạm gối đầu dày đặc trên mỗi nhịp loại bỏ 100% khe hở, chống rơi/đi xuyên lan can tuyệt đối
+        // Đặt ở vị trí mép ngoài lan can (offset 2.25m), kích thước chuẩn 0.45x0.45 để không lấn vào lòng mặt cầu 3.8m
         for (let s of [0.15, 0.40, 0.65, 0.90]) {
-          const rx = p1.x + (p2.x - p1.x) * s + perpX * side;
-          const rz = p1.z + (p2.z - p1.z) * s + perpZ * side;
+          const obsSide = side > 0 ? 2.25 : -2.25;
+          const rx = p1.x + (p2.x - p1.x) * s + perpX * obsSide;
+          const rz = p1.z + (p2.z - p1.z) * s + perpZ * obsSide;
           const ry = p1.y + (p2.y - p1.y) * s;
-          this._addBoxObstacle(rx, rz, 0.85, 0.85, ry, ry + 2.4);
+          this._addBoxObstacle(rx, rz, 0.45, 0.45, ry, ry + 2.4);
         }
       }
 
@@ -2433,12 +2423,12 @@ export class WorldManager {
     const islRampAngle = Math.atan2(-6, -8);
     const islPerpX = -Math.sin(islRampAngle);
     const islPerpZ = Math.cos(islRampAngle);
-    for (let side of [-2.0, 2.0]) {
+    for (let side of [-2.25, 2.25]) {
       for (let s of [0.15, 0.38, 0.62, 0.85]) {
         const ix = 134.0 + (128.0 - 134.0) * s + islPerpX * side;
         const iz = -64.0 + (-69.0 - (-64.0)) * s + islPerpZ * side;
         const iy = 0.72 + (0.80 - 0.72) * s;
-        this._addBoxObstacle(ix, iz, 0.85, 0.85, iy, iy + 2.2);
+        this._addBoxObstacle(ix, iz, 0.45, 0.45, iy, iy + 2.2);
       }
     }
 
