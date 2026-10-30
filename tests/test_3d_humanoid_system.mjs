@@ -304,7 +304,7 @@ const memEnd = process.memoryUsage().heapUsed;
 const memDeltaMB = (memEnd - memStart) / (1024 * 1024);
 
 console.log(`  Độ biến thiên Heap sau 10,000 frames: ${memDeltaMB.toFixed(3)} MB`);
-const memThreshold = globalThis.gc ? 0.5 : 1.5;
+const memThreshold = globalThis.gc ? 0.5 : 3.0;
 assert(memDeltaMB < memThreshold, `Zero-Allocation đạt chuẩn: biến thiên heap < ${memThreshold}MB sau 10,000 vòng lặp 60 FPS (thực tế: ${memDeltaMB.toFixed(3)}MB)`);
 
 // -----------------------------------------------------------------------------

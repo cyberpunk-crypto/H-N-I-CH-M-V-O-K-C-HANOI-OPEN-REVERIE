@@ -442,7 +442,7 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   characterGroup.add(pelvisGroup);
 
   const pelvisMesh = createPBRMesh(
-    new THREE.CylinderGeometry(0.165, 0.155, 0.15, 24),
+    new THREE.CylinderGeometry(isFemale ? 0.088 : 0.115, isFemale ? 0.098 : 0.122, 0.12, 24),
     clothPantsMat
   );
   pelvisMesh.position.set(0, -0.04, 0);
@@ -696,7 +696,7 @@ export function createHanoiCharacter3D(characterId, options = {}) {
       transparent: true,
       roughness: 0.45,
       metalness: 0.02,
-      depthWrite: true,
+      depthWrite: false,
       side: THREE.DoubleSide
     });
     const faceMesh = createPBRMesh(faceGeo, faceMat);
@@ -704,11 +704,11 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     headGroup.add(faceMesh);
   }
 
-  // Tóc 3D điêu khắc
-  const hairGeo = new THREE.SphereGeometry(0.104, 24, 20);
+  // Tóc 3D điêu khắc (ôm gọn nửa đầu phía sau và đỉnh đầu, không che mặt)
+  const hairGeo = new THREE.SphereGeometry(0.096, 24, 20);
   const hairMesh = createPBRMesh(hairGeo, hairMat);
-  hairMesh.scale.set(0.96, 1.06, 1.03);
-  hairMesh.position.set(0, 0.075, -0.012);
+  hairMesh.scale.set(0.96, 1.04, 0.95);
+  hairMesh.position.set(0, 0.075, -0.024);
   headGroup.add(hairMesh);
 
   if (charId === 'char_nu_sinh_ao_dai') {
