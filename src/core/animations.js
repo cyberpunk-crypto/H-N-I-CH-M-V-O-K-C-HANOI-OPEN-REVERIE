@@ -225,7 +225,7 @@ export class HumanoidAnimator {
       if (this.landingTimer < 0) this.landingTimer = 0;
     }
 
-    // 3. TÍNH TOÁN TRỌNG SỐ MỤC TIÊU (TARGET BLEND WEIGHTS)
+    // 3. TÍNH TOÁN TRỌNG SỐ MỤC TIÊU (GTA V LOCOMOTION BLEND TREES)
     if (!isGrounded) {
       this.targetWeight.idle = 0.0;
       this.targetWeight.walk = 0.0;
@@ -234,26 +234,26 @@ export class HumanoidAnimator {
     } else {
       this.targetWeight.jump = 0.0;
       if (speed <= 0.08) {
-        // Đứng yên hoàn toàn
+        // Đứng yên hoàn toàn (Idle)
         this.targetWeight.idle = 1.0;
         this.targetWeight.walk = 0.0;
         this.targetWeight.run = 0.0;
-      } else if (speed <= 6.0) {
-        // Đi bộ mượt mà
+      } else if (speed <= 5.2) {
+        // Đi bộ mượt mà (Walk Locomotion)
         const walkFactor = smoothstep(0.08, 1.2, speed);
         this.targetWeight.idle = 1.0 - walkFactor;
         this.targetWeight.walk = walkFactor;
         this.targetWeight.run = 0.0;
       } else {
-        // Chạy nhanh
-        const runFactor = smoothstep(6.0, 8.5, speed);
+        // Chạy nước rút (GTA V Sprint Locomotion)
+        const runFactor = smoothstep(5.2, 8.5, speed);
         this.targetWeight.idle = 0.0;
         this.targetWeight.walk = 1.0 - runFactor;
         this.targetWeight.run = runFactor;
       }
     }
 
-    // 4. NỘI SUY DAMPING CHO CÁC TRỌNG SỐ (CROSS-FADE KHÔNG GIẬT CỤC)
+    // 4. NỘI SUY DAMPING CHO CÁC TRỌNG SỐ (CROSS-FADE MƯỢT MÀ KHÔNG GIẬT KHỰNG)
     const blendRate = 10.0; // Tốc độ hòa trộn 10.0/s phản hồi tức thì mà êm ái
     this.currentWeight.idle = damp(this.currentWeight.idle, this.targetWeight.idle, blendRate, dt);
     this.currentWeight.walk = damp(this.currentWeight.walk, this.targetWeight.walk, blendRate, dt);
@@ -269,11 +269,11 @@ export class HumanoidAnimator {
     const wJump = this.currentWeight.jump * invW;
 
     // 5. TÍCH LŨY PHA BƯỚC ĐI VÀ CHẠY (ZERO ALLOCATION PHASE ACCUMULATORS)
-    // Walk Frequency: 6.2 rad/s theo đặc tả
+    // Walk Frequency: 6.2 rad/s theo đặc tả sinh học
     const walkSpeedFactor = Math.max(0.8, speed / 5.2) * this.options.walkSpeedScale;
     this.walkPhase += dt * 6.2 * walkSpeedFactor;
 
-    // Run Frequency: 9.5 rad/s theo đặc tả
+    // Run Frequency: 9.5 rad/s theo đặc tả sải bước nhanh
     const runSpeedFactor = Math.max(0.8, speed / 9.2) * this.options.walkSpeedScale;
     this.runPhase += dt * 9.5 * runSpeedFactor;
 
@@ -287,96 +287,99 @@ export class HumanoidAnimator {
     // 7. TÍNH TOÁN LOOK-AROUND TỰ NHIÊN CHO ĐẦU & CỔ
     this._updateLookAround(dt, wIdle);
 
-    // 8. TÍNH TOÁN CÁC THÔNG SỐ HOẠT HỌA THEO ĐẶC TẢ
+    // 8. TÍNH TOÁN CÁC THÔNG SỐ HOẠT HỌA THEO CHUẨN GTA V BIO-MECHANICS
     const time = this.animTime;
     const wp = this.walkPhase;
     const rp = this.runPhase;
 
-    // --- A. CHU KỲ ĐỨNG YÊN (IDLE BREATHING & WEIGHT SHIFT) ---
-    // Lồng ngực phồng nhẹ: Math.sin(time * 2.2) * 0.035
+    // --- A. CHU KỲ ĐỨNG YÊN (IDLE CYCLE - ORGANIC BREATHING & WEIGHT SHIFT) ---
+    // Nhịp thở lồng ngực tự nhiên
     const breathTime = time * 2.2;
     const breathSin = Math.sin(breathTime);
-    const idleChestScale = 1.0 + breathSin * 0.035 * this.options.breathScale;
-    const idleChestScaleXZ = 1.0 + breathSin * 0.025 * this.options.breathScale;
+    const idleChestScale = 1.0 + breathSin * 0.030 * this.options.breathScale;
+    const idleChestScaleXZ = 1.0 + breathSin * 0.020 * this.options.breathScale;
 
-    // Hai vai nhấp nhô nhẹ: Math.sin(time * 2.2 + 0.2) * 0.015
-    const idleShoulderBob = Math.sin(breathTime + 0.2) * 0.015 * this.options.breathScale;
+    // Hai vai nhún nhẹ theo nhịp lấy hơi
+    const idleShoulderBob = Math.sin(breathTime + 0.25) * 0.012 * this.options.breathScale;
 
-    // Trọng tâm hông lắc nhẹ sang trái/phải sau mỗi chu kỳ (weight shift)
-    const idleWeightShift = Math.sin(time * 0.55) * 0.022; // Hông nghiêng nhẹ
-    const idleHeadTilt = -Math.sin(time * 0.55) * 0.015; // Đầu nghiêng nhẹ e ấp đối trọng
+    // Hông khẽ dồn trọng tâm sang một bên và đầu nghiêng nhẹ đối trọng
+    const idleWeightShift = Math.sin(time * 0.52) * 0.025; // Hông nghiêng dồn lực
+    const idleHeadTilt = -Math.sin(time * 0.52) * 0.018; // Đầu nghiêng nhẹ đối trọng duy trì thăng bằng
 
-    // Tà áo trước và sau bay lượn uốn sóng theo gió hồ Gươm: Math.sin(time * 1.5) * 0.08
+    // Tà áo dài và nón lá bay lượn uốn sóng theo ngọn gió hồ Gươm (Cloth Wind Dynamics)
     const clothScale = this.options.clothFlapScale;
-    const idleFrontFlap = (Math.sin(time * 3.0) * 0.08 + Math.cos(time * 1.5) * 0.04) * clothScale;
-    const idleBackFlap = (-Math.sin(time * 3.0 + 0.5) * 0.10) * clothScale;
-    const idleNonLaRotZ = Math.sin(time * 1.8) * 0.03;
+    const idleFrontFlap = (Math.sin(time * 2.8) * 0.08 + Math.cos(time * 1.4) * 0.04) * clothScale;
+    const idleBackFlap = (-Math.sin(time * 2.8 + 0.5) * 0.10 - Math.cos(time * 1.2) * 0.03) * clothScale;
+    const idleNonLaRotZ = Math.sin(time * 1.8) * 0.035;
+    const idleNonLaRotX = Math.sin(time * 1.3) * 0.022;
 
     const idlePelvisY = this.baseTorsoY + breathSin * 0.008;
 
-    // --- B. CHU KỲ ĐI BỘ (WALK CYCLE 60 FPS) ---
-    // Khớp háng vung ngược pha 180 độ (-0.45 đến +0.45 rad)
-    const walkLeftHip = Math.sin(wp) * 0.45;
-    const walkRightHip = Math.sin(wp + Math.PI) * 0.45;
+    // --- B. CHU KỲ ĐI BỘ (WALK CYCLE - GTA V LOCOMOTION) ---
+    // Sải chân rộng, nhịp nhàng đối xứng sinh học
+    const walkLeftHip = Math.sin(wp) * 0.52;
+    const walkRightHip = Math.sin(wp + Math.PI) * 0.52;
 
-    // Khớp đầu gối gập tự nhiên khi chân lăng về sau: Math.max(0, -Math.sin(phase)) * 0.55 rad
-    const walkLeftKnee = Math.max(0, -Math.sin(wp)) * 0.55;
-    const walkRightKnee = Math.max(0, -Math.sin(wp + Math.PI)) * 0.55;
+    // Gập đầu gối sinh học về phía sau khi nhấc chân (không gập ra trước)
+    const walkLeftKnee = Math.max(0, -Math.sin(wp)) * 0.58;
+    const walkRightKnee = Math.max(0, -Math.sin(wp + Math.PI)) * 0.58;
 
-    // Khớp cổ chân uốn lượn khi chạm đất
-    const walkLeftFoot = Math.sin(wp) * 0.14;
-    const walkRightFoot = Math.sin(wp + Math.PI) * 0.14;
+    // Cổ chân tiếp đất cắm gót nhấc mũi (Heel Strike & Toe Off)
+    // Khi chân vung tới: nhấc mũi chân đón gót (+0.24 rad); khi chân đẩy lùi: cắm mũi chân (-0.24 rad)
+    const walkLeftFoot = Math.sin(wp) * 0.24;
+    const walkRightFoot = Math.sin(wp + Math.PI) * 0.24;
 
-    // Khớp vai vung ngược pha với chân (tay trái đi cùng chân phải)
+    // Hai tay vung nhịp nhàng ngược pha 180° với chân (tay trái ngược pha tay phải)
     const armScale = this.options.armSwingScale;
-    const walkLeftShoulderX = Math.sin(wp + Math.PI) * 0.35 * armScale;
-    const walkRightShoulderX = Math.sin(wp) * 0.35 * armScale;
+    const walkLeftShoulderX = Math.sin(wp + Math.PI) * 0.38 * armScale;
+    const walkRightShoulderX = Math.sin(wp) * 0.38 * armScale;
 
-    // Khớp khuỷu tay gập nhẹ 0.2 rad khi tay vung ra trước
-    const walkLeftElbow = Math.max(0, Math.sin(wp + Math.PI)) * 0.20;
-    const walkRightElbow = Math.max(0, Math.sin(wp)) * 0.20;
+    // Khuỷu tay hơi gập khi vung ra trước (0.08 rad lúc duỗi, gập tới 0.33 rad lúc vung tới)
+    const walkLeftElbow = 0.08 + Math.max(0, Math.sin(wp + Math.PI)) * 0.25;
+    const walkRightElbow = 0.08 + Math.max(0, Math.sin(wp)) * 0.25;
 
-    // Hông nhún sinh học trục Y: Math.abs(Math.sin(walkTime * 2.0)) * 0.035m
-    const walkPelvisY = this.baseTorsoY + Math.abs(Math.sin(wp)) * 0.035 - 0.018;
-    const walkPelvisRotZ = Math.sin(wp) * 0.03;
-    const walkTorsoRotY = -Math.sin(wp) * 0.04;
-    const walkTorsoRotX = 0.04; // Hơi dấn nhẹ về phía trước
+    // Hông nhún sinh học trục Y (Pelvis Bobbing) & lắc hông sang bên chịu lực
+    const walkPelvisY = this.baseTorsoY + Math.abs(Math.sin(wp)) * 0.038 - 0.019;
+    const walkPelvisRotZ = Math.sin(wp) * 0.032;
+    const walkTorsoRotY = -Math.sin(wp) * 0.045; // Cột sống xoay đối xứng đối trọng
+    const walkTorsoRotX = 0.045; // Hơi dấn nhẹ về phía trước
 
     // Tà áo dài 3D vẫy về sau theo luồng gió bước đi
-    const walkFrontFlap = (Math.sin(wp * 2.0) * 0.06 - 0.12) * clothScale;
-    const walkBackFlap = (-Math.sin(wp * 2.0 + 0.4) * 0.12 - 0.22) * clothScale;
+    const walkFrontFlap = (Math.sin(wp * 2.0) * 0.07 - 0.14) * clothScale;
+    const walkBackFlap = (-Math.sin(wp * 2.0 + 0.4) * 0.12 - 0.24) * clothScale;
 
-    // --- C. CHU KỲ CHẠY NHANH (RUN CYCLE 60 FPS) ---
-    // Tần số cao hơn (9.5 rad/s), sải chân rộng hơn (-0.85 đến +0.85 rad)
-    const runLeftHip = Math.sin(rp) * 0.85;
-    const runRightHip = Math.sin(rp + Math.PI) * 0.85;
+    // --- C. CHU KỲ CHẠY NHANH (RUN CYCLE - GTA V SPRINT) ---
+    // Sải chân dài dứt khoát (-0.88 đến +0.88 rad)
+    const runLeftHip = Math.sin(rp) * 0.88;
+    const runRightHip = Math.sin(rp + Math.PI) * 0.88;
 
-    // Đầu gối gập mạnh tới 1.15 rad khi nhấc chân
-    const runLeftKnee = Math.max(0, -Math.sin(rp)) * 1.15;
-    const runRightKnee = Math.max(0, -Math.sin(rp + Math.PI)) * 1.15;
+    // Đầu gối gập mạnh mẽ ra sau (1.25 rad) khi nhấc chân nước rút
+    const runLeftKnee = Math.max(0, -Math.sin(rp)) * 1.25;
+    const runRightKnee = Math.max(0, -Math.sin(rp + Math.PI)) * 1.25;
 
-    const runLeftFoot = Math.sin(rp) * 0.28;
-    const runRightFoot = Math.sin(rp + Math.PI) * 0.28;
+    // Cổ chân bật nhấc mũi và đẩy mặt đường
+    const runLeftFoot = Math.sin(rp) * 0.32;
+    const runRightFoot = Math.sin(rp + Math.PI) * 0.32;
 
-    // Khuỷu tay gập góc nhọn ~50 độ (0.85 rad) vung mạnh mẽ
-    const runLeftElbow = 0.85 + Math.sin(rp + Math.PI) * 0.25;
-    const runRightElbow = 0.85 + Math.sin(rp) * 0.25;
+    // Tay vung góc 90° (1.57 rad) chuẩn điền kinh / GTA V
+    const runLeftElbow = 1.57 + Math.sin(rp + Math.PI) * 0.15;
+    const runRightElbow = 1.57 + Math.sin(rp) * 0.15;
 
-    // Vai vung mạnh mẽ biên độ 0.65 rad
-    const runLeftShoulderX = Math.sin(rp + Math.PI) * 0.65 * armScale;
-    const runRightShoulderX = Math.sin(rp) * 0.65 * armScale;
+    // Vai vung mạnh mẽ biên độ lớn 0.75 rad
+    const runLeftShoulderX = Math.sin(rp + Math.PI) * 0.75 * armScale;
+    const runRightShoulderX = Math.sin(rp) * 0.75 * armScale;
 
-    // Thân trên hơi chúi về phía trước: torso.rotation.x = 0.18 rad
-    const runTorsoRotX = 0.18;
-    const runTorsoRotY = -Math.sin(rp) * 0.08;
-    const runPelvisRotZ = Math.sin(rp) * 0.05;
+    // Nghiêng thân mình về phía trước 15° (15 * PI / 180 ≈ 0.2618 rad)
+    const runTorsoRotX = 0.2618;
+    const runTorsoRotY = -Math.sin(rp) * 0.10;
+    const runPelvisRotZ = Math.sin(rp) * 0.06;
 
-    // Độ nhún trọng tâm bật nảy mạnh mẽ
-    const runPelvisY = this.baseTorsoY + Math.abs(Math.sin(rp)) * 0.07 - 0.035;
+    // Độ nhún trọng tâm bật nảy mạnh mẽ theo nhịp chạy
+    const runPelvisY = this.baseTorsoY + Math.abs(Math.sin(rp)) * 0.075 - 0.038;
 
-    // Tà áo dài bay mạnh về sau
-    const runFrontFlap = (-0.25 + Math.sin(rp * 2.0) * 0.10) * clothScale;
-    const runBackFlap = (-0.45 - Math.sin(rp * 2.0) * 0.15) * clothScale;
+    // Tà áo dài bay mạnh mẽ về phía sau do luồng gió cản tốc độ cao
+    const runFrontFlap = (-0.30 + Math.sin(rp * 2.0) * 0.10) * clothScale;
+    const runBackFlap = (-0.52 - Math.sin(rp * 2.0) * 0.16) * clothScale;
 
     // --- D. CHU KỲ TRÊN KHÔNG / NHẢY (JUMP / AIRBORNE) ---
     const jumpPelvisY = this.baseTorsoY + 0.06;

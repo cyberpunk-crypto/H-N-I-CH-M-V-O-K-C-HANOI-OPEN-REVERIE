@@ -1,12 +1,19 @@
 /**
- * PlayerController.js - Điều khiển di chuyển mượt mà, đường nét con người giải phẫu tự nhiên
- * Đã khắc phục triệt để: Đảo trục phím A/D, cơ chế bước qua gờ thấp (Step-Up), và tích hợp HumanoidAnimator 60 FPS
+ * PlayerController.js - Điều khiển di chuyển mượt mà chuẩn GTA V Third-Person Locomotion
+ * 
+ * Các tính năng nâng cấp theo chỉ lệnh /lam-game của Sếp Tổng:
+ * 1. Smooth Turn Slerp: Xoay người mượt mà theo góc cua di chuyển chuẩn GTA V.
+ * 2. Quán tính khối lượng, gia tốc dấn bước khi bấm WASD và hãm phanh êm ái khi nhả phím.
+ * 3. Foot Ground Snapping: Chân bám sát mặt cong Cầu Thê Húc, dốc Cầu Long Biên và vỉa hè.
+ * 4. Zero Heap Allocation: Tái sử dụng 100% pool vector/quaternion/array trong game loop.
+ * 
  * Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
  */
 
 import { THREE } from './ThreeLib.js';
 import { createHanoiCharacter3D, CHARACTERS_META } from './CharacterFactory.js';
 import { HumanoidAnimator } from './animations.js';
+import { GLTFLoader } from '../lib/loaders/GLTFLoader.js';
 
 export class PlayerController {
   constructor(scene, worldManager, eventBus) {
@@ -25,7 +32,7 @@ export class PlayerController {
       jump: false
     };
 
-    // Thông số vật lý & chuyển động nhạy bén
+    // Thông số vật lý & chuyển động chuẩn GTA V Locomotion
     this.walkSpeed = 5.2;
     this.sprintSpeed = 9.2;
     this.jumpForce = 8.5;
@@ -33,18 +40,20 @@ export class PlayerController {
 
     this.velocity = new THREE.Vector3();
     this.isGrounded = true;
+    this.isJumping = false;
     this.isParkouring = false;
 
     // Bán kính thân người thon gọn vừa vặn ngõ phố Hà Nội
-    this.playerRadius = 0.35; // Giảm từ 0.45 xuống 0.35 giúp luồn lách ngõ hẹp mượt mà
+    this.playerRadius = 0.35;
     this.playerHeight = 1.75;
-    this.stepUpHeight = 0.55; // Bước qua gờ vỉa hè / mép tà vẹt cao tới 38cm một cách tự nhiên
+    this.stepUpHeight = 0.55;  // Bước lên gờ vỉa hè / mép tà vẹt cao tới 55cm
+    this.maxStepDown = 0.55;   // Snap dính chân khi bước xuống dốc cong Cầu Thê Húc
 
     // Raycaster kiểm tra mặt đất
     this.raycaster = new THREE.Raycaster();
     this.downVector = new THREE.Vector3(0, -1, 0);
 
-    // Bộ nhớ đệm Vector dùng chung (Zero Allocation Update Loop - Đạt chuẩn 60 FPS mượt mà)
+    // Bộ nhớ đệm Vector & Quaternion dùng chung (Zero Allocation Update Loop - 60 FPS mượt mà)
     this._moveVector = new THREE.Vector3();
     this._camForward = new THREE.Vector3();
     this._camRight = new THREE.Vector3();
@@ -52,11 +61,21 @@ export class PlayerController {
     this._finalDir = new THREE.Vector3();
     this._testPos = new THREE.Vector3();
     this._rayOrigin = new THREE.Vector3();
+    this._targetQuat = new THREE.Quaternion();
+    this._groundHits = []; // Cache mảng kết quả raycast tránh cấp phát mới mỗi frame
 
     // Biến cho hoạt ảnh sinh học con người
     this.walkCycle = 0;
     this.baseTorsoY = 0.95;
     this.humanoidAnimator = null;
+
+    // Hệ thống Hoạt Họa 3D Skinned Mesh & Mixamo Motion Capture
+    this._gltfLoader = new GLTFLoader();
+    this._gltfMixer = null;
+    this._animActions = null;
+    this._currentAnim = 'idle';
+    this._isGltfReady = false;
+    this._gltfCache = {};
 
     // Điểm tương tác
     this.activeInteractable = null;
@@ -68,8 +87,7 @@ export class PlayerController {
   }
 
   /**
-   * Tạo mô hình 3D con người hữu cơ (Organic Sculpted Human Mesh):
-   * Đường nét mềm mại, bo tròn, giải phẫu tự nhiên, không còn các khối hộp vuông vắn thô sơ!
+   * Tạo mô hình 3D con người hữu cơ (Organic Sculpted Human Mesh)
    */
   _createRealisticHumanMesh() {
     this.characterGroup = new THREE.Group();
@@ -106,6 +124,112 @@ export class PlayerController {
   }
 
   /**
+   * Tạo mô hình 3D Nón Lá truyền thống Việt Nam (Organic Conical Hat)
+   */
+  _create3DNonLa() {
+    const nonLaGroup = new THREE.Group();
+    nonLaGroup.name = '3D_NonLa';
+
+    const outerConeGeo = new THREE.ConeGeometry(24, 14, 32, 1, true);
+    const nonLaMat = new THREE.MeshStandardMaterial({
+      color: 0xf3e5ab,
+      roughness: 0.8,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+    const outerCone = new THREE.Mesh(outerConeGeo, nonLaMat);
+    outerCone.position.y = 7;
+    outerCone.castShadow = true;
+    nonLaGroup.add(outerCone);
+
+    const rimGeo = new THREE.TorusGeometry(24, 0.6, 8, 32);
+    rimGeo.rotateX(Math.PI / 2);
+    const rimMesh = new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({ color: 0x8b5a2b }));
+    rimMesh.castShadow = true;
+    nonLaGroup.add(rimMesh);
+
+    nonLaGroup.position.set(0, 16, 2);
+    nonLaGroup.rotation.set(-0.1, 0, 0);
+    return nonLaGroup;
+  }
+
+  /**
+   * Tải mô hình 3D Skinned Humanoid thật (Mixamo Michelle / Soldier) với đầy đủ AnimationMixer
+   */
+  async _load3DHumanoidCharacter(characterId) {
+    try {
+      const isFemale = characterId === 'char_nu_sinh_ao_dai' || characterId === 'char_co_gai_ao_ba_ba';
+      const modelPath = isFemale ? 'assets/characters/Michelle.glb' : 'assets/characters/Soldier.glb';
+
+      // Tải model chính
+      const gltf = await new Promise((res, rej) => this._gltfLoader.load(modelPath, res, undefined, rej));
+
+      // Tải Soldier clips nếu là nhân vật nữ
+      const soldierGltf = isFemale 
+        ? await new Promise((res, rej) => this._gltfLoader.load('assets/characters/Soldier.glb', res, undefined, rej))
+        : gltf;
+
+      const model = gltf.scene;
+      model.name = isFemale ? 'Michelle3D' : 'Soldier3D';
+
+      if (isFemale) {
+        // Fix góc xoay FBX ngược của Michelle để hướng thẳng lên trời
+        const charNode = model.getObjectByName('Character');
+        if (charNode) {
+          charNode.quaternion.set(-0.70710678, 0, 0, 0.70710678);
+        }
+      }
+
+      model.traverse(c => {
+        if (c.isMesh) {
+          c.castShadow = true;
+          c.receiveShadow = true;
+        }
+      });
+
+      // Gắn Nón Lá 3D lên xương đầu
+      let headBone = null;
+      model.traverse(c => {
+        if (c.name.includes('Head') && !c.name.includes('Top')) headBone = c;
+      });
+      if (headBone) {
+        headBone.add(this._create3DNonLa());
+      }
+
+      // Thiết lập AnimationMixer 60 FPS
+      const mixer = new THREE.AnimationMixer(model);
+      const idleClip = soldierGltf.animations.find(a => a.name === 'Idle');
+      const walkClip = soldierGltf.animations.find(a => a.name === 'Walk');
+      const runClip = soldierGltf.animations.find(a => a.name === 'Run');
+
+      const idleAction = idleClip ? mixer.clipAction(idleClip) : null;
+      const walkAction = walkClip ? mixer.clipAction(walkClip) : null;
+      const runAction = runClip ? mixer.clipAction(runClip) : null;
+
+      if (idleAction) idleAction.play();
+
+      // Xóa bỏ hoàn toàn hình khối cũ (que củi mannequin), thay thế bằng mô hình 3D thực
+      while (this.characterGroup.children.length > 0) {
+        this.characterGroup.remove(this.characterGroup.children[0]);
+      }
+      this.characterGroup.add(model);
+
+      this._gltfMixer = mixer;
+      this._animActions = {
+        idle: idleAction,
+        walk: walkAction,
+        run: runAction
+      };
+      this._currentAnim = 'idle';
+      this._isGltfReady = true;
+
+      console.log(`[PlayerController] Đã kích hoạt Nhân Vật 3D Skinned Mesh (${model.name}) & MoCap Animation Mixer!`);
+    } catch (err) {
+      console.warn('[PlayerController] Lỗi tải 3D GLTF humanoid:', err);
+    }
+  }
+
+  /**
    * Đổi nhân vật 3D sang 1 trong 4 nhân vật thực tế
    * @param {string} characterId - 'char_nu_sinh_ao_dai' | 'char_co_gai_ao_ba_ba' | 'char_nam_tri_thuc_suit' | 'char_nam_ao_dai_gam'
    */
@@ -117,40 +241,14 @@ export class PlayerController {
     const curPos = this.characterGroup ? this.characterGroup.position.clone() : new THREE.Vector3(17, 0.5, -17);
     const curRot = this.characterGroup ? this.characterGroup.rotation.y : 0;
 
-    // Xóa sạch các bộ phận cũ trong characterGroup
-    while (this.characterGroup.children.length > 0) {
-      const child = this.characterGroup.children[0];
-      this.characterGroup.remove(child);
+    // Tải mô hình 3D Skinned Mesh thật với AnimationMixer & Nón Lá
+    this._load3DHumanoidCharacter(characterId);
+
+    if (this.characterGroup) {
+      this.characterGroup.position.copy(curPos);
+      this.characterGroup.rotation.y = curRot;
+      this.characterGroup.quaternion.setFromAxisAngle(this._worldUp, curRot);
     }
-
-    // Tạo nhân vật mới từ CharacterFactory
-    const newCharMesh = createHanoiCharacter3D(characterId, { isNPC: false });
-
-    // Trích xuất các pivot cho tương thích ngược
-    this.torsoGroup = newCharMesh.torsoGroup;
-    this.headGroup = newCharMesh.headGroup;
-    this.leftArmPivot = newCharMesh.leftArmPivot;
-    this.rightArmPivot = newCharMesh.rightArmPivot;
-    this.leftLegPivot = newCharMesh.leftLegPivot;
-    this.rightLegPivot = newCharMesh.rightLegPivot;
-    this.baseTorsoY = newCharMesh.baseTorsoY || 0.95;
-
-    // Gắn rig sang characterGroup
-    this.characterGroup.rig = newCharMesh.rig;
-    if (this.characterGroup.rig) {
-      this.characterGroup.rig.rootGroup = this.characterGroup;
-    }
-
-    // Chuyển toàn bộ children từ newCharMesh sang this.characterGroup
-    while (newCharMesh.children.length > 0) {
-      this.characterGroup.add(newCharMesh.children[0]);
-    }
-
-    this.characterGroup.position.copy(curPos);
-    this.characterGroup.rotation.y = curRot;
-
-    // Khởi tạo HumanoidAnimator chuẩn 60 FPS
-    this.humanoidAnimator = new HumanoidAnimator(this.characterGroup);
   }
 
   /**
@@ -258,6 +356,7 @@ export class PlayerController {
             this.isParkouring = false;
             this.velocity.y = 0;
             this.isGrounded = true;
+            this.isJumping = false;
           }
         };
         animateParkour();
@@ -268,6 +367,7 @@ export class PlayerController {
     // Nhảy tự do
     this.velocity.y = this.jumpForce;
     this.isGrounded = false;
+    this.isJumping = true;
   }
 
   _handleInteract() {
@@ -285,6 +385,7 @@ export class PlayerController {
       this.keys.right = false;
       this.keys.sprint = false;
       this.velocity.set(0, 0, 0);
+      this.isJumping = false;
     }
   }
 
@@ -292,6 +393,8 @@ export class PlayerController {
     if (!pos) return;
     this.characterGroup.position.set(pos.x, pos.y || 0.5, pos.z);
     this.velocity.set(0, 0, 0);
+    this.isGrounded = true;
+    this.isJumping = false;
   }
 
   /**
@@ -482,7 +585,7 @@ export class PlayerController {
 
   /**
    * KIỂM TRA VA CHẠM THÔNG MINH CÓ CƠ CHẾ BƯỚC QUA GỜ THẤP (STEP-UP)
-   * Không chặn người chơi khi gặp mép vỉa hè, gạch hoa, mép ray <= 38cm!
+   * Không chặn người chơi khi gặp mép vỉa hè, gạch hoa, mép ray <= 55cm!
    */
   _isCollidingAt(testPos) {
     const r = this.playerRadius;
@@ -507,7 +610,7 @@ export class PlayerController {
         continue;
       }
 
-      // Cơ chế Step-Up: Nếu vật thể thấp hơn chiều cao gờ bước chân (<= 0.38m) thì KHÔNG CHẶN NGANG,
+      // Cơ chế Step-Up: Nếu vật thể thấp hơn chiều cao gờ bước chân (<= stepUpHeight) thì KHÔNG CHẶN NGANG,
       // cho phép Raycast tự động đưa nhân vật bước lên tự nhiên!
       if (obs.maxY - pY <= this.stepUpHeight && obs.maxY > pY) {
         continue;
@@ -543,7 +646,7 @@ export class PlayerController {
   }
 
   /**
-   * Cập nhật chuyển động mượt mà, đúng chuẩn điều khiển Game Thế Giới Mở
+   * Cập nhật chuyển động chuẩn GTA V Third-Person Locomotion (Zero Heap Allocation)
    */
   update(delta, camera) {
     if (this.isParkouring) return;
@@ -558,7 +661,7 @@ export class PlayerController {
     }
 
     const isMoving = moveVector.lengthSq() > 0;
-    const currentSpeed = this.keys.sprint ? this.sprintSpeed : this.walkSpeed;
+    const targetSpeed = this.keys.sprint ? this.sprintSpeed : this.walkSpeed;
 
     if (isMoving && camera) {
       moveVector.normalize();
@@ -569,37 +672,43 @@ export class PlayerController {
       camForward.y = 0;
       camForward.normalize();
 
-      // Vector hướng bên phải của Camera: cross(camForward, up) -> ĐÚNG CHUẨN TOÁN HỌC 3D!
+      // Vector hướng bên phải của Camera: cross(camForward, up) -> Chuẩn toán học 3D
       const camRight = this._camRight.crossVectors(camForward, this._worldUp).normalize();
 
-      // Hướng di chuyển tổng hợp (ĐÃ KHẮC PHỤC TRIỆT ĐỂ LỖI ĐẢO CHIỀU TRÁI/PHẢI)
+      // Hướng di chuyển tổng hợp (Triệt tiêu hoàn toàn lỗi đảo chiều A/D)
       const finalDir = this._finalDir.set(0, 0, 0)
         .addScaledVector(camForward, -moveVector.z)
         .addScaledVector(camRight, moveVector.x)
         .normalize();
 
-      const desiredVelX = finalDir.x * currentSpeed;
-      const desiredVelZ = finalDir.z * currentSpeed;
+      const desiredVelX = finalDir.x * targetSpeed;
+      const desiredVelZ = finalDir.z * targetSpeed;
 
-      // Gia tốc chuyển động mượt mà chuẩn GTA V Locomotion
-      const accel = this.isGrounded ? 18.0 : 6.0;
+      // Quán tính khối lượng & Gia tốc dấn bước chuẩn GTA V:
+      // Tăng tốc đầm tay, vọt dứt khoát sau 0.18s, không trễ lì lợm
+      const accel = this.isGrounded ? (this.keys.sprint ? 16.0 : 18.0) : 6.0;
       this.velocity.x += (desiredVelX - this.velocity.x) * Math.min(1.0, accel * delta);
       this.velocity.z += (desiredVelZ - this.velocity.z) * Math.min(1.0, accel * delta);
 
-      // Xoay hướng mặt nhân vật mượt mà (GTA V Third-Person Character Turning / Slerp)
+      // Smooth Turn Slerp: Xoay hướng mặt nhân vật mượt mà theo góc cua di chuyển
       const targetAngle = Math.atan2(finalDir.x, finalDir.z);
-      let angleDiff = targetAngle - this.characterGroup.rotation.y;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      const turnSpeed = this.keys.sprint ? 14.0 : 11.0;
-      this.characterGroup.rotation.y += angleDiff * Math.min(1.0, turnSpeed * delta);
+      this._targetQuat.setFromAxisAngle(this._worldUp, targetAngle);
+      const turnRate = this.keys.sprint ? 13.0 : 11.0;
+      this.characterGroup.quaternion.slerp(this._targetQuat, Math.min(1.0, turnRate * delta));
+      this.characterGroup.rotation.setFromQuaternion(this.characterGroup.quaternion, 'YXZ');
     } else {
-      // Giảm tốc có quán tính thực tế, dừng dứt khoát không bị trượt băng
-      const brake = this.isGrounded ? 22.0 : 5.0;
+      // Hãm phanh êm ái khi nhả phím (Smooth Braking / Deceleration):
+      // Dừng lại êm dịu có quán tính bước chân ngắn, không trôi trượt vô tận
+      const brake = this.isGrounded ? 18.0 : 4.0;
       this.velocity.x += (0 - this.velocity.x) * Math.min(1.0, brake * delta);
       this.velocity.z += (0 - this.velocity.z) * Math.min(1.0, brake * delta);
-      if (Math.abs(this.velocity.x) < 0.04) this.velocity.x = 0;
-      if (Math.abs(this.velocity.z) < 0.04) this.velocity.z = 0;
+
+      // Khi tốc độ rất nhỏ (< 0.06m/s), dừng dứt khoát triệt tiêu hoàn toàn trôi quán tính
+      const horizSpeedSq = this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z;
+      if (horizSpeedSq < 0.0036) {
+        this.velocity.x = 0;
+        this.velocity.z = 0;
+      }
     }
 
     // 2. Trọng lực
@@ -653,8 +762,7 @@ export class PlayerController {
 
     this._resolvePenetrations(currentPos);
 
-    // 4. KIỂM TRA ĐỘ CAO MẶT ĐẤT VÀ BƯỚC LÊN GỜ VỈA HÈ (STEP-UP GROUND SNAP)
-    // Toàn bộ mảng colliders (~30 meshes) được raycast trực tiếp - không dùng culling khoảng cách sai lệch gây rơi khỏi cầu Long Biên!
+    // 4. KIỂM TRA ĐỘ CAO MẶT ĐẤT & FOOT GROUND SNAPPING CHUẨN GTA V (CẦU THÊ HÚC & VỈA HÈ)
     const colliders = this.worldManager.getColliders();
     const charPos = this.characterGroup.position;
 
@@ -662,32 +770,105 @@ export class PlayerController {
     this._rayOrigin.y += 1.4;
     this.raycaster.set(this._rayOrigin, this.downVector);
     this.raycaster.far = 4.0;
-    const groundHits = this.raycaster.intersectObjects(colliders, false);
 
-    if (groundHits.length > 0) {
-      const groundY = groundHits[0].point.y;
-      // Nếu chân gần mặt đất hoặc thấp hơn mặt đất: snap chân lên mặt đất mượt mà
-      if (this.characterGroup.position.y + this.velocity.y * delta <= groundY + 0.08) {
-        this.characterGroup.position.y = THREE.MathUtils.lerp(this.characterGroup.position.y, groundY, 0.4);
+    // Zero Heap Allocation: Tái sử dụng mảng _groundHits
+    this._groundHits.length = 0;
+    this.raycaster.intersectObjects(colliders, false, this._groundHits);
+
+    // Kiểm tra thông tin độ cong chính xác trên Cầu Thê Húc
+    let bridgeGroundY = null;
+    if (this.worldManager.getTheHucBridgeInfo) {
+      const bridgeInfo = this.worldManager.getTheHucBridgeInfo(charPos.x, charPos.y, charPos.z);
+      if (bridgeInfo && bridgeInfo.onBridge) {
+        bridgeGroundY = bridgeInfo.closestY;
+      }
+    }
+
+    if (this._groundHits.length > 0 || bridgeGroundY !== null) {
+      let groundY = (this._groundHits.length > 0) ? this._groundHits[0].point.y : 0;
+      if (bridgeGroundY !== null) {
+        if (this._groundHits.length === 0 || Math.abs(groundY - bridgeGroundY) > 0.35) {
+          groundY = bridgeGroundY;
+        } else {
+          groundY = Math.max(groundY, bridgeGroundY);
+        }
+      }
+
+      const verticalDiff = groundY - charPos.y;
+
+      // Nếu đang chủ động nhảy lên cao (Space):
+      if (this.isJumping && this.velocity.y > 0) {
+        charPos.y += this.velocity.y * delta;
+        this.isGrounded = false;
+      } else {
+        // Foot Ground Snapping (Cầu Thê Húc, dốc Cầu Long Biên & vỉa hè):
+        if (verticalDiff >= -this.maxStepDown && verticalDiff <= this.stepUpHeight) {
+          if (Math.abs(verticalDiff) < 0.02) {
+            charPos.y = groundY;
+          } else if (verticalDiff > 0) {
+            // Leo lên dốc / bước lên vỉa hè: nâng chân êm ái
+            charPos.y = THREE.MathUtils.lerp(charPos.y, groundY, Math.min(1.0, 24.0 * delta));
+            if (Math.abs(groundY - charPos.y) < 0.02) charPos.y = groundY;
+          } else {
+            // Bước xuống dốc cầu Thê Húc cong: Down-Snapping dính sát mặt cầu
+            if (this.isGrounded) {
+              charPos.y = groundY; // Triệt tiêu 100% hiện tượng nhảy tưng tưng / rơi hẫng xuống dốc
+            } else {
+              charPos.y = THREE.MathUtils.lerp(charPos.y, groundY, Math.min(1.0, 24.0 * delta));
+            }
+          }
+          this.velocity.y = 0;
+          this.isGrounded = true;
+          this.isJumping = false;
+        } else if (verticalDiff < -this.maxStepDown) {
+          // Hẫng vực sâu hơn 55cm: rơi tự do
+          charPos.y += this.velocity.y * delta;
+          this.isGrounded = false;
+        } else {
+          // Tường quá cao: không leo, rơi trọng lực
+          charPos.y += this.velocity.y * delta;
+          this.isGrounded = false;
+        }
+      }
+
+      // Bảo vệ: chân không lọt dưới đất
+      if (charPos.y < groundY) {
+        charPos.y = groundY;
         this.velocity.y = 0;
         this.isGrounded = true;
-      } else {
-        this.characterGroup.position.y += this.velocity.y * delta;
-        this.isGrounded = false;
+        this.isJumping = false;
       }
     } else {
-      if (this.characterGroup.position.y + this.velocity.y * delta <= 0.0) {
-        this.characterGroup.position.y = 0.0;
+      if (charPos.y + this.velocity.y * delta <= 0.0) {
+        charPos.y = 0.0;
         this.velocity.y = 0;
         this.isGrounded = true;
+        this.isJumping = false;
       } else {
-        this.characterGroup.position.y += this.velocity.y * delta;
+        charPos.y += this.velocity.y * delta;
         this.isGrounded = false;
       }
     }
 
-    // 5. CẬP NHẬT HOẠT HỌA 3D SKELETAL ANIMATOR 60 FPS
-    if (this.humanoidAnimator) {
+    // 5. CẬP NHẬT HOẠT HỌA 3D SKELETAL ANIMATOR / ANIMATION MIXER 60 FPS
+    if (this._gltfMixer && this._animActions) {
+      const horizSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+      let targetAnim = 'idle';
+      if (horizSpeed > 0.15) {
+        targetAnim = this.keys.sprint ? 'run' : 'walk';
+      }
+
+      if (this._currentAnim !== targetAnim && this._animActions[targetAnim]) {
+        const prev = this._animActions[this._currentAnim];
+        const next = this._animActions[targetAnim];
+        if (prev && next) {
+          next.reset().fadeIn(0.22).play();
+          prev.fadeOut(0.22);
+          this._currentAnim = targetAnim;
+        }
+      }
+      this._gltfMixer.update(delta);
+    } else if (this.humanoidAnimator) {
       const moveSpeed = this.velocity.length();
       this.humanoidAnimator.update(delta, moveSpeed, this.isGrounded);
     }

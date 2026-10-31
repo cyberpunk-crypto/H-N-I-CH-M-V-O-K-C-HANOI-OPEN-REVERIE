@@ -111,7 +111,7 @@ export class CharacterCreation {
         <!-- Khung gương soi cổ kính -->
         <div class="vintage-mirror-frame">
           <div class="mirror-overlay-dust"></div>
-          <div class="mirror-status-badge">MÔ HÌNH 3D CHUẨN</div>
+          <div class="mirror-status-badge">MÔ HÌNH 3D CHUẨN &bull; <span id="mirrorBadgeText">${selectedChar.badge || 'HÀ NỘI'}</span></div>
           <div class="mirror-reflection">
             <div class="avatar-silhouette">
               <img id="mirrorCharacterPreview" class="mirror-avatar-img" src="${selectedChar.avatar}" alt="${selectedChar.name}">
@@ -161,6 +161,9 @@ export class CharacterCreation {
                       <img src="${char.avatar}" alt="${char.name}">
                     </div>
                     <div class="outfit-info">
+                      <div class="outfit-badge-row">
+                        <span class="outfit-badge">${char.badge || 'Hà Nội 3D'}</span>
+                      </div>
                       <span class="outfit-name">${char.name}</span>
                       <span class="outfit-desc">${char.desc}</span>
                     </div>
@@ -332,6 +335,8 @@ export class CharacterCreation {
       if (caption) caption.textContent = charObj.name;
       const desc = this.element.querySelector('#mirrorOutfitDesc');
       if (desc) desc.textContent = charObj.desc;
+      const badge = this.element.querySelector('#mirrorBadgeText');
+      if (badge) badge.textContent = charObj.badge || 'HÀ NỘI';
     }
   }
 
