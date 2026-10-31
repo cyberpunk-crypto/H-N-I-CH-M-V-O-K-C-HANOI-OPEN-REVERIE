@@ -73,7 +73,7 @@ export class CharacterCreation {
    */
   constructor(options = {}) {
     this.container = options.container || (typeof document !== 'undefined' ? document.body : null);
-    this.initialName = options.initialName || '';
+    this.initialName = options.initialName || `KẻMộngMơ_${Math.floor(100 + Math.random() * 900)}`;
     this.initialCharacterId = options.initialCharacterId || options.initialOutfitId || 'char_nu_sinh_ao_dai';
     this.initialCameraId = options.initialCameraId || 'leica_m3';
     this.isRecreate = !!options.isRecreate;

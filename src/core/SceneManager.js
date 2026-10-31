@@ -24,10 +24,10 @@ export class SceneManager {
    * Sương mù hoài niệm (Hà Nội bảng lảng sương chiều mùa thu)
    */
   _initFog() {
-    // Sương mù pha sắc vàng cam hoàng hôn hòa quyện với camera.far = 160m (Triệt tiêu hiện tượng drop FPS)
+    // Sương mù pha sắc vàng cam hoàng hôn hòa quyện với camera.far = 95m (Tối ưu 60 FPS mượt mà)
     const fogColor = new THREE.Color(0xd99a60);
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.Fog(fogColor.getHex(), 40, 155);
+    this.scene.fog = new THREE.Fog(fogColor.getHex(), 32, 92);
   }
 
   /**
@@ -69,12 +69,13 @@ export class SceneManager {
     skyTexture.wrapS = THREE.ClampToEdgeWrapping;
     skyTexture.wrapT = THREE.ClampToEdgeWrapping;
 
-    // Vòm bán cầu Skydome bao quanh thế giới 500m x 500m
-    const skyGeo = new THREE.SphereGeometry(440, 32, 24);
+    // Vòm bán cầu Skydome bán kính 92m bao quanh không gian nhìn
+    const skyGeo = new THREE.SphereGeometry(92, 32, 24);
     const skyMat = new THREE.MeshBasicMaterial({
       map: skyTexture,
       side: THREE.BackSide,
-      fog: false
+      fog: false,
+      depthWrite: false
     });
     this.skydome = new THREE.Mesh(skyGeo, skyMat);
     this.scene.add(this.skydome);
@@ -90,20 +91,10 @@ export class SceneManager {
     this.scene.add(hemiLight);
     this.lights.push(hemiLight);
 
-    // 2. Ánh nắng hoàng hôn xiên chếch (Tạo bóng đổ dài trên phố cổ)
+    // 2. Ánh nắng hoàng hôn xiên chếch (Tối ưu GPU, đồng bộ với shadowMap.enabled = false)
     const sunLight = new THREE.DirectionalLight(0xffab50, 1.8);
     sunLight.position.set(-160, 85, -110);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
-    sunLight.shadow.camera.near = 10;
-    sunLight.shadow.camera.far = 320;
-    const shadowD = 130;
-    sunLight.shadow.camera.left = -shadowD;
-    sunLight.shadow.camera.right = shadowD;
-    sunLight.shadow.camera.top = shadowD;
-    sunLight.shadow.camera.bottom = -shadowD;
-    sunLight.shadow.bias = -0.0005;
+    sunLight.castShadow = false;
     this.scene.add(sunLight);
     this.lights.push(sunLight);
     this.sunLight = sunLight;
@@ -207,8 +198,9 @@ export class SceneManager {
   /**
    * Cập nhật animation các hiệu ứng trong Scene theo frame
    * @param {number} delta - Delta time
+   * @param {THREE.Camera} [camera] - Camera để bám vị trí bầu trời
    */
-  update(delta) {
+  update(delta, camera) {
     const time = this.clock.getElapsedTime();
 
     // 1. Cập nhật lá vàng rơi đung đưa trong gió
@@ -242,9 +234,12 @@ export class SceneManager {
       item.light.intensity = item.baseIntensity + flicker;
     }
 
-    // 3. Xoay nhẹ Skydome theo chiều hoàng hôn
+    // 3. Xoay nhẹ Skydome theo chiều hoàng hôn & bám tâm theo camera
     if (this.skydome) {
       this.skydome.rotation.y = time * 0.003;
+      if (camera && camera.position) {
+        this.skydome.position.copy(camera.position);
+      }
     }
   }
 

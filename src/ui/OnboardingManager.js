@@ -89,7 +89,10 @@ export class OnboardingManager {
   // Bước 1: Age Gate (18+)
   showAgeGate() {
     this.currentStep = 'AGE_GATE';
-    if (this.container) this.container.classList.remove('hidden');
+    if (this.container) {
+      this.container.style.display = 'flex';
+      this.container.classList.remove('hidden');
+    }
     this.clearCurrentModal();
 
     this.currentModal = new AgeGateModal({
@@ -105,7 +108,10 @@ export class OnboardingManager {
   // Bước 2: Đăng Nhập Tài Khoản
   showAuth() {
     this.currentStep = 'AUTH';
-    if (this.container) this.container.classList.remove('hidden');
+    if (this.container) {
+      this.container.style.display = 'flex';
+      this.container.classList.remove('hidden');
+    }
     this.clearCurrentModal();
 
     this.currentModal = new AuthModal({
@@ -122,7 +128,10 @@ export class OnboardingManager {
   // Bước 3: Tạo Nhân Vật Trước Gương & Chọn Nhân Vật 3D
   showCharacterCreation(options = {}) {
     this.currentStep = 'CHARACTER';
-    if (this.container) this.container.classList.remove('hidden');
+    if (this.container) {
+      this.container.style.display = 'flex';
+      this.container.classList.remove('hidden');
+    }
     this.clearCurrentModal();
 
     // Khóa di chuyển 3D khi đang mở giao diện chọn diện mạo
@@ -205,13 +214,13 @@ export class OnboardingManager {
       clearTimeout(this.safetyLoadingTimer);
     }
 
-    // Bộ hẹn giờ an toàn: Tự động hoàn tất và mở HUD sau tối đa 2.5 giây nếu không nhận được tín hiệu
+    // Bộ hẹn giờ an toàn: Tự động hoàn tất và mở HUD sau tối đa 6.0 giây nếu mạng chậm
     this.safetyLoadingTimer = setTimeout(() => {
       if (this.currentStep === 'LOADING') {
-        console.log('[OnboardingManager] Bộ hẹn giờ kích hoạt: Hoàn tất nạp thế giới.');
+        console.log('[OnboardingManager] Bộ hẹn giờ dự phòng kích hoạt: Hoàn tất nạp thế giới.');
         this.finishOnboarding({ spawnZone: 'ho_guom' });
       }
-    }, 2500);
+    }, 6000);
 
     // Gọi GameAPI để khởi động nạp 3D World Engine
     if (window.GameAPI && typeof window.GameAPI.startWorldEngine === 'function') {
@@ -277,15 +286,29 @@ export class OnboardingManager {
       this.progressBarFill.style.width = '100%';
     }
     if (this.progressPercentText) {
-      this.progressPercentText.textContent = '100% &bull; Ký ức đã hoàn tất!';
+      this.progressPercentText.innerHTML = '100% &bull; Ký ức đã hoàn tất!';
     }
 
     setTimeout(() => {
       if (this.loadingOverlay) {
         this.loadingOverlay.classList.add('fade-out');
+        setTimeout(() => {
+          if (this.loadingOverlay) {
+            this.loadingOverlay.style.display = 'none';
+            if (this.loadingOverlay.parentNode) {
+              this.loadingOverlay.parentNode.removeChild(this.loadingOverlay);
+            }
+            this.loadingOverlay = null;
+          }
+        }, 500);
       }
       if (this.container) {
         this.container.classList.add('hidden');
+        setTimeout(() => {
+          if (this.container && this.currentStep === 'COMPLETED') {
+            this.container.style.display = 'none';
+          }
+        }, 500);
       }
       this.currentStep = 'COMPLETED';
 
@@ -294,6 +317,6 @@ export class OnboardingManager {
       if (hudLayer) {
         hudLayer.classList.remove('hidden');
       }
-    }, 600);
+    }, 400);
   }
 }

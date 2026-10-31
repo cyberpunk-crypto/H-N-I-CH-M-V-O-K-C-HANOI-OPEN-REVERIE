@@ -149,11 +149,34 @@ globalScope.GameAPI = {
   /**
    * Khởi động nhanh quá trình nạp thế giới 3D
    */
-  startWorldEngine: () => {
-    if (globalScope._GameCoreInstance) {
-      globalScope._GameCoreInstance.initWorld();
+  startWorldEngine: async () => {
+    const engine = globalScope._GameCoreInstance || globalScope.gameEngine;
+    if (engine && typeof engine.initWorld === 'function') {
+      try {
+        await engine.initWorld();
+      } catch (err) {
+        console.error('[GameAPI] Lỗi khi gọi initWorld:', err);
+      }
     } else {
-      globalScope.GameEventBus.emit('UI:START_ENGINE_REQUEST', {});
+      if (globalScope.GameEventBus && typeof globalScope.GameEventBus.emit === 'function') {
+        globalScope.GameEventBus.emit('UI:START_ENGINE_REQUEST', {});
+      }
+      // Poll fallback phòng ngừa GameEngine chưa nạp xong module
+      let retries = 0;
+      const pollTimer = setInterval(async () => {
+        retries++;
+        const eng = globalScope._GameCoreInstance || globalScope.gameEngine;
+        if (eng && typeof eng.initWorld === 'function') {
+          clearInterval(pollTimer);
+          try {
+            await eng.initWorld();
+          } catch (err) {
+            console.error('[GameAPI] Lỗi poll initWorld:', err);
+          }
+        } else if (retries >= 30) {
+          clearInterval(pollTimer);
+        }
+      }, 100);
     }
   }
 };

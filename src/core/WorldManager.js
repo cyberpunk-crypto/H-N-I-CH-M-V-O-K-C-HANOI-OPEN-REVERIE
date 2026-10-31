@@ -222,14 +222,37 @@ export class WorldManager {
   }
 
   /**
-   * Tạo texture canvas giả lập độ phân giải cao làm fallback nếu file ảnh chưa tải kịp
+   * Bộ đệm texture fallback siêu nhẹ chia sẻ toàn cục (tránh cấp phát 26 canvas 512x512 gây giật lag)
    */
-  _createCanvasFallback(drawFn, width = 512, height = 512) {
+  _getSharedFallbackTexture() {
+    if (!WorldManager._sharedFallbackTex) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 4;
+      canvas.height = 4;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#c49a65'; // Vàng ấm đặc trưng Hà Nội
+      ctx.fillRect(0, 0, 4, 4);
+      WorldManager._sharedFallbackTex = new THREE.CanvasTexture(canvas);
+      WorldManager._sharedFallbackTex.wrapS = THREE.RepeatWrapping;
+      WorldManager._sharedFallbackTex.wrapT = THREE.RepeatWrapping;
+    }
+    return WorldManager._sharedFallbackTex;
+  }
+
+  /**
+   * Tạo texture canvas fallback nhẹ nhàng
+   */
+  _createCanvasFallback(drawFn, width = 64, height = 64) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    drawFn(ctx, width, height);
+    if (typeof drawFn === 'function') {
+      drawFn(ctx, width, height);
+    } else {
+      ctx.fillStyle = '#c49a65';
+      ctx.fillRect(0, 0, width, height);
+    }
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -237,12 +260,9 @@ export class WorldManager {
   }
 
   /**
-   * Tải Texture AI với fallback an toàn
+   * Tải Texture AI với fallback an toàn & nạp ảnh tức thì chống chớp nháy màn hình đen
    */
   _loadTextureWithFallback(url, fallbackFn, repeatX = 1, repeatY = 1) {
-    const fallbackTex = this._createCanvasFallback(fallbackFn);
-    fallbackTex.repeat.set(repeatX, repeatY);
-
     const texture = this.textureLoader.load(
       url,
       (loaded) => {
@@ -253,12 +273,20 @@ export class WorldManager {
       },
       undefined,
       (err) => {
-        console.warn(`[Texture fallback]: Dùng canvas texture thay thế cho ${url}`);
+        console.warn(`[Texture fallback]: Lỗi nạp texture ${url}`);
       }
     );
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(repeatX, repeatY);
+
+    // Gán ảnh placeholder tức thì để WebGL không render màu đen khi ảnh đang tải
+    const placeholder = this._getSharedFallbackTexture();
+    if (placeholder && placeholder.image) {
+      texture.image = placeholder.image;
+      texture.needsUpdate = true;
+    }
+
     return texture;
   }
 
@@ -1828,7 +1856,7 @@ export class WorldManager {
     }
 
     // Nguồn sáng vàng ấm áp thiêng liêng rọi sáng nội điện Tháp Rùa
-    const towerInteriorLight = new THREE.PointLight(0xffd070, 2.2, 16);
+    const towerInteriorLight = new THREE.PointLight(0xffd070, 2.2, 8);
     towerInteriorLight.position.set(80, 1.55 + t1BaseY + 2.5, -80);
     zoneGroup.add(towerInteriorLight);
 
@@ -3314,7 +3342,7 @@ export class WorldManager {
     chandelier.position.set(0, h - 0.3, -0.5);
     shopGroup.add(chandelier);
 
-    const mainLight = new THREE.PointLight(0xffd580, 2.6, 18);
+    const mainLight = new THREE.PointLight(0xffd580, 2.4, 9);
     mainLight.position.set(0, h - 0.5, -0.5);
     shopGroup.add(mainLight);
 
@@ -3555,7 +3583,7 @@ export class WorldManager {
     tubeLight.position.set(0, h - 0.4, -0.6);
     storeGroup.add(tubeLight);
 
-    const storePointLight = new THREE.PointLight(0xfff0dd, 2.4, 18);
+    const storePointLight = new THREE.PointLight(0xfff0dd, 2.2, 8);
     storePointLight.position.set(0, h - 0.5, -0.6);
     storeGroup.add(storePointLight);
 

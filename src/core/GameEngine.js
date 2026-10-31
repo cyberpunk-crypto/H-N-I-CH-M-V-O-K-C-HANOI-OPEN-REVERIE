@@ -5,9 +5,9 @@
 
 import { THREE } from './ThreeLib.js';
 import { SceneManager } from './SceneManager.js';
-import { WorldManager } from './WorldManager.js?v=4.5';
+import { WorldManager } from './WorldManager.js?v=4.9';
 import { ZoneManager } from './ZoneManager.js';
-import { PlayerController } from './PlayerController.js?v=4.5';
+import { PlayerController } from './PlayerController.js?v=4.9';
 import { CameraController } from './CameraController.js';
 import { PerspectivePuzzle } from './PerspectivePuzzle.js';
 import { PhotoSystem } from './PhotoSystem.js';
@@ -109,11 +109,11 @@ export class GameEngine {
   }
 
   /**
-   * Khởi tạo WebGL Renderer và toàn bộ hệ thống 3D
+   * Khởi tạo WebGL Renderer và toàn bộ hệ thống 3D (Khử race condition & Nạp 100% tài nguyên)
    */
   async initWorld() {
-    if (this.renderer) {
-      console.log('[GameEngine] Thế giới 3D đã được khởi tạo trước đó. Kích hoạt CORE:WORLD_READY');
+    if (this._isWorldReady && this.renderer) {
+      console.log('[GameEngine] Thế giới 3D đã sẵn sàng trước đó. Kích hoạt CORE:WORLD_READY');
       const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 16.5, y: 0.5, z: -16.5 };
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
@@ -126,88 +126,108 @@ export class GameEngine {
       return;
     }
 
-    // Bắn tiến độ tải ban đầu
-    this._reportProgress(15, 'Khởi tạo WebGL Renderer đồ họa hoàng hôn...');
-
-    // 1. Tìm hoặc tạo Canvas WebGL
-    let canvas = document.getElementById(this.canvasId);
-    if (!canvas) {
-      canvas = document.createElement('canvas');
-      canvas.id = this.canvasId;
-      canvas.style.position = 'fixed';
-      canvas.style.top = '0';
-      canvas.style.left = '0';
-      canvas.style.width = '100vw';
-      canvas.style.height = '100vh';
-      canvas.style.zIndex = '1';
-      canvas.style.display = 'block';
-      const mountParent = document.getElementById('webglContainer') || this.container || document.body;
-      mountParent.appendChild(canvas);
+    if (this._initWorldPromise) {
+      return this._initWorldPromise;
     }
-    this.canvas = canvas;
 
-    // 2. WebGLRenderer Three.js với bóng đổ sắc nét
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: true,
-      powerPreference: 'high-performance',
-      preserveDrawingBuffer: true // Cho phép chụp ảnh canvas toDataURL
-    });
+    this._initWorldPromise = this._doInitWorld();
+    return this._initWorldPromise;
+  }
 
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0)); // Chuẩn 1.0 tối ưu tuyệt đối cho mọi laptop, văn phòng và thiết bị yếu không bao giờ tụt FPS
-    this.renderer.shadowMap.enabled = false; // Triệt tiêu 100% Shadow Pass nghẽn GPU trên trình duyệt Web
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+  async _doInitWorld() {
+    try {
+      // Bắn tiến độ tải ban đầu
+      this._reportProgress(15, 'Khởi tạo WebGL Renderer hoàng hôn 60 FPS...');
 
-    this._reportProgress(35, 'Tạo bầu trời hoàng hôn vàng ấm & sương mù Hà Nội...');
-    // 3. SceneManager & Camera
-    this.sceneManager = new SceneManager();
-    const scene = this.sceneManager.getScene();
+      // 1. Tìm hoặc tạo Canvas WebGL
+      let canvas = document.getElementById(this.canvasId);
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = this.canvasId;
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.zIndex = '1';
+        canvas.style.display = 'block';
+        const mountParent = document.getElementById('webglContainer') || this.container || document.body;
+        mountParent.appendChild(canvas);
+      }
+      this.canvas = canvas;
 
-    // Tầm nhìn 160m phối hợp hoàn hảo với sương mù vàng (Cắt giảm 62% draw calls từ 1,262 xuống 480 mesh)
-    this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 160);
-    this.camera.position.set(45, 2.5, -40);
+      // 2. WebGLRenderer Three.js với chuẩn tối ưu 60 FPS
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: true,
+        powerPreference: 'high-performance',
+        preserveDrawingBuffer: true // Cho phép chụp ảnh canvas toDataURL
+      });
 
-    this._reportProgress(60, 'Dựng 4 phân khu Thế Giới Mở 500m x 500m liền mạch...');
-    // 4. WorldManager & ZoneManager
-    this.zoneManager = new ZoneManager(this.eventBus);
-    this.worldManager = new WorldManager(this.sceneManager, this.eventBus);
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0)); // Chuẩn 1.0 tối ưu tuyệt đối cho mọi laptop, văn phòng và thiết bị yếu không bao giờ tụt FPS
+      this.renderer.shadowMap.enabled = false; // Triệt tiêu 100% Shadow Pass nghẽn GPU trên trình duyệt Web
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.15;
 
-    this._reportProgress(80, 'Khởi tạo nhân vật Kẻ Mộng Mơ & Hệ thống Camera Kép...');
-    // 5. PlayerController & CameraController
-    this.playerController = new PlayerController(scene, this.worldManager, this.eventBus);
-    this.cameraController = new CameraController(
-      this.camera,
-      this.canvas,
-      this.playerController,
-      this.worldManager,
-      this.eventBus
-    );
+      this._reportProgress(35, 'Tạo bầu trời hoàng hôn vàng ấm & sương mù Hà Nội...');
+      // 3. SceneManager & Camera
+      this.sceneManager = new SceneManager();
+      const scene = this.sceneManager.getScene();
 
-    this._reportProgress(92, 'Cài đặt hệ thống Giải Đố Thị Giác & Máy Ảnh Film 35mm...');
-    // 6. PerspectivePuzzle & PhotoSystem
-    this.perspectivePuzzle = new PerspectivePuzzle(scene, this.worldManager, this.eventBus);
-    this.photoSystem = new PhotoSystem(
-      this.renderer,
-      scene,
-      this.camera,
-      this.zoneManager,
-      this.perspectivePuzzle,
-      this.eventBus
-    );
+      // Tầm nhìn 95m kết hợp sương mù 32-92m (Cắt giảm triệt để draw calls, mượt mà 60 FPS)
+      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 95);
+      this.camera.position.set(45, 2.5, -40);
 
-    // 7. Xử lý Resize
-    window.addEventListener('resize', this._onWindowResize.bind(this));
+      this._reportProgress(55, 'Dựng 4 phân khu Thế Giới Mở 500m x 500m liền mạch...');
+      // 4. WorldManager & ZoneManager
+      this.zoneManager = new ZoneManager(this.eventBus);
+      this.worldManager = new WorldManager(this.sceneManager, this.eventBus);
 
-    this._reportProgress(100, 'Thủ đô Hà Nội đã sẵn sàng!');
+      this._reportProgress(75, 'Khởi tạo nhân vật Kẻ Mộng Mơ & Hệ thống Camera Kép...');
+      // 5. PlayerController & CameraController
+      this.playerController = new PlayerController(scene, this.worldManager, this.eventBus);
+      this.cameraController = new CameraController(
+        this.camera,
+        this.canvas,
+        this.playerController,
+        this.worldManager,
+        this.eventBus
+      );
 
-    // Bắt đầu Game Loop
-    this.startLoop();
+      this._reportProgress(85, 'Đang tải trang phục & diện mạo 3D Hà Nội...');
+      // Đợi nhân vật 3D hoàn tất 100% trước khi tắt màn hình chờ (Chống lỗi không hiện hình ảnh nhân vật)
+      if (this.playerController && this.playerController._gltfLoadingPromise) {
+        try {
+          await this.playerController._gltfLoadingPromise;
+        } catch (err) {
+          console.warn('[GameEngine] Cảnh báo nạp 3D model:', err);
+        }
+      }
 
-    // Phát tín hiệu thế giới 3D đã sẵn sàng để UI mở màn hình chơi
-    const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 16.5, y: 0.5, z: -16.5 };
-    setTimeout(() => {
+      this._reportProgress(95, 'Cài đặt hệ thống Giải Đố Thị Giác & Máy Ảnh Film 35mm...');
+      // 6. PerspectivePuzzle & PhotoSystem
+      this.perspectivePuzzle = new PerspectivePuzzle(scene, this.worldManager, this.eventBus);
+      this.photoSystem = new PhotoSystem(
+        this.renderer,
+        scene,
+        this.camera,
+        this.zoneManager,
+        this.perspectivePuzzle,
+        this.eventBus
+      );
+
+      // 7. Xử lý Resize
+      window.addEventListener('resize', this._onWindowResize.bind(this));
+
+      this._reportProgress(100, 'Thủ đô Hà Nội đã sẵn sàng!');
+
+      // Bắt đầu Game Loop
+      this.startLoop();
+      this._isWorldReady = true;
+
+      // Phát tín hiệu thế giới 3D đã sẵn sàng
+      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 16.5, y: 0.5, z: -16.5 };
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
         playerPosition: {
@@ -216,7 +236,11 @@ export class GameEngine {
           z: parseFloat(spawnPos.z.toFixed(2))
         }
       });
-    }, 200);
+    } catch (err) {
+      console.error('[GameEngine] Lỗi nghiêm trọng trong quá trình khởi tạo:', err);
+      // Fallback phát tín hiệu để không bao giờ bị treo màn hình loading
+      this.eventBus.emit('CORE:WORLD_READY', { spawnZone: 'ho_guom' });
+    }
   }
 
   /**

@@ -55,7 +55,6 @@ export class AgeGateModal {
             <div class="date-input-group">
               <label for="birthYearSelect">Năm sinh</label>
               <select id="birthYearSelect" class="retro-select">
-                <option value="" disabled selected>Chọn năm</option>
                 ${this.generateYearOptions()}
               </select>
             </div>
@@ -63,7 +62,7 @@ export class AgeGateModal {
 
           <div id="ageStatusMessage" class="age-status-message" style="display: none;"></div>
 
-          <button type="submit" id="btnConfirmAge" class="btn-primary-retro" disabled>
+          <button type="submit" id="btnConfirmAge" class="btn-primary-retro">
             Xác Nhận & Bước Tiếp
           </button>
         </form>
@@ -71,6 +70,7 @@ export class AgeGateModal {
     `;
 
     this.bindEvents();
+    this.validateAge();
     return this.element;
   }
 
@@ -79,7 +79,8 @@ export class AgeGateModal {
     const startYear = currentYear - 100;
     let html = '';
     for (let y = currentYear; y >= startYear; y--) {
-      html += `<option value="${y}">${y}</option>`;
+      const isDefault = (y === 2000);
+      html += `<option value="${y}" ${isDefault ? 'selected' : ''}>${y}</option>`;
     }
     return html;
   }
