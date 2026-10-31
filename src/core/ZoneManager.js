@@ -99,8 +99,9 @@ export class ZoneManager {
    * @returns {Object} { x, y, z }
    */
   getSpawnPoint(zoneId) {
+    if (zoneId === 'old_quarter') zoneId = 'pho_co';
     const zone = ZONES[zoneId];
-    return zone ? { ...zone.spawnPoint } : { x: 50, y: 0.5, z: -50 };
+    return zone ? { ...zone.spawnPoint } : { x: 17, y: 0.5, z: -17 };
   }
 
   /**
