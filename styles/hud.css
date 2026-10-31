@@ -58,6 +58,8 @@
   border: 1px solid var(--c-yellow-cuc);
   border-radius: 4px;
   color: var(--c-yellow-cuc);
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .zone-details {

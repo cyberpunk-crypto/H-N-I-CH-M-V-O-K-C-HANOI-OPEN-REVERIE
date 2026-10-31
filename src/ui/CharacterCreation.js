@@ -12,32 +12,36 @@ export const DEFAULT_CHARACTERS = [
     id: 'char_nu_sinh_ao_dai',
     name: 'Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá',
     shortName: 'Nữ Sinh Tràng An',
+    title: 'Nữ Sinh Tràng An',
     badge: 'Hồ Gươm & Tháp Rùa',
     desc: 'Tà áo dài trắng học trò thướt tha trong gió sớm hồ Gươm, chiếc nón lá bài thơ che nghiêng e ấp, nét thanh lịch nghìn năm Thăng Long.',
     avatar: 'assets/characters/avatar_char_nu_sinh_ao_dai.png'
   },
   {
     id: 'char_co_gai_ao_ba_ba',
-    name: 'Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen',
+    name: 'Cô Gái Phố Thị • Áo Bà Ba Hồng Sen Khăn Rằn',
     shortName: 'Cô Gái Phố Thị',
+    title: 'Cô Gái Phố Thị',
     badge: '36 Phố Phường',
-    desc: 'Áo bà ba hồng cánh sen mộc mạc, chiếc khăn rằn vắt vai, nón lá đeo sau lưng, nụ cười rạng rỡ chào đón lữ khách ghé thăm phố cũ.',
+    desc: 'Chiếc áo bà ba màu hồng cánh sen dịu dàng, khăn rằn quàng cổ mộc mạc, nón lá đeo sau lưng, nụ cười rạng rỡ đón khách phương xa.',
     avatar: 'assets/characters/avatar_char_co_gai_ao_ba_ba.png'
   },
   {
     id: 'char_nam_tri_thuc_suit',
-    name: 'Trí Thức Hiện Đại • Âu Phục Suit Navy',
-    shortName: 'Trí Thức Hiện Đại',
+    name: 'Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm',
+    shortName: 'Nam Trí Thức Hà Nội',
+    title: 'Nam Trí Thức Hà Nội',
     badge: 'Cầu Long Biên',
-    desc: 'Bộ âu phục suit xanh navy lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
+    desc: 'Bộ âu phục suit xám than/navy lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
     avatar: 'assets/characters/avatar_char_nam_tri_thuc_suit.png'
   },
   {
     id: 'char_nam_ao_dai_gam',
-    name: 'Quý Nam Hà Thành • Áo Dài Gấm Xanh Ngũ Thân',
-    shortName: 'Quý Nam Hà Thành',
+    name: 'Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia',
+    shortName: 'Chàng Trai Thăng Long',
+    title: 'Chàng Trai Thăng Long',
     badge: 'Di Sản Tràng An',
-    desc: 'Áo dài cách tân gấm dệt hoa văn cổ ngũ thân xanh lam hoàng gia, quần âu trắng mực thước, cốt cách quý ông Tràng An lịch thiệp uyên bác.',
+    desc: 'Áo dài ngũ thân cách tân gấm dệt hoa văn cổ ngũ thân xanh lam hoàng gia, quần âu trắng mực thước, cốt cách quý ông Tràng An lịch thiệp uyên bác.',
     avatar: 'assets/characters/avatar_char_nam_ao_dai_gam.png'
   }
 ];
@@ -452,21 +456,28 @@ export class CharacterCreation {
   confirmCharacter() {
     if (!this.isNameValid) return;
 
+    const charObj = CHARACTERS.find(c => c.id === this.selectedCharacterId) || CHARACTERS[0];
+    const characterTitle = charObj ? (charObj.title || charObj.shortName) : 'Lãng Tử';
+
     const profile = {
       username: this.currentName,
       characterId: this.selectedCharacterId,
+      characterTitle: characterTitle,
       outfit: this.selectedCharacterId,
       cameraModel: this.selectedCameraId,
       unlockedPuzzles: [],
       capturedPhotosCount: 0
     };
 
-    window.GameAPI.saveUserProfile(profile);
+    if (typeof window !== 'undefined' && window.GameAPI && typeof window.GameAPI.saveUserProfile === 'function') {
+      window.GameAPI.saveUserProfile(profile);
+    }
 
     // Bắn sự kiện chốt nhân vật sang Core Engine
     GameEventBus.emit('UI:CHARACTER_CONFIRMED', {
       characterName: this.currentName,
       characterId: this.selectedCharacterId,
+      characterTitle: characterTitle,
       outfitId: this.selectedCharacterId,
       cameraModel: this.selectedCameraId
     });

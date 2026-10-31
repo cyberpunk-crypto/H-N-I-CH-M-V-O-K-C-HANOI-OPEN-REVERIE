@@ -12,6 +12,7 @@ import { ToastNotification } from './ToastNotification.js';
 import { AudioBGMController } from './AudioBGMController.js';
 import { DialogueModal } from './DialogueModal.js?v=3.9';
 import { ChatBoxHUD } from './ChatBoxHUD.js';
+import { CHARACTERS } from './CharacterCreation.js';
 
 export class UIManager {
   constructor() {
@@ -118,10 +119,25 @@ export class UIManager {
     const promptContainer = document.getElementById('interactionPromptContainer');
     const promptTextEl = document.getElementById('interactionPromptText');
 
-    // Cập nhật tên người chơi khi xác nhận nhân vật
+    const updatePlayerNameDisplay = (username, charId, charTitle) => {
+      const charObj = CHARACTERS.find(c => c.id === charId || (c.legacyIds && c.legacyIds.includes(charId))) || CHARACTERS[0];
+      const title = charTitle || (charObj ? (charObj.title || charObj.shortName) : 'Lãng Tử');
+      const name = username || 'Kẻ Mộng Mơ';
+
+      if (playerNameEl) {
+        playerNameEl.textContent = `${title}: ${name}`;
+      }
+
+      const avatarBadgeEl = document.getElementById('hudPlayerAvatarBadge');
+      if (avatarBadgeEl && charObj && charObj.avatar) {
+        avatarBadgeEl.innerHTML = `<img src="${charObj.avatar}" alt="${title}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" />`;
+      }
+    };
+
+    // Cập nhật tên và danh xưng người chơi khi xác nhận nhân vật
     GameEventBus.on('UI:CHARACTER_CONFIRMED', (payload) => {
-      if (playerNameEl && payload.characterName) {
-        playerNameEl.textContent = `Lãng tử: ${payload.characterName}`;
+      if (payload) {
+        updatePlayerNameDisplay(payload.characterName, payload.characterId, payload.characterTitle);
       }
     });
 
@@ -156,8 +172,8 @@ export class UIManager {
     // Đọc thông tin người chơi từ Storage nếu đã có
     try {
       const profile = JSON.parse(localStorage.getItem('hanoi_user_profile') || '{}');
-      if (profile.username && playerNameEl) {
-        playerNameEl.textContent = `Lãng tử: ${profile.username}`;
+      if (profile.username) {
+        updatePlayerNameDisplay(profile.username, profile.characterId || profile.outfit, profile.characterTitle);
       }
     } catch (e) {}
   }

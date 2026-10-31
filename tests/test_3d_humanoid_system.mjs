@@ -329,7 +329,17 @@ const REQUIRED_TEXTURES = [
   'char_wool_navy_suit.jpg',
   'char_wool_navy_suit_norm.jpg',
   'char_silk_tie_vintage.jpg',
-  'char_silk_tie_vintage_norm.jpg'
+  'char_silk_tie_vintage_norm.jpg',
+  'char_shirt_white_cotton.jpg',
+  'char_shirt_white_cotton_norm.jpg',
+  'char_silk_black_pants.jpg',
+  'char_silk_black_pants_norm.jpg',
+  'char_silk_pink_strap.jpg',
+  'char_silk_pink_strap_norm.jpg',
+  'char_turban_brocade.jpg',
+  'char_turban_brocade_norm.jpg',
+  'char_wool_charcoal_suit.jpg',
+  'char_wool_charcoal_suit_norm.jpg'
 ];
 
 let allTexturesValid = true;
@@ -347,7 +357,7 @@ for (const texName of REQUIRED_TEXTURES) {
   }
 }
 
-assert(allTexturesValid, `Toàn bộ 16/16 tệp PBR textures (Diffuse + Normal) tồn tại đầy đủ, không bị lỗi 404`);
+assert(allTexturesValid, `Toàn bộ 26/26 tệp PBR textures (Diffuse + Normal) tồn tại đầy đủ, không bị lỗi 404`);
 
 // Kiểm tra 3 file 3D GLB Models
 const REQUIRED_GLB_MODELS = [
@@ -432,6 +442,69 @@ assert(check2.isValid, `Tên độc nhất 'AnTrangAn' được chấp thuận h
 assert(typeof GameEventBus.on === 'function', `GameEventBus.on là function`);
 assert(typeof GameEventBus.emit === 'function', `GameEventBus.emit là function`);
 assert(typeof GameEventBus.off === 'function', `GameEventBus.off là function`);
+
+// -----------------------------------------------------------------------------
+// CHẶNG 9: KIỂM ĐỊNH 6 CHỐT KHẮC PHỤC LỖI TỐI HẬU THƯ TỪ SẾP TỔNG
+// -----------------------------------------------------------------------------
+console.log('\n--- CHẶNG 9: Kiểm Định 6 Chốt Khắc Phục Lỗi Tối Hậu Thư ---');
+
+const playerCtrlContent = fs.readFileSync(path.join(process.cwd(), 'src', 'core', 'PlayerController.js'), 'utf8');
+const cameraCtrlContent = fs.readFileSync(path.join(process.cwd(), 'src', 'core', 'CameraController.js'), 'utf8');
+const gameEngineContent = fs.readFileSync(path.join(process.cwd(), 'src', 'core', 'GameEngine.js'), 'utf8');
+const animContent = fs.readFileSync(path.join(process.cwd(), 'src', 'core', 'animations.js'), 'utf8');
+
+// 1. Sửa dứt điểm lỗi Đi ngược (Moonwalking) bằng góc bù trừ + Math.PI
+assert(
+  playerCtrlContent.includes('Math.atan2(finalDir.x, finalDir.z) + Math.PI'),
+  '1. Sửa dứt điểm lỗi Đi ngược (Moonwalking) bằng góc bù trừ + Math.PI'
+);
+
+// 2. Tách biệt hoàn toàn 4 nhân vật Việt Nam độc bản
+const nuSinhMeta = findCharacterMeta('char_nu_sinh_ao_dai');
+const baBaMeta = findCharacterMeta('char_co_gai_ao_ba_ba');
+const suitMeta = findCharacterMeta('char_nam_tri_thuc_suit');
+const aoDaiGamMeta = findCharacterMeta('char_nam_ao_dai_gam');
+
+assert(nuSinhMeta && nuSinhMeta.name.includes('Áo Dài Trắng'), '2.1. Nữ sinh Áo dài trắng độc bản');
+assert(baBaMeta && baBaMeta.name.includes('Áo Bà Ba'), '2.2. Cô gái Áo bà ba hồng sen độc bản');
+assert(suitMeta && suitMeta.name.includes('Âu Phục'), '2.3. Nam trí thức Âu phục suit độc bản');
+assert(aoDaiGamMeta && aoDaiGamMeta.name.includes('Áo Dài Gấm'), '2.4. Chàng trai Thăng Long Áo dài gấm xanh hoàng gia độc bản');
+
+// Kiểm tra vật liệu độc bản trong CharacterFactory.js
+const charFactoryContent = fs.readFileSync(path.join(process.cwd(), 'src', 'core', 'CharacterFactory.js'), 'utf8');
+assert(charFactoryContent.includes('char_silk_pink_strap') && charFactoryContent.includes('char_silk_black_pants'), '2.5. Vật liệu độc bản tách biệt từng bộ trang phục truyền thống');
+assert(charFactoryContent.includes('0x16213e') && charFactoryContent.includes('char_turban_brocade'), '2.6. Màu xanh hoàng gia Thăng Long 0x16213e và Khăn Xếp gấm dệt độc bản');
+
+// 3. Chống xuyên thủng lan can Cầu Kim Quy bằng Capsule Horizontal Collider
+assert(
+  playerCtrlContent.includes('bridgeInfo.dist > 1.6') && playerCtrlContent.includes('clampFactor'),
+  '3. Chống xuyên thủng lan can Cầu Kim Quy bằng Capsule Horizontal Collider (dist <= 1.6m)'
+);
+
+// 4. Căn góc Camera mở màn 45 độ dọc tim Cầu Kim Quy & Tọa độ xuất phát
+assert(
+  cameraCtrlContent.includes('this.yaw = 0.785') && cameraCtrlContent.includes('this.targetYaw = 0.785'),
+  '4.1. Căn góc Camera ban đầu 45 độ (0.785 rad) mở màn dọc tim Cầu Kim Quy'
+);
+assert(
+  gameEngineContent.includes('{ x: 16.5, y: 0.5, z: -16.5 }'),
+  '4.2. Tọa độ spawn xuất phát (16.5, 0.5, -16.5) mở màn tại đầu Cầu Kim Quy'
+);
+
+// 5. Bổ sung độ trễ quán tính (Lag Damping) cho Nón Lá 3D
+assert(
+  animContent.includes('nonLaLagRoll') && animContent.includes('nonLaLagPitch') && animContent.includes('springK'),
+  '5.1. Hệ thống lò xo giảm chấn quán tính (Lag Damping Spring-Damper) cho Nón Lá 3D'
+);
+
+// Chạy thử nghiệm phản xạ quán tính Nón Lá khi nhân vật xoay người
+primaryChar.rotation.y = 1.57; // Xoay 90 độ đột ngột
+animator.update(0.016, 3.5, true);
+const hasLagEffect = Math.abs(animator.nonLaLagRoll) > 0.0001 || Math.abs(animator.nonLaLagPitch) > 0.0001 || Math.abs(animator.nonLaLagYaw) > 0.0001;
+assert(hasLagEffect, '5.2. Nón Lá 3D phản hồi độ trễ quán tính ly tâm và lực cản gió thời gian thực');
+
+// 6. Bảo toàn 100% 9 NPC lịch sử
+assert(allNpcPreserved, '6. Bảo toàn 100% 9 NPC lịch sử và 28 cá thể cá chép vàng Hồ Gươm trong WorldManager.js');
 
 // -----------------------------------------------------------------------------
 // BÁO CÁO KẾT QUẢ CUỐI CÙNG

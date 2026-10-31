@@ -4,7 +4,7 @@
 ---
 
 > **Mã dự án:** `HANOI-OPEN-REVERIE-3D`  
-> **Phiên bản tài liệu:** `3.0.0-GTA5-LOCOMOTION-SPEC`  
+> **Phiên bản tài liệu:** `3.1.0-FIX-LOCOMOTION-AND-DISTINCT-CHARACTERS`  
 > **Phê duyệt:** Sếp Tổng Game Studio & Hội đồng Kiến trúc sư Trưởng  
 > **Ngày ban hành:** 31/10/2026  
 > **Áp dụng cho 4 Mũi nhọn sản xuất song song:**  
@@ -25,8 +25,9 @@ Người chơi hóa thân thành một "Kẻ Mộng Mơ" dạo bước qua 4 ph�
 
 ### 1.2. Tech Stack & Nền tảng
 - **Engine 3D Core:** `Three.js` (r160+) chạy trực tiếp trên WebGL / WebGL2 context.
-- **Hệ thống điều khiển nhân vật:** GTA V-style Locomotion Physics với Quaternion Slerp turning, quán tính khối lượng (Inertia Acceleration & Braking), cơ chế khử nổi chân (Foot Ground Snapping) và Continuous Collision Sub-stepping chống kẹt.
-- **Mô hình nhân vật:** Hybrid System: Hỗ trợ 3D SkinnedMesh tiêu chuẩn Mixamo (GLTF/GLB) kết hợp Mô hình người 3D thủ công truyền thống 4 nhân vật Việt Nam có Rigging phân cấp 17 khớp (Áo dài lụa 3D, Nón lá 3D, Áo bà ba 3D, Suit 3D). **Tuyệt đối loại bỏ vĩnh viễn 100% billboard/plane 2D trên nhân vật người chơi!**
+- **Hệ thống điều khiển nhân vật:** GTA V-style Locomotion Physics với Quaternion Slerp turning, **triệt tiêu 100% lỗi đi ngược (Moonwalking) qua góc bù trừ + Math.PI**, quán tính khối lượng (Inertia Acceleration & Braking), cơ chế khử nổi chân (Foot Ground Snapping) và **Va chạm ngang Capsule Horizontal Collision chống xuyên thủng lan can cầu**.
+- **Vị trí xuất phát & Camera khởi đầu:** Xuất phát tại tọa độ vàng `(16.5, 0.5, -16.5)` ven bờ Hồ Gươm, góc quay camera mở màn `yaw = 0.785 rad` (45 độ) hướng thẳng dọc tim Cầu Thê Húc.
+- **Mô hình nhân vật:** Cơ chế tách biệt 4 nhân vật Việt Nam độc bản thật sự (Áo dài trắng nữ sinh, Áo bà ba hồng sen, Suit xám than nam trí thức, Áo dài gấm ngũ thân nam Thăng Long) có Rigging phân cấp 17 khớp và vật liệu PBR Shading chất lượng cao. **Tuyệt đối loại bỏ vĩnh viễn 100% billboard/plane 2D trên người chơi!**
 - **Hoạt họa (Animation):** Hệ thống Skeletal MoCap AnimationMixer kết hợp Procedural Kinematics 60 FPS trong `src/core/animations.js`, thực hiện Cross-fade Blending mượt mà giữa Idle (thở tự nhiên, chuyển trọng tâm), Walk (sải bước cắm gót nhấc mũi, vung tay ngược pha), Run (sprint lean 10-12 độ, vung tay góc 90 độ).
 - **Kiến trúc mã nguồn:** Vanilla JavaScript (ES6+ ES Modules), mô hình phân rã Decoupled Architecture hướng sự kiện (`EventBus`), không phụ thuộc build tooling nặng nề.
 - **Audio Engine:** `Web Audio API` với bộ giải mã âm thanh không gian (Spatial Audio Listener / PannerNode) tạo không khí Hà Nội 3D sống động (tiếng ve sầu, còi tàu, tiếng rao đêm, tiếng máy hát loa kèn cổ).
@@ -85,10 +86,10 @@ d:/HÀ NỘI CHẠM VÀO KÝ ỨC ,HANOI OPEN REVERIE/
 │   │   ├── SceneManager.js        # Quản lý cảnh 3D, ánh sáng, sương mù (Fog)
 │   │   ├── WorldManager.js        # Bản đồ 500m x 500m, Collision AABB, BẢO TOÀN 100% 9 NPC LỊCH SỬ
 │   │   ├── ZoneManager.js         # Quản lý 4 phân khu (Hồ Gươm, Phố Cổ, Cầu, Nhà Tập Thể)
-│   │   ├── PlayerController.js    # [coder-chinh] GTA V Locomotion Physics: Slerp turning, Braking, Snap
-│   │   ├── CharacterFactory.js    # [coder-chinh] True 3D Humanoid Mesh & GLTF SkinnedMesh Hybrid Loader
+│   │   ├── PlayerController.js    # [coder-chinh] GTA V Locomotion Physics: Slerp (+Math.PI), Capsule Railing Snap
+│   │   ├── CharacterFactory.js    # [coder-chinh] True 3D Humanoid Mesh 4 Nhân Vật Tách Biệt Độc Bản
 │   │   ├── animations.js          # [animation-master] 3D Skeletal Animation System & MoCap Mixer 60 FPS
-│   │   ├── CameraController.js    # Camera Kép (TPS Spring-Arm & FPS Viewfinder)
+│   │   ├── CameraController.js    # Camera Kép (TPS Spring-Arm yaw 0.785 rad & FPS Viewfinder)
 │   │   ├── PerspectivePuzzle.js   # Hệ thống giải đố căn góc nhìn quang học
 │   │   ├── PhotoSystem.js         # Cơ chế chụp ảnh film, canvas capture, lưu khoảnh khắc
 │   │   └── StorageService.js      # Dịch vụ LocalStorage / IndexedDB đồng bộ dữ liệu
@@ -225,9 +226,9 @@ window.GameAPI = {
 - `createHanoiCharacter3D(characterId, options = {})`:
   * Trả về: `THREE.Group` (`characterGroup`), chứa:
     - `characterGroup.rig`: Ánh xạ 17 khớp xương (`pelvis`, `torso`, `chest`, `neck`, `head`, `leftShoulder`, `leftUpperArm`, `leftElbow`, `leftLowerArm`, `leftHand`, `rightShoulder`, `rightUpperArm`, `rightElbow`, `rightLowerArm`, `rightHand`, `leftHip`, `leftUpperLeg`, `leftKnee`, `leftLowerLeg`, `leftFoot`, `rightHip`, `rightUpperLeg`, `rightKnee`, `rightLowerLeg`, `rightFoot`, `frontFlapGroup`, `backFlapGroup`, `nonLaGroup`).
+    - `characterGroup.characterMeta`: Metadata độc bản của nhân vật (tên, vai trò, kích thước tỷ lệ).
+    - `characterGroup.modelFacingOffset`: Giá trị góc bù trừ hướng mặt mô hình (mặc định `= Math.PI` để triệt tiêu lỗi Moonwalking).
     - `characterGroup.isSkinnedMesh`: Boolean (`false` cho Procedural 3D Rigged Mesh, `true` cho GLTF/GLB SkinnedMesh).
-    - `characterGroup.mixer`: `THREE.AnimationMixer` (nếu là SkinnedMesh) hoặc `null`.
-    - `characterGroup.clips`: `Map<string, THREE.AnimationClip>` (MoCap clips `idle`, `walk`, `run`).
 - `loadSkinnedMeshCharacter(gltfUrl, options = {})`:
   * Nạp file GLTF/GLB SkinnedMesh (Michelle.glb, Soldier.glb, Xbot.glb), tối ưu bones hierarchy và trả về chuẩn tương thích `characterGroup`.
 
@@ -236,9 +237,10 @@ window.GameAPI = {
 - `update(delta, camera)`:
   1. Đọc WASD và tính vector hướng di chuyển phẳng theo góc quay camera (`camForward`, `camRight`).
   2. Áp dụng gia tốc GTA V (Acceleration `accel = 18.0` khi di chuyển, Braking `brake = 22.0` khi nhả phím).
-  3. Xoay hướng mặt nhân vật bằng Quaternion Slerp / Angular Dampening (`turnSpeed = 11.0 - 14.0`).
-  4. Bắn raycast 4.0m kiểm tra độ cao mặt đất (`groundHits`) và căn chỉnh khử nổi chân (Step-Up Ground Snapping).
-  5. Gọi `this.humanoidAnimator.update(delta, moveSpeed, this.isGrounded, groundSlopeAngle)`.
+  3. **Xoay hướng mặt nhân vật bằng Quaternion Slerp với góc bù trừ chuẩn: `targetAngle = Math.atan2(finalDir.x, finalDir.z) + Math.PI` (khắc phục hoàn toàn lỗi Moonwalking).**
+  4. **Kiểm tra va chạm ngang (Capsule Horizontal Collision) chống xuyên thủng lan can cầu Kim Quy / Cầu Thê Húc.**
+  5. Bắn raycast 4.0m kiểm tra độ cao mặt đất (`groundHits`) và căn chỉnh khử nổi chân (Step-Up Ground Snapping).
+  6. Gọi `this.humanoidAnimator.update(delta, moveSpeed, this.isGrounded, groundSlopeAngle)`.
 
 #### 3. Hợp đồng `animations.js` (`HumanoidAnimator`):
 - `constructor(characterGroup, options = {})`: Gắn kết rig hoặc AnimationMixer.
@@ -270,9 +272,11 @@ Bản đồ tổng thể được thiết kế theo tỷ lệ tọa độ 3D th�
 ### 4.1. Phân khu 1: Hồ Gươm & Tháp Rùa (Zone A: Hoan Kiem Lake)
 - **Tọa độ trung tâm:** `(100, 0, -100)`.
 - **Tâm điểm:** Tháp Rùa cổ kính rêu phong nằm giữa đảo xanh trên mặt nước phẳng lặng.
+- **Điểm xuất phát vàng của Người Chơi:** Tọa độ chính xác `(16.5, 0.5, -16.5)` ngay sát chân Cầu Thê Húc.
 - **Hệ thống Cầu Thê Húc:**
   - Dốc thoải tiếp cận nhẹ nhàng (Gentle Approach Ramp) chuyển tiếp từ mặt vỉa hè (`y = 0.15m`) lên sàn chân cầu (`y = 0.95m`), độ dốc < 12%, không gờ vấp.
   - Thân cầu 15 nhịp cong màu đỏ son dẫn vào Đền Ngọc Sơn & Đắc Nguyệt Lâu với hàng cây đa và liễu rủ ven hồ đung đưa theo gió.
+  - Lan can sơn son cong mềm mại được bảo vệ bởi Capsule Horizontal Collision chống xuyên thủng.
   - Vỉa hè lát đá xanh, hàng ghế đá xưa, cột đèn đường Pháp cổ chiếu sáng vàng ấm 2700K.
 
 ### 4.2. Phân khu 2: Mê Cung Phố Cổ & Phố Đường Tàu (Zone B: Old Quarter & Train Street)
@@ -298,7 +302,7 @@ Bản đồ tổng thể được thiết kế theo tỷ lệ tọa độ 3D th�
 
 ---
 
-## 5. HỆ THỐNG CAMERA KÉP (DUAL CAMERA SYSTEM: TPS & FPS)
+## 5. HỆ THỐNG CAMERA KÉP & GÓC QUAY MỞ MÀN ĐIỆN ẢNH (INITIAL CINEMATIC CAMERA)
 
 ```
        [PHÍM V / GIỮ CHUỘT PHẢI]
@@ -312,14 +316,17 @@ Bản đồ tổng thể được thiết kế theo tỷ lệ tọa độ 3D th�
        (Chuyển đổi Lerp 0.3 giây)
 ```
 
-- **Chế độ TPS (Third Person Exploration):**
-  - Spring-Arm Boom 4.5m sau lưng, góc chúc xuống 15 độ.
-  - Damping nội suy góc quay chuột mượt mà (`lerp factor = 0.08`).
-  - Raycast chống xuyên tường (Collision Detection), khoảng cách tối thiểu 0.8m.
-- **Chế độ FPS (Viewfinder Máy Ảnh Film):**
-  - Lerp mượt mà trong 0.3 giây từ TPS về tọa độ mắt người (`y = 1.65m`).
-  - FOV chuyển từ 65 độ xuống 45 độ (tiêu cự 50mm cổ điển).
-  - Tự động gán `playerMesh.visible = false` khi ở FPS để ống kính thông thoáng tuyệt đối.
+### 5.1. Thiết Lập Vị Trí Xuất Phát & Camera Ban Đầu Chuẩn Mực
+- **Tọa độ xuất phát người chơi:** `(x = 16.5, y = 0.5, z = -16.5)`.
+- **Góc quay Camera mở màn (Initial Camera Orientation):**
+  * **Góc quay ngang (Yaw):** Đúng chuẩn `0.785 rad` (45 độ).
+  * **Góc chúc xuống (Pitch):** Đúng chuẩn `0.26 rad` (15 độ).
+  * **Khoảng cách Spring-Arm:** `4.5 mét` sau lưng nhân vật.
+  * **Khung cảnh mở màn:** Ngay khi vào game, camera hướng thẳng dọc theo tim Cầu Thê Húc đỏ son, nhìn về Đắc Nguyệt Lâu và Đền Ngọc Sơn với làn sương mờ ảo trên mặt nước Hồ Gươm, tạo cảm giác choáng ngợp và hoài niệm đậm chất điện ảnh.
+
+### 5.2. Chế độ TPS & FPS
+- **TPS:** Spring-Arm Boom 4.5m, Damping mượt mà `lerp factor = 0.08`, Raycast chống xuyên tường tối thiểu 0.8m.
+- **FPS:** Lerp mượt mà trong 0.3 giây về tọa độ mắt người (`y = 1.65m`), FOV 45 độ (tiêu cự 50mm cổ điển), tự động gán `playerMesh.visible = false`.
 
 ---
 
@@ -350,138 +357,101 @@ Bản đồ tổng thể được thiết kế theo tỷ lệ tọa độ 3D th�
    - **Debounce 500ms:** Gọi `window.GameAPI.checkCharacterNameAvailability(name)`.
    - Nếu trùng: Viền đỏ rung lắc, hiện 3 gợi ý tên (`[Tên]_1990`, `LãngTử_[Tên]`, `[Tên]_PhốCổ`).
    - Nếu hợp lệ: Viền xanh, bật sáng nút vàng đồng "Bước Vào Ký Ức".
-   - Cho phép chọn 1 trong 4 nhân vật 3D hoàn chỉnh.
+   - Cho phép chọn 1 trong 4 nhân vật 3D Việt Nam độc bản.
 
 ---
 
-## 8. ĐẶC TẢ KIẾN TRÚC MÔ HÌNH NGƯỜI 3D THẬT SỰ & SKINNEDMESH HYBRID
+## 8. ĐẶC TẢ CƠ CHẾ TÁCH BIỆT 4 NHÂN VẬT THẬT SỰ (DISTINCT 4 CHARACTERS)
 
-> **CHỈ THỊ CAO NHẤT TỪ SẾP TỔNG:**  
-> *"Loại bỏ vĩnh viễn 100% các mặt phẳng 2D billboard/plane trên người chơi. Hỗ trợ mô hình 3D SkinnedMesh tiêu chuẩn Mixamo (GLTF/GLB) kết hợp mô hình 3D thủ công truyền thống 4 nhân vật Việt Nam điêu khắc khối 3D PBR có khung xương phân cấp hoàn chỉnh!"*
-
-### 8.1. Hỗ Trợ Mô Hình 3D SkinnedMesh (GLTF/GLB Mixamo Tiêu Chuẩn)
-- **Định dạng file:** Binary GLTF (`.glb`) hoặc `.gltf` kèm buffers.
-- **Tiêu chuẩn Rigging:** Skeleton Mixamo tiêu chuẩn quốc tế (`mixamorig:Hips`, `Spine`, `Spine1`, `Spine2`, `Neck`, `Head`, `LeftShoulder`, `LeftArm`, `LeftForeArm`, `LeftHand`, `RightShoulder`, `RightArm`, `RightForeArm`, `RightHand`, `LeftUpLeg`, `LeftLeg`, `LeftFoot`, `LeftToeBase`, `RightUpLeg`, `RightLeg`, `RightFoot`, `RightToeBase`).
-- **Danh sách models hỗ trợ:**
-  * `assets/models/Michelle.glb`: Nhân vật nữ thể thao hiện đại.
-  * `assets/models/Soldier.glb`: Nhân vật nam mạnh mẽ kiên định.
-  * `assets/models/Xbot.glb`: Mô hình tham chiếu chuyển động chuẩn Motion Capture.
-
-### 8.2. Hệ Thống 4 Nhân Vật Việt Nam Điêu Khắc Khối 3D Thủ Công (Procedural Rigged Mesh)
-Mô hình được xây dựng từ các khối hình học hữu cơ 3D (`SphereGeometry`, `CylinderGeometry`, `CapsuleGeometry`, `CatmullRomCurve3`) với vật liệu PBR Shading chất lượng cao:
+> **MỆNH LỆNH TỪ SẾP TỔNG:**  
+> *"Tuyệt đối không được dùng một mô hình chung rồi đổi màu qua loa! Phải tách biệt rõ ràng 4 nhân vật: từ phom dáng nhân trắc học, trang phục may đo 3D, phụ kiện đội đầu, đến dáng điệu cử chỉ."*
 
 ```
-                     [3D Head Mesh + Mũ / Nón Lá 3D]
-                                    |
-                             [Neck Joint]
-                                    |
-      [L_Shoulder] ---------- [Chest Joint] ---------- [R_Shoulder]
-           |                        |                        |
-     [L_UpperArm]             [Torso Mesh]             [R_UpperArm]
-           |                   (Áo Dài 3D)                   |
-      [L_Elbow]                     |                   [R_Elbow]
-           |                  [Pelvis / Hips]                |
-     [L_LowerArm]            /               \         [R_LowerArm]
-           |           [L_Hip Joint]     [R_Hip Joint]       |
-        [L_Hand]             |                 |          [R_Hand]
-                       [L_UpperLeg]       [R_UpperLeg]
-                             |                 |
-                         [L_Knee]          [R_Knee]
-                             |                 |
-                       [L_LowerLeg]       [R_LowerLeg]
-                             |                 |
-                         [L_Foot]          [R_Foot]
+               4 NHÂN VẬT 3D VIỆT NAM ĐỘC BẢN HOÀN TOÀN:
+  [char_nu_sinh_ao_dai]       [char_co_gai_ao_ba_ba]
+   • Nữ sinh Tràng An          • Cô gái Phố thị
+   • Áo dài trắng tinh khôi    • Áo bà ba hồng cánh sen
+   • Quần lụa trắng suông      • Quần lụa đen bóng
+   • Nón lá lụa hồng           • Khăn rằn + Nón lá sau lưng
+  -----------------------------------------------------------
+  [char_nam_tri_thuc_suit]    [char_nam_ao_dai_gam]
+   • Nam trí thức Hà Nội       • Chàng trai Thăng Long
+   • Suit xám than / navy      • Áo dài gấm xanh hoàng gia
+   • Sơ mi trắng + Cà vạt      • Ngũ thân khuy ngọc bích
+   • Giày da Oxford cổ điển    • Khăn xếp truyền thống
 ```
 
-#### Chi tiết 4 nhân vật Việt Nam:
-1. **`char_nu_sinh_ao_dai`: Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá**
-   - Thân áo dài lụa trắng 3D ôm sát eo thon thả (`color: 0xfcfdfd, roughness: 0.35, sheen: 0.8`).
-   - Tà trước và tà sau 3D uốn lượn đa phân đoạn (`frontFlapGroup`, `backFlapGroup`), đung đưa mềm mại theo bước chân.
-   - Nón lá 3D: Chóp nón `ConeGeometry(0.28, 0.16, 36)`, vành nón đan nan tre vàng óng, quai nón lụa hồng cánh sen.
-2. **`char_co_gai_ao_ba_ba`: Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen Khăn Rằn**
-   - Áo bà ba 3D hồng cánh sen dịu dàng (`color: 0xdf648a`), vạt áo xẻ hông đặc trưng.
-   - Khăn rằn 3D: Khăn rằn caro đen trắng uốn cong vắt chéo qua vai.
-   - Quần lụa đen 3D ống rộng (`color: 0x1a1a1a`), nón lá tre quai thao đeo sau lưng.
-3. **`char_nam_tri_thuc_suit`: Trí Thức Hiện Đại • Âu Phục Vest Navy Lịch Lãm**
-   - Bộ Suit Jacket 3D xanh navy (`color: 0x1e2e4a`), ve áo chữ V (Notch Lapel) dựng nổi ôm sát cổ.
-   - Cà vạt 3D thanh lịch, sơ mi trắng cắm thùng, quần tây âu xếp ly thẳng thớm, giày oxford da bóng 3D.
-4. **`char_nam_ao_dai_gam`: Quý Nam Hà Thành • Áo Dài Gấm Xanh Ngũ Thân**
-   - Áo dài ngũ thân 3D gấm dệt hoa văn cổ màu xanh lam hoàng gia (`color: 0x1b3b6f`), khuy cài ngọc bích bên ngực phải.
-   - Tà áo rộng rãi buông dài qua gối uy nghiêm đĩnh đạc, quần âu trắng 3D, khăn xếp quấn đầu 3D trang nghiêm.
+### 8.1. Chi Tiết Thiết Kế Tách Biệt Từng Nhân Vật
+
+#### 1. `char_nu_sinh_ao_dai`: Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá
+- **Phom dáng:** Nữ thanh mảnh, e ấp (chiều cao `1.68m`, vòng eo thon `radius = 0.16m`).
+- **Thân áo dài 3D:** Lụa tơ tằm trắng tinh khôi (`color: 0xfcfdfd, roughness: 0.35, sheen: 0.8`), cổ áo trụ cao 3cm truyền thống ôm khít cổ.
+- **Tà áo dài 3D đa phân đoạn (Multi-segment 3D Flaps):**
+  * Tà trước (`frontFlapGroup`): Rủ dài qua đầu gối (`y = -0.15m` đến `-0.85m`), đung đưa mềm mại theo bước chân.
+  * Tà sau (`backFlapGroup`): Rủ chấm bắp chân, uốn lượn bay bổng theo gió hồ Gươm.
+- **Quần lụa trắng 3D:** Ống suông rộng màu trắng ngà (`color: 0xf2f2f4`) che phủ nhẹ lên cổ guốc mộc.
+- **Nón lá bài thơ 3D:** Chóp nón `ConeGeometry(0.28, 0.16, 36)` đan nan tre vàng óng, viền vành nón uốn cong nhẹ nhàng, quai nón bằng lụa hồng cánh sen buông nhẹ dưới cằm.
+
+#### 2. `char_co_gai_ao_ba_ba`: Cô Gái Phố Thị • Áo Bà Ba Hồng Sen Khăn Rằn
+- **Phom dáng:** Nữ năng động, đôn hậu, tháo vát (chiều cao `1.65m`, vai ngang vừa vặn `0.38m`).
+- **Áo bà ba 3D:** Màu hồng cánh sen ngọt ngào (`color: 0xdf648a, roughness: 0.65`), cổ tròn xẻ ngực cúc cài giữa, vạt áo xẻ hai bên hông đặc trưng.
+- **Khăn rằn 3D:** Khăn rằn caro đen trắng dệt thủ công uốn lượn hình học (`TubeGeometry` hoặc `TorusGeometry`) vắt chéo qua vai trái và rủ trước ngực.
+- **Quần lụa đen 3D:** Quần lụa đen tuyền (`color: 0x181818, roughness: 0.50`) bóng mờ, ống rộng tạo dáng bước chân nhanh nhẹn.
+- **Nón lá sau lưng:** Chiếc nón lá tre máng sau lưng thanh thoát bởi quai đeo chéo ngực.
+
+#### 3. `char_nam_tri_thuc_suit`: Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm
+- **Phom dáng:** Nam cao ráo, vai rộng đĩnh đạc (chiều cao `1.78m`, bờ vai `0.44m`, ngực nở).
+- **Bộ Suit Jacket 3D:** Màu xám than cổ điển hoặc xanh blazer navy (`color: 0x242830, roughness: 0.60`), ve áo chữ V (Notch Lapel) dựng khối 3D sắc nét ôm sát cổ áo.
+- **Áo sơ mi & Cà vạt 3D:** Áo sơ mi trắng tinh cắm thùng phẳng phiu, cà vạt màu đỏ mận hoặc xanh thẫm vát nhọn trước ngực.
+- **Quần âu 3D:** Quần tây âu xếp ly thẳng thớm, ống đứng chấm mu bàn chân.
+- **Giày da Oxford cổ điển 3D:** Giày tây da đen bóng loáng mũi nhọn (`metalness: 0.25, roughness: 0.28`).
+
+#### 4. `char_nam_ao_dai_gam`: Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia
+- **Phom dáng:** Nam thư sinh nho nhã, mực thước cốt cách Tràng An (chiều cao `1.76m`).
+- **Áo dài ngũ thân 3D:** Gấm dệt hoa văn cổ màu xanh lam hoàng gia (`color: 0x19376d, roughness: 0.42, metalness: 0.15`), hàng 5 chiếc khuy cài ngọc bích bên ngực phải.
+- **Tà áo nam rộng rãi:** Thân áo buông thẳng dài qua đầu gối, tà áo khẽ bay nhẹ uy nghiêm khi dạo bước.
+- **Quần âu trắng 3D:** Ống quần đứng dáng màu trắng ngà.
+- **Khăn xếp truyền thống 3D:** Khăn xếp quấn nhiều nếp màu đen hoặc xanh thẫm đội đầu trang nghiêm.
 
 ---
 
-## 9. ĐẶC TẢ TRUE 3D HUMANOID LOCOMOTION SYSTEM CHUẨN GTA V
+## 9. ĐẶC TẢ TRUE 3D HUMANOID LOCOMOTION SYSTEM CHUẨN GTA V & SỬA LỖI MOONWALKING
 
-> **YÊU CẦU TRẢI NGHIỆM ĐIỀU KHIỂN ĐỈNH CAO:**  
-> Hệ thống di chuyển mô phỏng phong cách điều khiển của Grand Theft Auto V (GTA V) và Red Dead Redemption 2: Nhân vật có khối lượng vật lý, quán tính, chuyển hướng mềm mại và chân bám địa hình hoàn hảo.
-
-### 9.1. Cơ Chế Điều Khiển Locomotion GTA V
-
-#### 1. Xoay Hướng Mượt Mà Bằng Quaternion Slerp (Smooth Turning)
-- Không quay tức thời (no snap turn). Khi người chơi đổi hướng di chuyển, thân người xoay dần về hướng mong muốn bằng nội suy góc mượt mà:
+### 9.1. Sửa Triệt Để Lỗi Đi Ngược (Moonwalking Fix via + Math.PI Offset)
+- **Bản chất kỹ thuật:** Trong Three.js, khi mô hình nhân vật 3D được thiết kế với mặt tiền hướng trục `-Z` (chuẩn quốc tế của Blender/Mixamo), việc tính toán góc quay mặt theo vector di chuyển `Math.atan2(finalDir.x, finalDir.z)` sẽ khiến nhân vật quay lưng (+Z) về phía trước khi bấm phím `W`, tạo ra hiện tượng "Moonwalking" (chân bước tiến nhưng mặt quay ngược lại).
+- **Quy định công thức chuẩn bất biến:**
   ```javascript
-  const targetAngle = Math.atan2(finalDir.x, finalDir.z);
+  // Góc quay mục tiêu luôn cộng góc bù trừ modelFacingOffset (+ Math.PI)
+  const targetAngle = Math.atan2(finalDir.x, finalDir.z) + Math.PI;
   let angleDiff = targetAngle - characterGroup.rotation.y;
   while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
   while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
   const turnSpeed = isSprinting ? 14.0 : 11.0;
   characterGroup.rotation.y += angleDiff * Math.min(1.0, turnSpeed * delta);
   ```
-- Thân trên nghiêng nhẹ vào khúc cua (Banking / Body Lean) tỷ lệ thuận với tốc độ xoay `angleDiff * 0.12`.
+- Kết quả: Khi bấm `W` tiến lên, nhân vật quay mặt 100% về phía trước; khi bấm `A`/`D`, nhân vật rẽ trái/phải mượt mà theo đúng hướng di chuyển.
 
-#### 2. Gia Tốc Khối Lượng & Quán Tính (Acceleration & Braking)
-- Nhân vật có khối lượng biểu kiến:
-  * **Tăng tốc (Acceleration):** Từ đứng yên lên đi bộ mất ~0.25 giây (`accel = 18.0 m/s²`). Khi sprint cần ~0.4 giây để đạt vận tốc tối đa 9.2 m/s.
-  * **Hãm phanh (Deceleration / Braking):** Khi nhả phím, nhân vật bước thêm 1-2 bước hãm quán tính (`brake = 22.0 m/s²`), triệt tiêu hoàn toàn cảm giác trượt băng (no ice-skating).
-  * **Trên không (In Air):** Lực cản giảm (`accel = 6.0`, `brake = 5.0`) mô phỏng đúng động học bay.
+### 9.2. Cơ Chế Va Chạm Ngang Capsule Chống Xuyên Thủng Lan Can Cầu (Capsule Horizontal Collision)
+- **Vấn đề trên Cầu Thê Húc & Cầu Kim Quy:** Thân cầu cong hình cầu vồng với lan can gỗ uốn lượn. Nếu chỉ dùng raycast dọc tâm hoặc bounding box phẳng, người chơi chạy chéo hoặc trượt dọc thành cầu sẽ bị xuyên thủng lan can rơi xuống nước.
+- **Giải pháp Capsule Horizontal Collision:**
+  1. **Hình trụ Capsule người chơi:** Bán kính quét `radius = 0.35m`, hai tâm cầu tại chân (`y = 0.35m`) và ngực (`y = 1.10m`).
+  2. **Kẹp vị trí đường cong (Bridge Arc Clamping):**
+     * Khoảng cách đến tim cầu Thê Húc được tính theo phương trình hình chiếu đoạn thẳng `getTheHucBridgeInfo(x, y, z)`.
+     * Giới hạn nửa bề rộng mặt cầu an toàn: `maxBridgeOffset = 1.25m`.
+     * Khi khoảng cách ngang từ nhân vật đến tim cầu vượt quá `maxBridgeOffset - radius` (~0.90m), cơ chế tự động:
+       + Kẹp vị trí nhân vật không vượt qua mép lan can: `pos = centerPoint + clamp(offset, -0.90, 0.90) * normalVec`.
+       + Triệt tiêu thành phần vận tốc vuông góc với lan can: `velocity.projectOnVector(tangentVec)`.
+       + Nhân vật trượt êm ái dọc theo lan can cầu mà không bao giờ xuyên thủng rơi xuống nước.
 
-#### 3. Khử Nổi Chân & Bám Bề Mặt (Foot Ground Snapping)
-- Khắc phục triệt để hiện tượng chân lơ lửng trên dốc cầu Long Biên (`y = 0.1m` đến `y = 4.2m`) và dốc cầu Thê Húc:
-  * Bắn Raycast thẳng đứng từ cao độ thắt lưng (`y + 1.4m`) hướng xuống trục -Y với tầm quét `far = 4.0m`.
-  * Khi tiếp xúc mặt đất:
-    ```javascript
-    if (groundHits.length > 0) {
-      const groundY = groundHits[0].point.y;
-      if (charPos.y + velocity.y * delta <= groundY + 0.08) {
-        charPos.y = THREE.MathUtils.lerp(charPos.y, groundY, 0.4);
-        velocity.y = 0;
-        isGrounded = true;
-      }
-    }
-    ```
-  * **Cơ chế bước qua gờ thấp (Step-Up Height = 0.55m):** Không bị chặn bởi mép vỉa hè, gạch hoa hay mép ray tàu, tự động bước lên êm ái.
+### 9.3. Gia Tốc Khối Lượng & Khử Nổi Chân
+- **Gia tốc có quán tính thực tế:** Tăng tốc `accel = 18.0 m/s²`, hãm phanh `brake = 22.0 m/s²`. Dừng lại có bước đệm, không trượt băng.
+- **Khử nổi chân (Foot Ground Snapping):** Bắn raycast 4.0m kiểm tra mặt đất, đưa bàn chân bám dính bề mặt dốc cầu Long Biên và Thê Húc, hỗ trợ vượt gờ thấp `stepUpHeight = 0.55m`.
 
----
-
-### 9.2. Cơ Chế Hoạt Họa MoCap AnimationMixer Clips & Procedural Kinematics
-
-Module hoạt họa [src/core/animations.js](file:///d:/H%C3%80%20N%E1%BB%98I%20CH%E1%BA%A0M%20V%C3%80O%20K%C3%9D%20%E1%BB%A8C%20,HANOI%20OPEN%20REVERIE/src/core/animations.js) vận hành ở tần số 60 FPS chuẩn mực:
-
-#### 1. Trạng Thái Đứng Yên Thở Tự Nhiên (Idle Breathing & Weight Shift)
-- **Hít thở sinh học:** Chu kỳ `breathTime = time * 2.2`. Lồng ngực phập phồng co giãn `2.5%`, hai vai khẽ nhấp nhô `0.008m`.
-- **Chuyển trọng tâm (Weight Shift):** Sau mỗi 4-6 giây, hông (`pelvis`) khẽ dồn trọng tâm sang một bên chân, đầu khẽ nghiêng e ấp.
-- **Tà áo & Nón lá bay theo gió (Wind Cloth Dynamics):**
-  * Tà trước: `frontFlap.rotation.x = Math.sin(time * 3.0) * 0.08 + Math.cos(time * 1.5) * 0.04`.
-  * Tà sau: `backFlap.rotation.x = -Math.sin(time * 3.0 + 0.5) * 0.10`.
-  * Nón lá: Khẽ lay động theo luồng gió hồ Gươm.
-
-#### 2. Chu Kỳ Đi Bộ (Walk Cycle - Heel Strike to Toe Off)
-- **Tần số sải bước:** `frequency = 6.2 rad/s`.
-- **Cắm gót nhấc mũi:** Chân tiếp đất bằng gót chân, lăn qua bàn chân rồi nhấc mũi đẩy cơ thể về phía trước.
-- **Đầu gối gập tự nhiên:** Khớp gối gập `0.55 rad` khi chân lăng về sau và duỗi thẳng khi cắm gót.
-- **Vung tay ngược pha:** Tay trái vung cùng pha với chân phải, vai vung biên độ `-0.35` đến `+0.35 rad`, khuỷu tay khẽ chùng `0.20 rad`.
-- **Độ nhún trọng tâm:** Trọng tâm hạ thấp khi hai chân dạng rộng và nâng cao khi một chân chống thẳng (`pelvis bobbing = 0.035m`).
-
-#### 3. Chu Kỳ Chạy Nhanh (Run Cycle & Sprint Lean)
-- **Tần số sải bước:** `frequency = 9.5 rad/s`.
-- **Độ nghiêng thân mình (Sprint Lean):** Thân người đổ về phía trước một góc `0.18 rad` (~10-12 độ).
-- **Cánh tay co góc nhọn:** Khuỷu tay gập góc nhọn ~90 độ (`0.85 rad`), vai đánh mạnh biên độ `0.65 rad`.
-- **Sải chân dài:** Khớp háng xoay rộng `0.85 rad`, gối gập mạnh `1.15 rad` đưa gót chân sát mông khi tăng tốc.
-
-#### 4. Chuyển Đổi Trạng Thái Mượt Mà (Cross-Fade Blending)
-- Áp dụng thuật toán làm mờ chuyển trạng thái (Cross-fade Dampening) thời gian `0.2s - 0.3s`:
-  `weight_idle`, `weight_walk`, `weight_run` được nội suy liên tục theo vận tốc thực tế của nhân vật, triệt tiêu hoàn toàn hiện tượng co giật (snapping).
+### 9.4. Hoạt Họa Skeletal MoCap 60 FPS trong `animations.js`
+- **Idle Breathing & Weight Shift:** Lồng ngực phập phồng chu kỳ 2.2s, vai nhấp nhô nhẹ, chuyển trọng tâm chân sau mỗi 4-6s; tà áo dài trước/sau và nón lá lay động trước gió hồ Gươm.
+- **Walk Cycle:** Cắm gót nhấc mũi (Heel Strike to Toe Off), vung tay ngược pha triệt tiêu xoắn thân, nhún trọng tâm `0.035m`.
+- **Run Cycle:** Sải chân dài, sprint lean nghiêng thân mình về trước 10-12 độ (`0.18 rad`), cánh tay gập góc nhọn ~90 độ.
+- **Cross-Fade Blending:** Thuật toán làm mờ chuyển trạng thái trong `0.2s - 0.3s` triệt tiêu hoàn toàn giật cục/snapping.
 
 ---
 
@@ -512,9 +482,9 @@ Toàn bộ 9 NPC lịch sử cùng các điểm tương tác môi trường tron
 
 | Mũi Nhọn | Phân Vùng File Đảm Trách | Nhiệm Vụ Kỹ Thuật Trọng Tâm | Tiêu Chuẩn Nghiệm Thu |
 | :--- | :--- | :--- | :--- |
-| **Coder Chính**<br>(`coder-chinh`) | `src/core/*`<br>(trừ animations.js)<br>`src/bridge/*` | 1. Xây dựng GTA V Locomotion Physics (Quaternion Slerp, Acceleration, Braking, Foot Snapping) trong `PlayerController.js`.<br>2. Cung cấp Hybrid 3D Character Loader trong `CharacterFactory.js`.<br>3. BẢO TOÀN TUYỆT ĐỐI 100% 9 NPC lịch sử trong `WorldManager.js`.<br>4. Quản lý Game Loop, Camera Kép, Va chạm AABB và Canvas Shutter Capture.<br>5. Cung cấp API và EventBus bất biến. | Di chuyển mượt chuẩn GTA V, nhân vật 3D không trượt băng, không kẹt dốc cầu Long Biên, 60 FPS ổn định, zero 404. |
-| **Animation Master**<br>(`animation-master`) | `src/core/animations.js` | 1. Lập trình module `animations.js` 60 FPS Zero-Allocation.<br>2. Xây dựng AnimationMixer MoCap Clips kết hợp Procedural Kinematics: Idle (thở, chuyển trọng tâm), Walk (cắm gót nhấc mũi, vung tay ngược pha), Run (sprint lean 10-12 độ).<br>3. Viết thuật toán Cross-fade Blending 0.2s - 0.3s triệt tiêu giật cục.<br>4. Uốn lượn tà áo dài 3D và nón lá bay theo gió hồ Gươm. | Chuyển động sinh học tự nhiên chuẩn AAA, không giật khung hình, hòa quyện nhịp nhàng với vật lý di chuyển WASD. |
-| **UI Polish**<br>(`ui-polish`) | `src/ui/*`<br>`styles/*`<br>`index.html` | 1. Thiết kế Onboarding 3 bước (Age Gate 18+, Login, Character Creator).<br>2. Viết logic Debounce 500ms check tên kèm rung lắc đỏ và 3 tên gợi ý.<br>3. Xây dựng giao diện chọn 4 nhân vật 3D Việt Nam.<br>4. Xây dựng Viewfinder HUD máy ảnh film, Scrapbook Album dán tem, Modal đối thoại 9 NPC.<br>5. Bắt và bắn đúng chuẩn 100% các sự kiện EventBus. | Giao diện hoài niệm sang trọng, responsive mọi độ phân giải, không lỗi console, ăn khớp hoàn toàn với Core. |
+| **Coder Chính**<br>(`coder-chinh`) | `src/core/*`<br>(trừ animations.js)<br>`src/bridge/*` | 1. Sửa lỗi Moonwalking qua `targetAngle + Math.PI` trong `PlayerController.js`.<br>2. Xây dựng Capsule Horizontal Collision chống xuyên lan can Cầu Thê Húc/Kim Quy.<br>3. Đặt Spawn Position `(16.5, 0.5, -16.5)` và Camera `yaw = 0.785 rad`.<br>4. Tạo 4 mô hình 3D Việt Nam tách biệt độc bản trong `CharacterFactory.js`.<br>5. BẢO TOÀN TUYỆT ĐỐI 100% 9 NPC lịch sử trong `WorldManager.js`. | Di chuyển chuẩn GTA V, mặt hướng đúng chiều tiến, không rơi khỏi cầu, 60 FPS mượt mà. |
+| **Animation Master**<br>(`animation-master`) | `src/core/animations.js` | 1. Tối ưu hóa chu kỳ Walk Cycle, Run Cycle, Idle Breathing 60 FPS.<br>2. Đảm bảo hoạt ảnh vung tay vung chân đồng bộ hoàn hảo với hướng tiến không bị đảo pha.<br>3. Cross-fade Blending 0.2s - 0.3s triệt tiêu giật cục.<br>4. Uốn lượn tà áo dài 3D và nón lá bay theo gió hồ Gươm. | Chuyển động sinh học tự nhiên chuẩn AAA, không giật khung hình, hòa quyện nhịp nhàng với vật lý di chuyển WASD. |
+| **UI Polish**<br>(`ui-polish`) | `src/ui/*`<br>`styles/*`<br>`index.html` | 1. Thiết kế Onboarding 3 bước (Age Gate 18+, Login, Character Creator).<br>2. Viết logic Debounce 500ms check tên kèm rung lắc đỏ và 3 tên gợi ý.<br>3. Xây dựng giao diện chọn 4 nhân vật 3D Việt Nam độc bản.<br>4. Xây dựng Viewfinder HUD máy ảnh film, Scrapbook Album dán tem, Modal đối thoại 9 NPC.<br>5. Bắt và bắn đúng chuẩn 100% các sự kiện EventBus. | Giao diện hoài niệm sang trọng, responsive mọi độ phân giải, không lỗi console, ăn khớp hoàn toàn với Core. |
 | **Họa Sĩ**<br>(`nano-banana`) | `assets/textures/*`<br>`assets/models/*`<br>`assets/ui/*`<br>`assets/photos/*`<br>`assets/audio/*` | 1. Cung cấp đầy đủ Textures PBR (nước Hồ Gươm, rêu Tháp Rùa, tường vôi vàng, thép cầu, giàn hoa giấy).<br>2. Cung cấp 3D models GLTF SkinnedMesh (Michelle.glb, Soldier.glb, Xbot.glb).<br>3. Cung cấp UI Assets (khung ngắm, nút shutter kim loại, tem bưu chính Hà Nội, vé tàu).<br>4. Cung cấp 4 ảnh film ký ức và bộ âm thanh ambient hồ Gươm, còi tàu, tiếng màn trập cơ học. | Tất cả tài nguyên tồn tại thực tế trên đĩa cứng, đúng kích thước, không một đường link nào bị lỗi 404. |
 
 ---
@@ -565,16 +535,18 @@ Trước khi nghiệm thu dự án đạt mức độ "PASSED 100%", subagent `k
 
 - [ ] **Kiểm tra phân vùng file:** Không có file nào của `coder-chinh` bị ghi đè bởi `ui-polish` hay `animation-master` và ngược lại.
 - [ ] **Khâu kiểm duyệt API & Events:** Mọi sự kiện phát ra từ `GameEventBus` và mọi hàm trong `GameAPI` đều trùng khớp 100% từng chữ hoa chữ thường với mục 3 của tài liệu này.
-- [ ] **Khâu kiểm duyệt GTA V Locomotion & Mô hình Người 3D:**
-  - Tuyệt đối KHÔNG còn tấm billboard 2D Plane nào cho người chơi.
-  - Xoay hướng mượt mà qua Quaternion Slerp (không xoay giật cục).
-  - Có quán tính tăng tốc (`accel`) và hãm phanh (`brake`) thực tế, không trượt băng.
-  - Khử nổi chân (Foot Ground Snapping) chính xác trên mặt đất bằng và dốc cầu Long Biên / Thê Húc.
-- [ ] **Chốt kiểm duyệt Hoạt Họa 60 FPS (`animations.js`):**
-  - Walk Cycle: cắm gót nhấc mũi, vung tay chân ngược pha, đầu gối gập tự nhiên.
-  - Run Cycle: sải chân biên độ lớn, sprint lean 10-12 độ, khuỷu tay gập ~90 độ.
-  - Idle: lồng ngực phập phồng hít thở, trọng tâm chuyển nhẹ, tà áo và nón lá lay động trước gió.
-  - Chuyển trạng thái mượt mà bằng Cross-fade Blending 0.2s - 0.3s.
+- [ ] **Khâu kiểm duyệt Moonwalking Fix:**
+  - Bấm `W`: Nhân vật tiến về phía trước và mặt nhìn thẳng vào hướng tiến, không bị đi lùi hoặc quay lưng vào màn hình.
+  - Bấm `A`/`D`: Nhân vật xoay mượt mà đúng hướng rẽ.
+- [ ] **Khâu kiểm duyệt Tách Biệt 4 Nhân Vật Thật Sự:**
+  - `char_nu_sinh_ao_dai`: Áo dài trắng lụa, quần lụa trắng, nón lá bài thơ.
+  - `char_co_gai_ao_ba_ba`: Áo bà ba hồng sen, quần lụa đen, khăn rằn caro vắt vai.
+  - `char_nam_tri_thuc_suit`: Suit xám than/navy ve áo nổi, sơ mi trắng, giày tây oxford.
+  - `char_nam_ao_dai_gam`: Áo dài gấm xanh ngũ thân khuy ngọc bích, quần âu trắng, khăn xếp.
+- [ ] **Khâu kiểm duyệt Lan Can & Điểm Xuất Phát:**
+  - Spawn tại tọa độ `(16.5, 0.5, -16.5)`.
+  - Camera ban đầu có `yaw = 0.785 rad` (45 độ) hướng dọc Cầu Thê Húc.
+  - Chạy dọc Cầu Thê Húc/Kim Quy không bao giờ bị xuyên thủng lan can rơi xuống nước (Capsule Clamping).
 - [ ] **Bảo toàn 100% 9 NPC lịch sử trong `WorldManager.js`:**
   - Đầy đủ 9 NPC: Bác Hùng bán bánh mì dạo xe đạp Thống Nhất, Chị Lan gánh hoa, Bà cụ quán trà đá, Hai cụ già đánh cờ, Bác dân dạo bộ, Thanh niên cà phê đường tàu, Thầy lang Lãn Ông, Cô Mai thợ may lụa, Bác Cả Phở 1954; kèm các tương tác quán bia hơi, tiệm đồng hồ, tiệm cắt tóc và đàn cá chép hồ Gươm.
 - [ ] **Kiểm tra không gian nội thất tường mỏng (Thin-Wall Interior):**

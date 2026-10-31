@@ -56,11 +56,11 @@ export const CHARACTERS_META = [
   {
     id: 'char_nam_tri_thuc_suit',
     legacyIds: ['char_young_explorer', 'outfit_leather_jacket'],
-    name: 'Trí Thức Hiện Đại • Âu Phục Vest Navy Lịch Lãm',
-    shortName: 'KTS Minh Tuấn • Trí Thức Hà Thành',
-    title: 'Kiến Trúc Sư Trẻ Đam Mê Di Sản Cầu Long Biên',
+    name: 'Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm',
+    shortName: 'Nam Trí Thức Hà Nội',
+    title: 'Nam Trí Thức Hà Nội',
     role: 'KTS nghiên cứu kết cấu thép Eiffel và quy hoạch bảo tồn sông Hồng',
-    desc: 'Bộ âu phục suit xanh navy lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
+    desc: 'Bộ âu phục suit xám than/navy lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
     avatar: 'assets/characters/avatar_char_nam_tri_thuc_suit.png',
     bodyFront: 'assets/characters/body_front_char_nam_tri_thuc_suit.png',
     bodyBack: 'assets/characters/body_back_char_nam_tri_thuc_suit.png',
@@ -71,11 +71,11 @@ export const CHARACTERS_META = [
   {
     id: 'char_nam_ao_dai_gam',
     legacyIds: ['char_photographer', 'outfit_winter_coat'],
-    name: 'Quý Nam Hà Thành • Áo Dài Gấm Xanh Quần Trắng',
-    shortName: 'Bác Văn An • Nghệ Nhân Di Sản',
-    title: 'Nhà Nghiên Cứu Lịch Sử & Nghệ Nhân Văn Hóa Cung Đình',
+    name: 'Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia',
+    shortName: 'Chàng Trai Thăng Long',
+    title: 'Chàng Trai Thăng Long',
     role: 'Người lưu giữ điển tích và linh khí Tháp Rùa ngàn năm',
-    desc: 'Áo dài cách tân gấm dệt hoa văn cổ ngũ thân xanh lam hoàng gia, quần âu trắng mực thước, cốt cách quý ông Tràng An lịch thiệp uyên bác.',
+    desc: 'Áo dài ngũ thân cách tân gấm dệt hoa văn cổ ngũ thân xanh lam hoàng gia, quần âu trắng mực thước, cốt cách quý ông Tràng An lịch thiệp uyên bác.',
     avatar: 'assets/characters/avatar_char_nam_ao_dai_gam.png',
     bodyFront: 'assets/characters/body_front_char_nam_ao_dai_gam.png',
     bodyBack: 'assets/characters/body_back_char_nam_ao_dai_gam.png',
@@ -332,7 +332,12 @@ export function createHanoiCharacter3D(characterId, options = {}) {
       roughness: 0.8
     });
     accessoryMaterials.bambooRim = new THREE.MeshStandardMaterial({ color: 0xb5955a, roughness: 0.5 });
-    accessoryMaterials.silkStrap = new THREE.MeshStandardMaterial({ color: 0xde6f8c, roughness: 0.35 });
+    const pinkStrapTex = getCachedTexture('assets/textures/char_silk_pink_strap.jpg');
+    accessoryMaterials.silkStrap = new THREE.MeshStandardMaterial({
+      map: pinkStrapTex,
+      color: 0xde6f8c,
+      roughness: 0.35
+    });
 
   } else if (charId === 'char_co_gai_ao_ba_ba') {
     // Cô gái phố thị: Áo bà ba hồng sen & Khăn rằn caro
@@ -348,7 +353,14 @@ export function createHanoiCharacter3D(characterId, options = {}) {
       roughness: 0.58
     });
     clothLimbMat = clothTorsoMat;
-    clothPantsMat = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.55 });
+    const blackSilkTex = getCachedTexture('assets/textures/char_silk_black_pants.jpg');
+    const blackSilkNorm = getCachedTexture('assets/textures/char_silk_black_pants_norm.jpg');
+    clothPantsMat = new THREE.MeshStandardMaterial({
+      map: blackSilkTex,
+      normalMap: blackSilkNorm,
+      color: 0x181818,
+      roughness: 0.50
+    });
     shoeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
 
     const kramaTex = getCachedTexture('assets/textures/char_scarf_caro_krama.jpg');
@@ -360,16 +372,16 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     });
 
   } else if (charId === 'char_nam_tri_thuc_suit') {
-    // Trí thức hiện đại: Vải len dệt chìm xanh navy & giày tây Oxford da bóng
-    const woolTex = getCachedTexture('assets/textures/char_wool_navy_suit.jpg');
-    const woolNorm = getCachedTexture('assets/textures/char_wool_navy_suit_norm.jpg');
+    // Trí thức hiện đại: Vải dạ nỉ suit xám than/navy & giày tây Oxford da bóng
+    const woolTex = getCachedTexture('assets/textures/char_wool_charcoal_suit.jpg') || getCachedTexture('assets/textures/char_wool_navy_suit.jpg');
+    const woolNorm = getCachedTexture('assets/textures/char_wool_charcoal_suit_norm.jpg') || getCachedTexture('assets/textures/char_wool_navy_suit_norm.jpg');
     if (woolTex) woolTex.repeat.set(4, 4);
 
     clothTorsoMat = new THREE.MeshStandardMaterial({
       map: woolTex,
       normalMap: woolNorm,
       normalScale: new THREE.Vector2(0.8, 0.8),
-      color: 0x1a2842,
+      color: 0x222a38, // Vải dạ nỉ suit xám than / navy lịch lãm
       roughness: 0.52
     });
     clothLimbMat = clothTorsoMat;
@@ -394,7 +406,7 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     });
 
   } else {
-    // Quý nam Hà thành: Gấm dệt hoa văn cổ ngũ thân xanh sapphire
+    // Chàng trai Thăng Long: Gấm xanh hoàng gia (0x16213e) có ánh kim vàng & Khăn Xếp quấn nếp
     const brocadeTex = getCachedTexture('assets/textures/char_silk_blue_brocade.jpg');
     const brocadeNorm = getCachedTexture('assets/textures/char_silk_blue_brocade_norm.jpg');
     if (brocadeTex) brocadeTex.repeat.set(2, 3);
@@ -402,19 +414,25 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     clothTorsoMat = new THREE.MeshStandardMaterial({
       map: brocadeTex,
       normalMap: brocadeNorm,
-      normalScale: new THREE.Vector2(0.85, 0.85),
-      color: 0x193766,
-      roughness: 0.36,
-      metalness: 0.16
+      normalScale: new THREE.Vector2(0.9, 0.9),
+      color: 0x16213e, // Chuẩn xanh hoàng gia Thăng Long 0x16213e
+      roughness: 0.32,
+      metalness: 0.28 // Ánh kim vàng dệt gấm óng ả
     });
     clothLimbMat = clothTorsoMat;
     clothPantsMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.45 });
     shoeMat = new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.4 });
     accessoryMaterials.jade = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.18, metalness: 0.2 });
+
+    // Khăn xếp quấn nếp truyền thống
+    const turbanTex = getCachedTexture('assets/textures/char_turban_brocade.jpg') || brocadeTex;
+    const turbanNorm = getCachedTexture('assets/textures/char_turban_brocade_norm.jpg') || brocadeNorm;
     accessoryMaterials.turban = new THREE.MeshStandardMaterial({
-      map: brocadeTex,
-      color: 0x142036,
-      roughness: 0.55
+      map: turbanTex,
+      normalMap: turbanNorm,
+      color: 0x16213e,
+      roughness: 0.45,
+      metalness: 0.20
     });
   }
 

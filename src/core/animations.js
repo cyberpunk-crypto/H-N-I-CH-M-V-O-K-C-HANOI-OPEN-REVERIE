@@ -124,8 +124,34 @@ export class HumanoidAnimator {
     this.gestureDuration = 0.0;
     this.gestureWeight = 0.0;
 
+    // Bộ đệm quán tính & giảm chấn (Lag Damping) cho Nón Lá khi đổi hướng/quay đầu
+    this.lastCharRotY = (characterGroup && characterGroup.rotation) ? characterGroup.rotation.y : 0.0;
+    this.nonLaLagRoll = 0.0;   // Lắc lư nghiêng trái/phải do lực ly tâm khi xoay
+    this.nonLaLagPitch = 0.0;  // Ngửa/chúi do luồng gió cản & gia tốc tiến
+    this.nonLaLagYaw = 0.0;    // Độ trễ xoay theo góc quay đầu
+    this.nonLaRollVel = 0.0;   // Vận tốc dao động đàn hồi Roll
+    this.nonLaPitchVel = 0.0;  // Vận tốc dao động đàn hồi Pitch
+    this._cachedNonLa = null;
+
     // Vị trí gốc ban đầu của các khớp để tránh lệch trục qua thời gian
     this._cacheRestPositions();
+  }
+
+  /**
+   * Tìm đối tượng Nón Lá 3D trên cây phân cấp để áp dụng Lag Damping
+   */
+  _findNonLaObject() {
+    if (!this.char) return null;
+    if (this._cachedNonLa && this._cachedNonLa.parent) return this._cachedNonLa;
+    let found = null;
+    this.char.traverse((c) => {
+      if (found) return;
+      if (c.name === '3D_NonLa' || c.name === 'Joint_AccessoryHead' || c.name === 'accessoryHeadGroup') {
+        found = c;
+      }
+    });
+    this._cachedNonLa = found;
+    return found;
   }
 
   /**
@@ -193,6 +219,8 @@ export class HumanoidAnimator {
     this.baseTorsoY = (newCharacterGroup && newCharacterGroup.baseTorsoY) || this.options.baseTorsoY || 0.95;
     this._bindRig(newCharacterGroup);
     this._cacheRestPositions();
+    this.lastCharRotY = (newCharacterGroup && newCharacterGroup.rotation) ? newCharacterGroup.rotation.y : 0.0;
+    this._cachedNonLa = null;
   }
 
   /**
@@ -509,9 +537,47 @@ export class HumanoidAnimator {
       r.backFlapGroup.rotation.x = idleBackFlap * wIdle + walkBackFlap * wWalk + runBackFlap * wRun + jumpBackFlap * wJump;
     }
 
-    if (r.accessoryHeadGroup) {
-      r.accessoryHeadGroup.rotation.z = idleNonLaRotZ * wIdle;
-      r.accessoryHeadGroup.rotation.x = Math.sin(time * 1.4) * 0.02 * wIdle;
+    // --- TÍNH TOÁN ĐỘ TRỄ QUÁN TÍNH NÓN LÁ (INERTIAL LAG DAMPING) ---
+    const currentCharRotY = (this.char && this.char.rotation) ? this.char.rotation.y : 0.0;
+    let deltaRotY = currentCharRotY - this.lastCharRotY;
+    while (deltaRotY > Math.PI) deltaRotY -= Math.PI * 2;
+    while (deltaRotY < -Math.PI) deltaRotY += Math.PI * 2;
+    const angularVelY = dt > 0.0001 ? (deltaRotY / dt) : 0.0;
+    this.lastCharRotY = currentCharRotY;
+
+    // Khi nhân vật xoay người đổi hướng: Quán tính làm nón trễ lại (Yaw) và lắc lư nghiêng lật nhẹ (Roll Z)
+    const targetLagRoll = clamp(-angularVelY * 0.045, -0.32, 0.32);
+    const targetLagYaw = clamp(-angularVelY * 0.040, -0.28, 0.28);
+    // Khi tiến tới: luồng gió cản đẩy nón hơi ngửa ra sau (Pitch X)
+    const targetLagPitch = clamp(speed * 0.022, 0.0, 0.22);
+
+    // Hệ lò xo giảm chấn (Spring-Damper)
+    const springK = 38.0;
+    const dampingC = 9.0;
+    const forceRoll = (targetLagRoll - this.nonLaLagRoll) * springK - this.nonLaRollVel * dampingC;
+    this.nonLaRollVel += forceRoll * dt;
+    this.nonLaLagRoll += this.nonLaRollVel * dt;
+
+    const forcePitch = (targetLagPitch - this.nonLaLagPitch) * springK - this.nonLaPitchVel * dampingC;
+    this.nonLaPitchVel += forcePitch * dt;
+    this.nonLaLagPitch += this.nonLaPitchVel * dt;
+
+    this.nonLaLagYaw = damp(this.nonLaLagYaw, targetLagYaw, 12.0, dt);
+
+    // Dao động gió hồ Gươm thoảng qua và nhịp nhún bước đi
+    const nonLaFlutterZ = Math.sin(time * 3.2) * 0.025 + Math.cos(time * 1.8) * 0.015;
+    const nonLaFlutterX = Math.sin(time * 2.5) * 0.020;
+    const walkStepSway = Math.sin(wp * 2.0) * (speed > 0.1 ? 0.030 : 0.0);
+
+    const finalNonLaRotZ = (idleNonLaRotZ * wIdle) + this.nonLaLagRoll + nonLaFlutterZ;
+    const finalNonLaRotX = (idleNonLaRotX * wIdle) + this.nonLaLagPitch + nonLaFlutterX + walkStepSway;
+    const finalNonLaRotY = this.nonLaLagYaw;
+
+    const nonLaTarget = r.accessoryHeadGroup || this._findNonLaObject();
+    if (nonLaTarget) {
+      nonLaTarget.rotation.z = finalNonLaRotZ;
+      nonLaTarget.rotation.x = finalNonLaRotX;
+      nonLaTarget.rotation.y = finalNonLaRotY;
     }
 
     // 8. Tương thích ngược tấm thân 2.5D Front/Back Planes (nếu có)
@@ -694,6 +760,13 @@ export class HumanoidAnimator {
     this.landingTimer = 0.0;
     this.currentHeadYaw = 0.0;
     this.targetHeadYaw = 0.0;
+
+    // Reset bộ đệm Lag Damping quán tính Nón Lá
+    this.nonLaLagRoll = 0.0;
+    this.nonLaLagPitch = 0.0;
+    this.nonLaLagYaw = 0.0;
+    this.nonLaRollVel = 0.0;
+    this.nonLaPitchVel = 0.0;
 
     const r = this.rig;
     if (!r) return;
