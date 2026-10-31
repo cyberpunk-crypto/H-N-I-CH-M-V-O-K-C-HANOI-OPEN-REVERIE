@@ -581,17 +581,25 @@ export class PlayerController {
       const desiredVelX = finalDir.x * currentSpeed;
       const desiredVelZ = finalDir.z * currentSpeed;
 
-      // Phản hồi vận tốc tức thì (Zero Input Lag) - Bấm phím là vọt đi ngay lập tức!
-      this.velocity.x = desiredVelX;
-      this.velocity.z = desiredVelZ;
+      // Gia tốc chuyển động mượt mà chuẩn GTA V Locomotion
+      const accel = this.isGrounded ? 18.0 : 6.0;
+      this.velocity.x += (desiredVelX - this.velocity.x) * Math.min(1.0, accel * delta);
+      this.velocity.z += (desiredVelZ - this.velocity.z) * Math.min(1.0, accel * delta);
 
-      // Xoay hướng mặt nhân vật tức thì theo hướng di chuyển
+      // Xoay hướng mặt nhân vật mượt mà (GTA V Third-Person Character Turning / Slerp)
       const targetAngle = Math.atan2(finalDir.x, finalDir.z);
-      this.characterGroup.rotation.y = targetAngle;
+      let angleDiff = targetAngle - this.characterGroup.rotation.y;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      const turnSpeed = this.keys.sprint ? 14.0 : 11.0;
+      this.characterGroup.rotation.y += angleDiff * Math.min(1.0, turnSpeed * delta);
     } else {
-      // Dừng lại dứt khoát 100% ngay khi nhả phím - Triệt tiêu hoàn toàn hiện tượng trượt quán tính
-      this.velocity.x = 0;
-      this.velocity.z = 0;
+      // Giảm tốc có quán tính thực tế, dừng dứt khoát không bị trượt băng
+      const brake = this.isGrounded ? 22.0 : 5.0;
+      this.velocity.x += (0 - this.velocity.x) * Math.min(1.0, brake * delta);
+      this.velocity.z += (0 - this.velocity.z) * Math.min(1.0, brake * delta);
+      if (Math.abs(this.velocity.x) < 0.04) this.velocity.x = 0;
+      if (Math.abs(this.velocity.z) < 0.04) this.velocity.z = 0;
     }
 
     // 2. Trọng lực
