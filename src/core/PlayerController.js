@@ -239,134 +239,42 @@ export class PlayerController {
   async _load3DHumanoidCharacter(characterId) {
     this._isGltfReady = false;
     try {
-      const isFemale = characterId === 'char_nu_sinh_ao_dai' || characterId === 'char_co_gai_ao_ba_ba';
-      const modelPath = isFemale ? 'assets/characters/Michelle.glb' : 'assets/characters/Soldier.glb';
-
-      let texPath = 'assets/characters/texture_nu_sinh_ao_dai.png?v=3.1.2';
-      if (characterId === 'char_co_gai_ao_ba_ba') {
-        texPath = 'assets/characters/texture_co_gai_ao_ba_ba.png?v=3.1.2';
-      } else if (characterId === 'char_nam_tri_thuc_suit') {
-        texPath = 'assets/characters/texture_nam_tri_thuc_suit.png?v=3.1.2';
-      } else if (characterId === 'char_nam_ao_dai_gam') {
-        texPath = 'assets/characters/texture_nam_ao_dai_gam.png?v=3.1.2';
-      }
-
-      const textureLoader = this._textureLoader || new THREE.TextureLoader();
-
-      // Tải model chính, animations và texture trang phục Việt Nam song song
-      const [gltf, soldierGltf, customTex] = await Promise.all([
-        new Promise((res, rej) => this._gltfLoader.load(modelPath, res, undefined, rej)),
-        isFemale ? new Promise((res, rej) => this._gltfLoader.load('assets/characters/Soldier.glb', res, undefined, rej)) : null,
-        new Promise((res, rej) => textureLoader.load(texPath, res, undefined, rej)).catch(e => {
-          console.warn('[PlayerController] Cảnh báo nạp texture:', e);
-          return null;
-        })
-      ]);
-
-      const animGltf = isFemale ? soldierGltf : gltf;
-      const model = gltf.scene;
-      model.name = isFemale ? 'Michelle3D' : 'Soldier3D';
-
-      if (customTex) {
-        customTex.flipY = false;
-        if (THREE.SRGBColorSpace) customTex.colorSpace = THREE.SRGBColorSpace;
-      }
-
-      if (isFemale) {
-        // Fix góc xoay FBX ngược của Michelle để hướng thẳng lên trời
-        const charNode = model.getObjectByName('Character');
-        if (charNode) {
-          charNode.quaternion.set(-0.70710678, 0, 0, 0.70710678);
-        }
-      }
-
-      // Giữ nguyên hình học và lưới, khoác texture trang phục Việt Nam sắc nét
-      model.traverse(c => {
-        if (c.isMesh) {
-          c.castShadow = true;
-          c.receiveShadow = true;
-
-          c.material = c.material ? c.material.clone() : new THREE.MeshStandardMaterial();
-          if (customTex) {
-            c.material.map = customTex;
-          }
-          c.material.color.setHex(0xffffff);
-
-          if (characterId === 'char_nu_sinh_ao_dai') {
-            c.material.roughness = 0.42;
-            c.material.metalness = 0.05;
-          } else if (characterId === 'char_co_gai_ao_ba_ba') {
-            c.material.roughness = 0.52;
-            c.material.metalness = 0.02;
-          } else if (characterId === 'char_nam_tri_thuc_suit') {
-            c.material.roughness = 0.68;
-            c.material.metalness = 0.08;
-          } else if (characterId === 'char_nam_ao_dai_gam') {
-            c.material.roughness = 0.38;
-            c.material.metalness = 0.28;
-          }
-          c.material.needsUpdate = true;
-        }
-      });
-
-      // Gắn phụ kiện đầu tương ứng từng nhân vật
-      let headBone = null;
-      model.traverse(c => {
-        if (c.name && c.name.toLowerCase().includes('head') && !c.name.toLowerCase().includes('top') && !c.name.toLowerCase().includes('end')) {
-          headBone = c;
-        }
-      });
-
-      if (headBone) {
-        if (characterId === 'char_nu_sinh_ao_dai') {
-          headBone.add(this._create3DNonLa());
-        } else if (characterId === 'char_co_gai_ao_ba_ba') {
-          headBone.add(this._create3DNonLa());
-          headBone.add(this._create3DKhanRan());
-        } else if (characterId === 'char_nam_ao_dai_gam') {
-          headBone.add(this._create3DKhanXep());
-        }
-        // char_nam_tri_thuc_suit không đội nón lá hay khăn xếp, để lộ đầu tóc suit lịch lãm
-      }
-
-      // Thiết lập AnimationMixer 60 FPS
-      const mixer = new THREE.AnimationMixer(model);
-      const idleClip = animGltf.animations.find(a => a.name === 'Idle');
-      const walkClip = animGltf.animations.find(a => a.name === 'Walk');
-      const runClip = animGltf.animations.find(a => a.name === 'Run');
-
-      const idleAction = idleClip ? mixer.clipAction(idleClip) : null;
-      const walkAction = walkClip ? mixer.clipAction(walkClip) : null;
-      const runAction = runClip ? mixer.clipAction(runClip) : null;
-
-      if (idleAction) idleAction.play();
-
-      // Xóa bỏ hoàn toàn hình khối cũ, thay thế bằng mô hình 3D thực
       while (this.characterGroup.children.length > 0) {
         this.characterGroup.remove(this.characterGroup.children[0]);
       }
-      this.characterGroup.add(model);
 
-      this._gltfMixer = mixer;
-      this._animActions = {
-        idle: idleAction,
-        walk: walkAction,
-        run: runAction
-      };
-      this._currentAnim = 'idle';
+      // Tạo mô hình nhân vật 3D người thật điêu khắc hữu cơ từ CharacterFactory (Bảo toàn 100% diện mạo người Việt)
+      const newCharMesh = createHanoiCharacter3D(characterId, { isNPC: false });
+
+      // Trích xuất các pivot khớp xương phân cấp
+      this.torsoGroup = newCharMesh.torsoGroup;
+      this.headGroup = newCharMesh.headGroup;
+      this.leftArmPivot = newCharMesh.leftArmPivot;
+      this.rightArmPivot = newCharMesh.rightArmPivot;
+      this.leftLegPivot = newCharMesh.leftLegPivot;
+      this.rightLegPivot = newCharMesh.rightLegPivot;
+      this.baseTorsoY = newCharMesh.baseTorsoY || 0.95;
+
+      // Gắn rig sang characterGroup
+      this.characterGroup.rig = newCharMesh.rig;
+      if (this.characterGroup.rig) {
+        this.characterGroup.rig.rootGroup = this.characterGroup;
+      }
+      this.characterGroup.add(newCharMesh);
+
+      // Khởi tạo HumanoidAnimator 60 FPS
+      this.humanoidAnimator = new HumanoidAnimator(this.characterGroup, {
+        baseTorsoY: this.baseTorsoY
+      });
+
       this._isGltfReady = true;
-
-      console.log(`[PlayerController] Đã kích hoạt Nhân Vật 3D Skinned Mesh (${characterId}) & MoCap Animation Mixer!`);
+      console.log(`[PlayerController] Đã kích hoạt Nhân Vật 3D Người Thật (${characterId}) & HumanoidAnimator 60 FPS!`);
     } catch (err) {
-      console.warn('[PlayerController] Lỗi tải 3D GLTF humanoid:', err);
+      console.warn('[PlayerController] Lỗi khởi tạo nhân vật 3D:', err);
     }
   }
 
-  /**
-   * Đổi nhân vật 3D sang 1 trong 4 nhân vật thực tế
-   * @param {string} characterId - 'char_nu_sinh_ao_dai' | 'char_co_gai_ao_ba_ba' | 'char_nam_tri_thuc_suit' | 'char_nam_ao_dai_gam'
-   */
-  setCharacter(characterId) {
+    setCharacter(characterId) {
     if (!characterId) return Promise.resolve();
     this.currentCharacterId = characterId;
     this._isGltfReady = false;
@@ -586,15 +494,17 @@ export class PlayerController {
       }
     }
 
-    // 2. CHỐNG XUYÊN LAN CAN CẦU KIM QUY (CAPSULE HORIZONTAL COLLIDER - max dist 1.6m)
-    if (this.worldManager.getTheHucBridgeInfo) {
+    // 2. CHỐNG RƠI KHỎI CẦU THÊ HÚC & CẦU KIM QUY VƯỢT HỒ
+    if (this.worldManager.getTheHucBridgeInfo && pos.x < 158 && pos.x > 134) {
       const bridgeInfo = this.worldManager.getTheHucBridgeInfo(pos.x, pos.y, pos.z);
       if (bridgeInfo && Math.abs(pos.y - bridgeInfo.closestY) <= 1.6) {
-        const maxBridgeDist = 1.6;
-        if (bridgeInfo.dist > maxBridgeDist && bridgeInfo.dist < 5.0) {
-          const clampFactor = maxBridgeDist / bridgeInfo.dist;
-          pos.x = bridgeInfo.closestX + (pos.x - bridgeInfo.closestX) * clampFactor;
-          pos.z = bridgeInfo.closestZ + (pos.z - bridgeInfo.closestZ) * clampFactor;
+        const maxBridgeDist = 1.95; // Lòng cầu Thê Húc rộng 3.8m -> bán kính an toàn 1.95m
+        if (bridgeInfo.dist > 1.6 && bridgeInfo.dist < 5.0) {
+          if (bridgeInfo.dist > maxBridgeDist) {
+            const clampFactor = maxBridgeDist / bridgeInfo.dist;
+            pos.x = bridgeInfo.closestX + (pos.x - bridgeInfo.closestX) * clampFactor;
+            pos.z = bridgeInfo.closestZ + (pos.z - bridgeInfo.closestZ) * clampFactor;
+          }
         }
       }
     }
@@ -745,12 +655,12 @@ export class PlayerController {
       return true; // Chặn ngang ngay lập tức, không cho phép xuống nước!
     }
 
-    // 1. Chống xuyên lan can Cầu Kim Quy (giữ khoảng cách tim cầu <= 1.6m)
-    if (this.worldManager.getTheHucBridgeInfo) {
+    // 1. Chống lọt qua lan can Cầu Thê Húc vượt hồ (chỉ áp dụng trên các nhịp cầu bắc qua nước: x < 158 && x > 134)
+    if (this.worldManager.getTheHucBridgeInfo && testPos.x < 158 && testPos.x > 134) {
       const bridgeInfo = this.worldManager.getTheHucBridgeInfo(testPos.x, testPos.y, testPos.z);
       if (bridgeInfo && Math.abs(testPos.y - bridgeInfo.closestY) <= 1.5) {
-        if (bridgeInfo.dist > 1.6 && bridgeInfo.dist < 5.0) {
-          return true; // Không cho người chơi đi lọt qua thanh lan can đâm xuyên bụng
+        if (bridgeInfo.dist > 1.95 && bridgeInfo.dist < 5.0) {
+          return true; // Giữ người chơi an toàn trong lòng cầu 3.8m vượt hồ
         }
       }
     }

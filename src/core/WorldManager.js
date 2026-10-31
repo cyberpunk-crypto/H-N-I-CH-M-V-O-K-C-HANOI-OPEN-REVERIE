@@ -129,7 +129,7 @@ export class WorldManager {
       }
     }
     const dist = Math.sqrt(minDistSq);
-    const onBridge = (dist <= 2.0 && Math.abs(y - closestY) <= 0.65);
+    const onBridge = (dist <= 2.2 && Math.abs(y - closestY) <= 1.2);
     return {
       dist,
       closestX,
@@ -1250,7 +1250,7 @@ export class WorldManager {
     for (let i = 0; i < postCount; i++) {
       const angle = (i / postCount) * Math.PI * 2;
       // Chừa lối dẫn lên Cầu Thê Húc (0.38 - 0.88 rad) VÀ Cầu Kim Quy dẫn ra Tháp Rùa (2.10 - 2.62 rad)
-      const isTheHucOpening = angle > 0.38 && angle < 0.88;
+      const isTheHucOpening = angle > 0.28 && angle < 0.98;
       const isKimQuyOpening = angle > 2.10 && angle < 2.62;
       const isBridgeOpening = isTheHucOpening || isKimQuyOpening;
 
@@ -1271,7 +1271,7 @@ export class WorldManager {
 
         // Nối dầm lan can đá giữa các cột kề nhau để tạo thành thành chắn mỹ thuật liên tục
         const nextAngle = ((i + 1) / postCount) * Math.PI * 2;
-        const nextTheHuc = nextAngle > 0.36 && nextAngle < 0.90;
+        const nextTheHuc = nextAngle > 0.26 && nextAngle < 1.00;
         const nextKimQuy = nextAngle > 2.08 && nextAngle < 2.64;
         if (!nextTheHuc && !nextKimQuy) {
           const nextPx = 80 + Math.cos(nextAngle) * 85;
@@ -1611,6 +1611,10 @@ export class WorldManager {
     interiorFloorMesh.receiveShadow = true;
     towerGroup.add(interiorFloorMesh);
 
+        // CHONG DI XUYEN THAP RUA: KHOI VAT CAN CUNG AABB BAO KIN TOAN BO THAN THAP RUA
+    // Ngan chan tuyet doi viec di xuyen thap, bao ve tinh trang nghiem cua di tich
+    this._addBoxObstacle(80, -80, 8.2, 6.2, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H + 4.0);
+
     // Collider sàn đi bộ phẳng bên trong Tháp Rùa
     const walkFloorCol = new THREE.Mesh(new THREE.BoxGeometry(t1W - 0.2, 0.25, t1D - 0.2), this.materials.thapRuaBpFloor);
     walkFloorCol.position.set(80, 1.55 + t1BaseY + 0.02, -80);
@@ -1881,14 +1885,14 @@ export class WorldManager {
     // 🐢 NPC NHÀ SỬ HỌC THÁP RÙA - BÁC NGUYỄN VĂN AN (ĐỨNG BÊN CẠNH BÀN THỜ)
     // =========================================================================
     const historianNPC = this._createCitizenNPC(0, 0, 0x223a5e, 'kính lão');
-    historianNPC.position.set(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0);
-    historianNPC.rotation.y = Math.PI * 0.75; // Đứng chếch chào đón người chơi
+    historianNPC.position.set(78.5, 1.55 + t1BaseY, -76.2);
+    historianNPC.rotation.y = Math.PI; // Đứng trên thềm đá mặt Tây trang nghiêm chào đón người chơi
     zoneGroup.add(historianNPC);
-    this._addNpcCollider(80 - 1.5, -80 - 1.0, 0.65);
+    this._addNpcCollider(78.5, -76.2, 0.65);
 
     this.interactables.push({
-      position: new THREE.Vector3(80 - 1.5, 1.55 + t1BaseY, -80 - 1.0),
-      radius: 3.2,
+      position: new THREE.Vector3(78.5, 1.55 + t1BaseY, -76.2),
+      radius: 3.5,
       promptText: 'Lắng nghe Lịch sử Tháp Rùa cổ kính cùng Nhà Sử Học',
       actionKey: 'E',
       onInteract: () => {
