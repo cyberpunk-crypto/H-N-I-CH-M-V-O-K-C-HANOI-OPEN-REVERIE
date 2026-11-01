@@ -484,21 +484,21 @@ export class HumanoidAnimator {
     if (r.leftShoulderGroup) {
       r.leftShoulderGroup.position.y = shoulderRestY + finalShoulderBob;
       r.leftShoulderGroup.rotation.x = walkLeftShoulderX * wWalk + runLeftShoulderX * wRun + jumpLeftShoulderX * wJump;
-      r.leftShoulderGroup.rotation.z = -0.06 - 0.04 * wRun - 0.22 * wJump;
+      r.leftShoulderGroup.rotation.z = -0.10 - 0.04 * wRun - 0.22 * wJump;
     }
 
     if (r.rightShoulderGroup) {
       r.rightShoulderGroup.position.y = shoulderRestY + finalShoulderBob;
       r.rightShoulderGroup.rotation.x = walkRightShoulderX * wWalk + runRightShoulderX * wRun + jumpRightShoulderX * wJump;
-      r.rightShoulderGroup.rotation.z = 0.06 + 0.04 * wRun + 0.22 * wJump;
+      r.rightShoulderGroup.rotation.z = 0.10 + 0.04 * wRun + 0.22 * wJump;
     }
 
     if (r.leftElbowGroup) {
-      r.leftElbowGroup.rotation.x = 0.06 * wIdle + walkLeftElbow * wWalk + runLeftElbow * wRun + jumpLeftElbow * wJump;
+      r.leftElbowGroup.rotation.x = 0.14 * wIdle + walkLeftElbow * wWalk + runLeftElbow * wRun + jumpLeftElbow * wJump;
     }
 
     if (r.rightElbowGroup) {
-      r.rightElbowGroup.rotation.x = 0.06 * wIdle + walkRightElbow * wWalk + runRightElbow * wRun + jumpRightElbow * wJump;
+      r.rightElbowGroup.rotation.x = 0.14 * wIdle + walkRightElbow * wWalk + runRightElbow * wRun + jumpRightElbow * wJump;
     }
 
     // 6. Chi Dưới (Háng, Đầu Gối, Cổ Chân)

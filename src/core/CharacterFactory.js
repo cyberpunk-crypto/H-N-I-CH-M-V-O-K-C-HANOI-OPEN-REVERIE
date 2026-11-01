@@ -105,8 +105,8 @@ function createSculptedNonLaMesh(materials) {
   const nonLaGroup = new THREE.Group();
   nonLaGroup.name = 'SculptedNonLa3D';
 
-  const coneRadius = 0.28;
-  const coneHeight = 0.16;
+  const coneRadius = 0.22;
+  const coneHeight = 0.135;
 
   // Chóp nón hình nón lá truyền thống Việt Nam
   const outerConeGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 36, 12, false);
@@ -114,7 +114,7 @@ function createSculptedNonLaMesh(materials) {
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
     const rRatio = (coneHeight * 0.5 - y) / coneHeight; // 0 ở đỉnh chóp, 1 ở vành
-    const flare = Math.pow(rRatio, 2.0) * 0.018;
+    const flare = Math.pow(rRatio, 2.0) * 0.015;
     pos.setX(i, pos.getX(i) + pos.getX(i) * flare);
     pos.setZ(i, pos.getZ(i) + pos.getZ(i) * flare);
   }
@@ -124,14 +124,14 @@ function createSculptedNonLaMesh(materials) {
   nonLaGroup.add(outerCone);
 
   // Chóp đỉnh nón lá bọc gỗ/chỉ khâu
-  const apexGeo = new THREE.ConeGeometry(0.020, 0.028, 16);
+  const apexGeo = new THREE.ConeGeometry(0.016, 0.022, 16);
   const apexMesh = createPBRMesh(apexGeo, materials.bambooRim);
-  apexMesh.position.y = coneHeight * 0.5 + 0.008;
+  apexMesh.position.y = coneHeight * 0.5 + 0.006;
   nonLaGroup.add(apexMesh);
 
   // Vành nan tre bo tròn quanh miệng nón (Bamboo Rim Beading)
   const rimTorus = createPBRMesh(
-    new THREE.TorusGeometry(coneRadius + 0.005, 0.006, 12, 36),
+    new THREE.TorusGeometry(coneRadius + 0.003, 0.004, 12, 36),
     materials.bambooRim
   );
   rimTorus.rotation.x = Math.PI / 2;
@@ -140,17 +140,122 @@ function createSculptedNonLaMesh(materials) {
 
   // Quai nón lụa mềm mại rủ xuống cằm
   const strapCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.12, -0.05, 0),
-    new THREE.Vector3(-0.05, -0.14, 0.02),
-    new THREE.Vector3(0, -0.16, 0.025),
-    new THREE.Vector3(0.05, -0.14, 0.02),
-    new THREE.Vector3(0.12, -0.05, 0)
+    new THREE.Vector3(-0.095, -0.04, 0),
+    new THREE.Vector3(-0.045, -0.125, 0.02),
+    new THREE.Vector3(0, -0.142, 0.025),
+    new THREE.Vector3(0.045, -0.125, 0.02),
+    new THREE.Vector3(0.095, -0.04, 0)
   ]);
-  const strapGeo = new THREE.TubeGeometry(strapCurve, 20, 0.005, 8, false);
-  const strapMesh = createPBRMesh(strapGeo, materials.silkStrap);
+  const strapGeo = new THREE.TubeGeometry(strapCurve, 20, 0.004, 8, false);
+  const strapMesh = createPBRMesh(strapGeo, materials.silkStrap || materials.bambooRim);
   nonLaGroup.add(strapMesh);
 
   return nonLaGroup;
+}
+
+/**
+ * Điêu khắc ngũ quan 3D người thật Á Đông (True 3D Volumetric Asian Facial Features)
+ * Tuyệt đối 100% hình khối 3D thật (mắt, mày, sống mũi, bờ môi, đôi tai), KHÔNG DÙNG BẤT KỲ 2D PLANE NÀO!
+ */
+function createSculptedAsianFace(headGroup, skinMat, isFemale, charId) {
+  const eyeSpacing = 0.026;
+  const eyeY = 0.077;
+  const eyeZ = 0.078;
+
+  const scleraMat = new THREE.MeshStandardMaterial({
+    color: 0xfcfcfc,
+    roughness: 0.15,
+    metalness: 0.05
+  });
+  const irisMat = new THREE.MeshStandardMaterial({
+    color: 0x1b130e, // Đen láy / nâu hạt dẻ Á Đông
+    roughness: 0.22,
+    metalness: 0.08
+  });
+  const pupilMat = new THREE.MeshStandardMaterial({
+    color: 0x060606,
+    roughness: 0.05
+  });
+
+  [-1, 1].forEach(side => {
+    // 1. Tròng trắng mắt bồ câu 3D
+    const eyeGeo = new THREE.SphereGeometry(0.010, 16, 12);
+    const eyeMesh = createPBRMesh(eyeGeo, scleraMat);
+    eyeMesh.scale.set(1.0, 0.65, 0.6);
+    eyeMesh.position.set(side * eyeSpacing, eyeY, eyeZ);
+    eyeMesh.rotation.y = side * 0.12;
+    headGroup.add(eyeMesh);
+
+    // Tròng đen & con ngươi có hồn
+    const irisGeo = new THREE.SphereGeometry(0.0055, 12, 12);
+    const irisMesh = createPBRMesh(irisGeo, irisMat);
+    irisMesh.scale.set(1.0, 1.0, 0.4);
+    irisMesh.position.set(side * eyeSpacing, eyeY, eyeZ + 0.0045);
+    irisMesh.rotation.y = side * 0.12;
+    headGroup.add(irisMesh);
+
+    const pupilGeo = new THREE.SphereGeometry(0.0028, 8, 8);
+    const pupilMesh = createPBRMesh(pupilGeo, pupilMat);
+    pupilMesh.scale.set(1.0, 1.0, 0.3);
+    pupilMesh.position.set(side * eyeSpacing, eyeY, eyeZ + 0.0062);
+    headGroup.add(pupilMesh);
+
+    // Chân mày lá liễu thanh tú
+    const browMat = new THREE.MeshStandardMaterial({ color: 0x1a1614, roughness: 0.85 });
+    const browGeo = new THREE.CylinderGeometry(0.0018, 0.0008, 0.024, 8);
+    browGeo.rotateZ(Math.PI / 2);
+    const browMesh = createPBRMesh(browGeo, browMat);
+    browMesh.position.set(side * (eyeSpacing + 0.002), eyeY + 0.014, eyeZ + 0.003);
+    browMesh.rotation.z = side * 0.14;
+    browMesh.rotation.y = side * 0.10;
+    headGroup.add(browMesh);
+
+    // Đôi tai 3D hai bên thái dương
+    const earGeo = new THREE.CylinderGeometry(0.013, 0.009, 0.028, 12);
+    const earMesh = createPBRMesh(earGeo, skinMat);
+    earMesh.scale.set(0.5, 1.0, 0.8);
+    earMesh.position.set(side * 0.084, eyeY - 0.005, -0.005);
+    earMesh.rotation.z = side * 0.15;
+    earMesh.rotation.x = 0.05;
+    headGroup.add(earMesh);
+  });
+
+  // 2. Sống mũi thon và chóp mũi thanh tú
+  const noseBridgeGeo = new THREE.CylinderGeometry(0.0032, 0.0052, 0.022, 12);
+  const noseBridge = createPBRMesh(noseBridgeGeo, skinMat);
+  noseBridge.position.set(0, eyeY - 0.012, eyeZ + 0.007);
+  noseBridge.rotation.x = 0.18;
+  headGroup.add(noseBridge);
+
+  const noseTipGeo = new THREE.SphereGeometry(0.0048, 12, 12);
+  const noseTip = createPBRMesh(noseTipGeo, skinMat);
+  noseTip.scale.set(1.1, 0.9, 1.2);
+  noseTip.position.set(0, eyeY - 0.024, eyeZ + 0.010);
+  headGroup.add(noseTip);
+
+  // 3. Đôi môi hồng chúm chím tự nhiên
+  const lipColor = isFemale ? 0xcc586b : 0xaa5a5d;
+  const lipMat = new THREE.MeshStandardMaterial({
+    color: lipColor,
+    roughness: 0.35,
+    metalness: 0.05
+  });
+
+  // Môi trên hình cánh cung Cupid
+  const upperLipGeo = new THREE.CylinderGeometry(0.0032, 0.0028, 0.018, 12);
+  upperLipGeo.rotateZ(Math.PI / 2);
+  const upperLip = createPBRMesh(upperLipGeo, lipMat);
+  upperLip.scale.set(1.0, 0.75, 0.9);
+  upperLip.position.set(0, eyeY - 0.038, eyeZ + 0.006);
+  headGroup.add(upperLip);
+
+  // Môi dưới mọng mềm mại
+  const lowerLipGeo = new THREE.CylinderGeometry(0.0038, 0.0030, 0.016, 12);
+  lowerLipGeo.rotateZ(Math.PI / 2);
+  const lowerLip = createPBRMesh(lowerLipGeo, lipMat);
+  lowerLip.scale.set(1.0, 0.9, 1.0);
+  lowerLip.position.set(0, eyeY - 0.044, eyeZ + 0.0045);
+  headGroup.add(lowerLip);
 }
 
 /**
@@ -159,11 +264,11 @@ function createSculptedNonLaMesh(materials) {
  */
 function createSculptedTorsoGeometry(isFemale, isSuit) {
   const height = 0.36;
-  const segmentsY = 16;
-  const segmentsRadial = 24;
+  const segmentsY = 24;
+  const segmentsRadial = 32;
 
   const topR = isFemale ? 0.105 : (isSuit ? 0.15 : 0.13);
-  const botR = isFemale ? 0.115 : (isSuit ? 0.135 : 0.125);
+  const botR = isFemale ? 0.112 : (isSuit ? 0.135 : 0.125);
   
   const geo = new THREE.CylinderGeometry(topR, botR, height, segmentsRadial, segmentsY, false);
   const pos = geo.attributes.position;
@@ -172,26 +277,29 @@ function createSculptedTorsoGeometry(isFemale, isSuit) {
     const y = pos.getY(i);
     const normY = (y + height / 2) / height; // 0 ở dưới (hông), 1 ở trên (ngực)
     let rx = 1.0;
-    let rz = 0.82; // Dẹp elip người thật
+    let rz = 0.80; // Dẹp elip người thật tự nhiên
 
     if (isFemale) {
-      if (normY < 0.32) {
-        // Hông nở nhẹ
-        rx = 1.04 + (0.32 - normY) * 0.22;
-        rz = 0.85;
-      } else if (normY >= 0.32 && normY < 0.65) {
-        // Thắt eo con kiến
-        const wRatio = 1.0 - Math.sin((normY - 0.32) / 0.33 * Math.PI) * 0.25;
-        rx = 0.88 * wRatio;
-        rz = 0.72 * wRatio;
+      if (normY < 0.35) {
+        // Hông nở nhẹ duyên dáng
+        const hipRatio = (0.35 - normY) / 0.35;
+        rx = 1.02 + hipRatio * 0.15;
+        rz = 0.82 + hipRatio * 0.06;
+      } else if (normY >= 0.35 && normY < 0.68) {
+        // Thắt eo con kiến thon thả chuẩn tà áo dài
+        const waistRatio = Math.sin((normY - 0.35) / 0.33 * Math.PI);
+        const wFactor = 1.0 - waistRatio * 0.22;
+        rx = 0.90 * wFactor;
+        rz = 0.74 * wFactor;
       } else {
-        // Ngực nở mềm mại
-        const chestRatio = Math.sin((normY - 0.65) / 0.35 * Math.PI);
-        rx = 0.98 + chestRatio * 0.08;
-        rz = 0.78 + (pos.getZ(i) > 0 ? chestRatio * 0.26 : 0);
+        // Ngực áo dài nở nhẹ kín đáo thanh thoát
+        const chestRatio = Math.sin((normY - 0.68) / 0.32 * Math.PI);
+        rx = 0.96 + chestRatio * 0.06;
+        const isFront = pos.getZ(i) > 0;
+        rz = 0.76 + (isFront ? chestRatio * 0.20 : 0);
       }
     } else {
-      rx = 0.92 + normY * 0.32;
+      rx = 0.92 + normY * 0.28;
       rz = 0.78 + normY * 0.16;
       if (isSuit) {
         rx *= 1.08;
@@ -209,24 +317,33 @@ function createSculptedTorsoGeometry(isFemale, isSuit) {
 
 function createSculptedHand(skinMat, isLeft) {
   const handGroup = new THREE.Group();
-  const palmGeo = new THREE.CylinderGeometry(0.026, 0.020, 0.055, 12);
+  // Lòng bàn tay thon thả
+  const palmGeo = new THREE.CylinderGeometry(0.022, 0.018, 0.052, 12);
   const palm = createPBRMesh(palmGeo, skinMat);
-  palm.scale.set(1.0, 1.0, 0.55);
-  palm.position.set(0, -0.028, 0);
+  palm.scale.set(1.0, 1.0, 0.52);
+  palm.position.set(0, -0.026, 0);
   handGroup.add(palm);
 
-  const thumbGeo = new THREE.CylinderGeometry(0.007, 0.005, 0.028, 8);
+  // Ngón cái hướng ra góc tự nhiên
+  const thumbGeo = new THREE.CylinderGeometry(0.0055, 0.0040, 0.026, 8);
   const thumb = createPBRMesh(thumbGeo, skinMat);
   const thumbSign = isLeft ? 1 : -1;
-  thumb.position.set(thumbSign * 0.018, -0.022, 0.01);
-  thumb.rotation.z = thumbSign * 0.45;
+  thumb.position.set(thumbSign * 0.016, -0.020, 0.009);
+  thumb.rotation.z = thumbSign * 0.42;
+  thumb.rotation.x = 0.15;
   handGroup.add(thumb);
 
-  const fingersGeo = new THREE.CylinderGeometry(0.016, 0.010, 0.032, 10);
-  const fingers = createPBRMesh(fingersGeo, skinMat);
-  fingers.scale.set(1.0, 1.0, 0.5);
-  fingers.position.set(0, -0.062, 0);
-  handGroup.add(fingers);
+  // Bốn ngón tay thon mềm uốn nhẹ
+  const fingerOffsets = [-0.011, -0.004, 0.004, 0.011];
+  const fingerLengths = [0.030, 0.034, 0.032, 0.026];
+  for (let f = 0; f < 4; f++) {
+    const fLen = fingerLengths[f];
+    const fingerGeo = new THREE.CylinderGeometry(0.0035, 0.0025, fLen, 8);
+    const fingerMesh = createPBRMesh(fingerGeo, skinMat);
+    fingerMesh.position.set(fingerOffsets[f], -0.052 - fLen * 0.45, 0.002);
+    fingerMesh.rotation.x = 0.08;
+    handGroup.add(fingerMesh);
+  }
 
   return handGroup;
 }
@@ -461,10 +578,10 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   characterGroup.add(pelvisGroup);
 
   const pelvisMesh = createPBRMesh(
-    new THREE.CylinderGeometry(isFemale ? 0.088 : 0.115, isFemale ? 0.098 : 0.122, 0.12, 24),
+    new THREE.CylinderGeometry(isFemale ? 0.105 : 0.125, isFemale ? 0.115 : 0.130, 0.18, 24),
     clothPantsMat
   );
-  pelvisMesh.position.set(0, -0.04, 0);
+  pelvisMesh.position.set(0, 0.0, 0);
   pelvisGroup.add(pelvisMesh);
 
   // 2.3. Thân mình điêu khắc hữu cơ (Torso Group)
@@ -484,75 +601,31 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   clothingGroup.name = 'ClothingGroup';
   torsoGroup.add(clothingGroup);
 
-  // =========================================================================
-  // NÂNG CẤP MỸ QUAN THỊ GIÁC: TÍCH HỢP HÌNH ẢNH NGƯỜI THẬT CHUẨN STUDIO CỦA SẾP
-  // Hiển thị trực tiếp hình ảnh chân dung người thật sắc nét (Front & Back High-Resolution Render)
-  // Kết hợp cùng khung xương 3D và vật lý mềm, loại bỏ triệt để cảm giác hình nộm người gỗ!
-  // =========================================================================
-  const charH = 1.82;
-  const charW = 0.90;
-  const frontTex = getCachedTexture(meta.bodyFront);
-  if (frontTex) {
-    const frontMat = new THREE.MeshStandardMaterial({
-      map: frontTex,
-      transparent: true,
-      alphaTest: 0.2,
-      roughness: 0.45,
-      metalness: 0.05,
-      side: THREE.FrontSide,
-      depthWrite: true
-    });
-    const frontVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), frontMat);
-    frontVisual.name = 'Visual_BodyFront';
-    frontVisual.position.set(0, (charH / 2) - baseTorsoY, 0.025);
-    frontVisual.castShadow = true;
-    clothingGroup.add(frontVisual);
-  }
-
-  const backTex = getCachedTexture(meta.bodyBack || meta.bodyFront);
-  if (backTex) {
-    const backMat = new THREE.MeshStandardMaterial({
-      map: backTex,
-      transparent: true,
-      alphaTest: 0.2,
-      roughness: 0.45,
-      metalness: 0.05,
-      side: THREE.FrontSide,
-      depthWrite: true
-    });
-    const backVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), backMat);
-    backVisual.name = 'Visual_BodyBack';
-    backVisual.rotation.y = Math.PI;
-    backVisual.position.set(0, (charH / 2) - baseTorsoY, -0.025);
-    backVisual.castShadow = true;
-    clothingGroup.add(backVisual);
-  }
-
   const frontFlapGroup = new THREE.Group();
   frontFlapGroup.name = 'Joint_FrontFlap';
-  frontFlapGroup.position.set(0, -0.16, 0.08);
+  frontFlapGroup.position.set(0, 0.02, 0.075);
   clothingGroup.add(frontFlapGroup);
 
   const backFlapGroup = new THREE.Group();
   backFlapGroup.name = 'Joint_BackFlap';
-  backFlapGroup.position.set(0, -0.16, -0.08);
+  backFlapGroup.position.set(0, 0.02, -0.075);
   clothingGroup.add(backFlapGroup);
 
   if (charId === 'char_nu_sinh_ao_dai' || charId === 'char_nam_ao_dai_gam') {
-    const flapWidthTop = isFemale ? 0.25 : 0.28;
-    const flapLen = charId === 'char_nu_sinh_ao_dai' ? 0.72 : 0.76;
+    const flapWidthTop = isFemale ? 0.22 : 0.26;
+    const flapLen = charId === 'char_nu_sinh_ao_dai' ? 0.74 : 0.78;
 
     // Tà trước 3D uốn cong tự nhiên có nếp lụa
-    const frontFlapGeo = new THREE.PlaneGeometry(flapWidthTop, flapLen, 12, 24);
+    const frontFlapGeo = new THREE.PlaneGeometry(flapWidthTop, flapLen, 16, 24);
     const pAttr = frontFlapGeo.attributes.position;
     for (let i = 0; i < pAttr.count; i++) {
       const yVal = pAttr.getY(i);
       const ratio = (yVal + flapLen / 2) / flapLen; // 0 ở dưới, 1 ở trên
       const xVal = pAttr.getX(i);
-      const flare = 1.0 + (1.0 - ratio) * 0.32;
+      const flare = 1.0 + (1.0 - ratio) * 0.48;
       pAttr.setX(i, xVal * flare);
-      const ripple = Math.sin(xVal * 24.0) * 0.005 * (1.0 - ratio * 0.4);
-      pAttr.setZ(i, Math.sin(ratio * Math.PI) * 0.020 + ripple);
+      const ripple = Math.sin(xVal * 28.0 + ratio * 3.0) * 0.005 * (1.0 - ratio * 0.3);
+      pAttr.setZ(i, Math.sin(ratio * Math.PI) * 0.022 + ripple);
     }
     frontFlapGeo.computeVertexNormals();
 
@@ -623,6 +696,14 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     aoDaiCollar.position.set(0, 0.065, 0);
     chestGroup.add(aoDaiCollar);
 
+    // Hàng khuy bấm cài chéo tà áo dài truyền thống
+    const btnMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.2 });
+    for (let b = 0; b < 4; b++) {
+      const btn = createPBRMesh(new THREE.SphereGeometry(0.004, 8, 8), btnMat);
+      btn.position.set(0.022 + b * 0.015, 0.055 - b * 0.022, 0.080 - b * 0.005);
+      chestGroup.add(btn);
+    }
+
   } else if (isSuit) {
     // Áo sơ mi trắng bên trong
     const shirtMesh = createPBRMesh(
@@ -668,6 +749,14 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     }
 
   } else if (charId === 'char_co_gai_ao_ba_ba') {
+    // Hàng khuy áo bà ba trước ngực
+    const baBaBtnMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.35 });
+    for (let b = 0; b < 5; b++) {
+      const btn = createPBRMesh(new THREE.SphereGeometry(0.004, 8, 8), baBaBtnMat);
+      btn.position.set(0, 0.055 - b * 0.025, 0.086);
+      chestGroup.add(btn);
+    }
+
     // Khăn rằn caro quấn quanh cổ
     const scarfRing = createPBRMesh(
       new THREE.TorusGeometry(0.072, 0.018, 12, 24),
@@ -743,29 +832,8 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   headMesh.position.set(0, 0.065, 0);
   headGroup.add(headMesh);
 
-  // Texture khuôn mặt có hồn (Photorealistic Asian Face Mesh)
-  const faceTex = getCachedTexture(`assets/characters/face_${charId}.png`);
-  if (faceTex) {
-    const faceGeo = new THREE.PlaneGeometry(0.125, 0.145, 6, 6);
-    const fPos = faceGeo.attributes.position;
-    for (let i = 0; i < fPos.count; i++) {
-      const fx = fPos.getX(i);
-      fPos.setZ(i, -fx * fx * 1.35);
-    }
-    faceGeo.computeVertexNormals();
-
-    const faceMat = new THREE.MeshStandardMaterial({
-      map: faceTex,
-      transparent: true,
-      roughness: 0.45,
-      metalness: 0.02,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    });
-    const faceMesh = createPBRMesh(faceGeo, faceMat);
-    faceMesh.position.set(0, 0.070, 0.088);
-    headGroup.add(faceMesh);
-  }
+  // Ngũ quan điêu khắc 3D con người thật Á Đông (Mắt bồ câu, sống mũi thon, môi hồng chúm chím, tai thon)
+  createSculptedAsianFace(headGroup, skinMat, isFemale, charId);
 
   // Tóc 3D điêu khắc (ôm gọn nửa đầu phía sau và đỉnh đầu, không che mặt)
   const hairGeo = new THREE.SphereGeometry(0.096, 24, 20);
@@ -782,9 +850,25 @@ export function createHanoiCharacter3D(characterId, options = {}) {
       new THREE.Vector3(0, -0.26, -0.10),
       new THREE.Vector3(0, -0.42, -0.08)
     ]);
-    const longHairGeo = new THREE.TubeGeometry(longHairCurve, 16, 0.052, 12, false);
+    const longHairGeo = new THREE.TubeGeometry(longHairCurve, 16, 0.048, 12, false);
     const longHairMesh = createPBRMesh(longHairGeo, hairMat);
     headGroup.add(longHairMesh);
+
+    // Tóc mai hai bên thái dương vén nhẹ duyên dáng
+    [-1, 1].forEach(side => {
+      const wispGeo = new THREE.CylinderGeometry(0.005, 0.002, 0.065, 8);
+      const wispMesh = createPBRMesh(wispGeo, hairMat);
+      wispMesh.position.set(side * 0.068, 0.040, 0.045);
+      wispMesh.rotation.z = side * 0.15;
+      wispMesh.rotation.x = 0.2;
+      headGroup.add(wispMesh);
+    });
+  } else if (charId === 'char_co_gai_ao_ba_ba') {
+    // Búi tóc cài trâm nền nã phía sau gáy
+    const bunGeo = new THREE.SphereGeometry(0.038, 16, 16);
+    const bunMesh = createPBRMesh(bunGeo, hairMat);
+    bunMesh.position.set(0, 0.048, -0.092);
+    headGroup.add(bunMesh);
   }
 
   // Nhóm phụ kiện đầu (Accessory Head Group)
@@ -793,10 +877,10 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   headGroup.add(accessoryHeadGroup);
 
   if (charId === 'char_nu_sinh_ao_dai') {
-    // Nón lá 3D bài thơ đội đầu e ấp
+    // Nón lá 3D bài thơ đội đầu e ấp, nghiêng nhẹ về sau khoe trọn vẹn khuôn mặt thanh tú
     const nonLa = createSculptedNonLaMesh(accessoryMaterials);
-    nonLa.position.set(0, 0.165, 0.012);
-    nonLa.rotation.x = -0.06; // Nghiêng nhẹ duyên dáng
+    nonLa.position.set(0, 0.225, -0.015);
+    nonLa.rotation.x = -0.16; // Nghiêng nhẹ về sau, để lộ ngũ quan Á Đông
     accessoryHeadGroup.add(nonLa);
 
   } else if (charId === 'char_nam_ao_dai_gam') {
