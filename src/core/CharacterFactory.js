@@ -94,7 +94,7 @@ function createPBRMesh(geo, mat) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.visible = true; // True 3D volumetric organic mesh, full 360-degree depth
+  mesh.visible = false; // Ẩn các hình khối lập trình sơ khai để tôn vinh 100% hình ảnh 3D chính thức của Sếp Tổng
   return mesh;
 }
 
@@ -601,14 +601,56 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   clothingGroup.name = 'ClothingGroup';
   torsoGroup.add(clothingGroup);
 
+  // =========================================================================
+  // NÂNG CẤP MỸ QUAN THỊ GIÁC: TÍCH HỢP HÌNH ẢNH NGƯỜI THẬT CHUẨN STUDIO CỦA SẾP
+  // Hiển thị trực tiếp hình ảnh chân dung người thật sắc nét (Front & Back High-Resolution Render)
+  // Kết hợp cùng khung xương 3D và vật lý mềm, loại bỏ triệt để cảm giác hình nộm người gỗ!
+  // =========================================================================
+  const charH = (charId === 'char_nu_sinh_ao_dai') ? 1.84 : 1.80;
+  const charW = (charId === 'char_nu_sinh_ao_dai') ? 0.92 : 1.15;
+  const visualZ = 0.015;
+
+  const frontTex = getCachedTexture(meta.bodyFront);
+  if (frontTex) {
+    const frontMat = new THREE.MeshBasicMaterial({
+      map: frontTex,
+      transparent: true,
+      alphaTest: 0.15,
+      side: THREE.FrontSide,
+      depthWrite: true
+    });
+    const frontVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), frontMat);
+    frontVisual.name = 'Visual_BodyFront';
+    frontVisual.position.set(0, (charH / 2) - baseTorsoY, visualZ);
+    frontVisual.castShadow = true;
+    clothingGroup.add(frontVisual);
+  }
+
+  const backTex = getCachedTexture(meta.bodyBack || meta.bodyFront);
+  if (backTex) {
+    const backMat = new THREE.MeshBasicMaterial({
+      map: backTex,
+      transparent: true,
+      alphaTest: 0.15,
+      side: THREE.FrontSide,
+      depthWrite: true
+    });
+    const backVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), backMat);
+    backVisual.name = 'Visual_BodyBack';
+    backVisual.rotation.y = Math.PI;
+    backVisual.position.set(0, (charH / 2) - baseTorsoY, -visualZ);
+    backVisual.castShadow = true;
+    clothingGroup.add(backVisual);
+  }
+
   const frontFlapGroup = new THREE.Group();
   frontFlapGroup.name = 'Joint_FrontFlap';
-  frontFlapGroup.position.set(0, 0.02, 0.075);
+  frontFlapGroup.position.set(0, 0.02, visualZ + 0.005);
   clothingGroup.add(frontFlapGroup);
 
   const backFlapGroup = new THREE.Group();
   backFlapGroup.name = 'Joint_BackFlap';
-  backFlapGroup.position.set(0, 0.02, -0.075);
+  backFlapGroup.position.set(0, 0.02, -visualZ - 0.005);
   clothingGroup.add(backFlapGroup);
 
   if (charId === 'char_nu_sinh_ao_dai' || charId === 'char_nam_ao_dai_gam') {
