@@ -107,14 +107,14 @@ export class PlayerController {
       else if (profile.outfit && profile.outfit.startsWith('char_')) savedCharId = profile.outfit;
     } catch (e) {}
 
-    this.currentCharacterId = savedCharId;
-    this.setCharacter(this.currentCharacterId);
-
     // Vị trí xuất phát trên đường dạo ven hồ Gươm dẫn thẳng lên Cầu Kim Quy
     this.characterGroup.position.set(16.5, 0.5, -16.5);
     this.characterGroup.rotation.y = 0.785; // 45 độ theo trục cầu
     this.characterGroup.quaternion.setFromAxisAngle(this._worldUp, 0.785);
     this.scene.add(this.characterGroup);
+
+    this.currentCharacterId = savedCharId;
+    this.setCharacter(this.currentCharacterId);
 
     // Lắng nghe sự kiện chuyển đổi nhân vật
     if (this.eventBus) {
@@ -280,7 +280,10 @@ export class PlayerController {
     this._isGltfReady = false;
 
     // Giữ nguyên tọa độ và góc xoay hiện tại
-    const curPos = this.characterGroup ? this.characterGroup.position.clone() : new THREE.Vector3(16.5, 0.5, -16.5);
+    let curPos = new THREE.Vector3(16.5, 0.5, -16.5);
+    if (this.characterGroup && (Math.abs(this.characterGroup.position.x) > 0.1 || Math.abs(this.characterGroup.position.z) > 0.1)) {
+      curPos = this.characterGroup.position.clone();
+    }
     const curRot = this.characterGroup ? this.characterGroup.rotation.y : 0.785;
 
     // Tải mô hình 3D Skinned Mesh thật với AnimationMixer & Nón Lá
@@ -507,6 +510,20 @@ export class PlayerController {
           }
         }
       }
+    // 2.1. CHỐNG ĐÂM XUYÊN LAN CAN CẦU KIM QUY (CẦU DẪN RA THÁP RÙA)
+    if (this.worldManager.getKimQuyBridgeInfo && pos.x >= 16.0 && pos.x <= 72.0 && pos.z <= -16.0 && pos.z >= -72.0) {
+      const bridgeInfo = this.worldManager.getKimQuyBridgeInfo(pos.x, pos.y, pos.z);
+      if (bridgeInfo && Math.abs(pos.y - bridgeInfo.closestY) <= 1.8) {
+        const maxBridgeDist = 1.85; // Lòng Cầu Kim Quy rộng 3.8m -> bán kính an toàn 1.85m
+        if (bridgeInfo.dist > 1.6 && bridgeInfo.dist < 5.0) {
+          if (bridgeInfo.dist > maxBridgeDist) {
+            const clampFactor = maxBridgeDist / bridgeInfo.dist;
+            pos.x = bridgeInfo.closestX + (pos.x - bridgeInfo.closestX) * clampFactor;
+            pos.z = bridgeInfo.closestZ + (pos.z - bridgeInfo.closestZ) * clampFactor;
+          }
+        }
+      }
+    }
     }
 
     // 3. Đẩy ngược lại nếu vi phạm ranh giới mặt nước (bảo đảm 100% không chạm nước)
@@ -661,6 +678,15 @@ export class PlayerController {
       if (bridgeInfo && Math.abs(testPos.y - bridgeInfo.closestY) <= 1.5) {
         if (bridgeInfo.dist > 1.95 && bridgeInfo.dist < 5.0) {
           return true; // Giữ người chơi an toàn trong lòng cầu 3.8m vượt hồ
+        }
+      }
+    }
+    // 1.1. Chống lọt qua lan can Cầu Kim Quy (Cầu Tháp Rùa) vượt hồ
+    if (this.worldManager.getKimQuyBridgeInfo && testPos.x >= 16.0 && testPos.x <= 72.0 && testPos.z <= -16.0 && testPos.z >= -72.0) {
+      const bridgeInfo = this.worldManager.getKimQuyBridgeInfo(testPos.x, testPos.y, testPos.z);
+      if (bridgeInfo && Math.abs(testPos.y - bridgeInfo.closestY) <= 1.8) {
+        if (bridgeInfo.dist > 1.85 && bridgeInfo.dist < 5.0) {
+          return true; // Chặn đứng bước chân, không cho phép xuyên qua lan can đá Cầu Kim Quy!
         }
       }
     }
@@ -859,6 +885,12 @@ export class PlayerController {
       const bridgeInfo = this.worldManager.getTheHucBridgeInfo(charPos.x, charPos.y, charPos.z);
       if (bridgeInfo && bridgeInfo.onBridge) {
         bridgeGroundY = bridgeInfo.closestY;
+      }
+    }
+    if (this.worldManager.getKimQuyBridgeInfo) {
+      const kqInfo = this.worldManager.getKimQuyBridgeInfo(charPos.x, charPos.y, charPos.z);
+      if (kqInfo && kqInfo.onBridge) {
+        bridgeGroundY = kqInfo.closestY;
       }
     }
 

@@ -22,12 +22,12 @@ export class SceneManager {
 
   /**
    * Sương mù hoài niệm (Hà Nội bảng lảng sương chiều mùa thu)
+   * Giữ tầm nhìn xa trong trẻo, không làm mờ hay đổi màu các ngôi nhà phố cổ
    */
   _initFog() {
-    // Sương mù pha sắc vàng cam hoàng hôn hòa quyện với camera.far = 95m (Tối ưu 60 FPS mượt mà)
-    const fogColor = new THREE.Color(0xd99a60);
+    const fogColor = new THREE.Color(0xf5e6d3); // Sắc thu vàng nhạt tự nhiên, không ám cam đục
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.Fog(fogColor.getHex(), 32, 92);
+    this.scene.fog = new THREE.Fog(fogColor.getHex(), 160, 420); // Đẩy xa 160m - 420m, phố cổ sắc nét cận cảnh
   }
 
   /**
@@ -69,8 +69,8 @@ export class SceneManager {
     skyTexture.wrapS = THREE.ClampToEdgeWrapping;
     skyTexture.wrapT = THREE.ClampToEdgeWrapping;
 
-    // Vòm bán cầu Skydome bán kính 92m bao quanh không gian nhìn
-    const skyGeo = new THREE.SphereGeometry(92, 32, 24);
+    // Vòm bán cầu Skydome bán kính 420m bao quanh trọn vẹn thế giới 500m x 500m
+    const skyGeo = new THREE.SphereGeometry(420, 32, 24);
     const skyMat = new THREE.MeshBasicMaterial({
       map: skyTexture,
       side: THREE.BackSide,

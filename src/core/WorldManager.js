@@ -139,6 +139,53 @@ export class WorldManager {
     };
   }
 
+  /**
+   * KIỂM TRA CHUẨN XÁC TỌA ĐỘ VÀ ĐỘ CAO TRÊN CẦU KIM QUY (CẦU DẪN RA THÁP RÙA)
+   * Trả về khoảng cách tới tim cầu, độ cao mặt cầu chuẩn, và cờ onBridge
+   */
+  getKimQuyBridgeInfo(x, y, z) {
+    const pts = [
+      { x: 16.5, y: 0.38, z: -16.5 }, // Bờ hồ dạo bộ
+      { x: 17.0, y: 0.45, z: -17.0 }, // Cổng Nghinh Phong Môn
+      { x: 28.0, y: 0.88, z: -28.0 }, // Nhịp 1 vòm lên
+      { x: 39.0, y: 1.35, z: -39.0 }, // Nhịp 2 dốc lên
+      { x: 50.0, y: 1.60, z: -50.0 }, // Đỉnh vòm cong cao nhất Cầu Kim Quy
+      { x: 60.0, y: 1.25, z: -60.0 }, // Nhịp 3 dốc xuống
+      { x: 68.0, y: 0.85, z: -68.0 }, // Tiếp giáp Đảo Tháp Rùa
+      { x: 72.0, y: 0.85, z: -72.0 }  // Sân thềm đá Tháp Rùa
+    ];
+    let minDistSq = Infinity;
+    let closestX = x, closestZ = z, closestY = y;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const dx = p2.x - p1.x;
+      const dz = p2.z - p1.z;
+      const lenSq = dx * dx + dz * dz;
+      let t = ((x - p1.x) * dx + (z - p1.z) * dz) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const projX = p1.x + t * dx;
+      const projZ = p1.z + t * dz;
+      const projY = p1.y + t * (p2.y - p1.y);
+      const dSq = (x - projX) * (x - projX) + (z - projZ) * (z - projZ);
+      if (dSq < minDistSq) {
+        minDistSq = dSq;
+        closestX = projX;
+        closestZ = projZ;
+        closestY = projY;
+      }
+    }
+    const dist = Math.sqrt(minDistSq);
+    const onBridge = (dist <= 2.2 && Math.abs(y - closestY) <= 1.2);
+    return {
+      dist,
+      closestX,
+      closestZ,
+      closestY,
+      onBridge
+    };
+  }
+
   isWaterAt(x, y, z) {
     // 1. Vùng Hồ Gươm (Tâm x = 80, z = -80, bán kính lòng hồ R = 84.8m)
     const dx = x - 80;
@@ -281,11 +328,7 @@ export class WorldManager {
     texture.repeat.set(repeatX, repeatY);
 
     // Gán ảnh placeholder tức thì để WebGL không render màu đen khi ảnh đang tải
-    const placeholder = this._getSharedFallbackTexture();
-    if (placeholder && placeholder.image) {
-      texture.image = placeholder.image;
-      texture.needsUpdate = true;
-    }
+    // Giữ nguyên tải ảnh trực tiếp, không đè canvas màu vàng đất
 
     return texture;
   }
@@ -379,8 +422,7 @@ export class WorldManager {
             ctx.strokeRect(x, y, 40, 40);
           }
         }
-      },
-      12, 12
+      }, 140, 140
     );
 
     this.materials.hanoiPavement = new THREE.MeshStandardMaterial({

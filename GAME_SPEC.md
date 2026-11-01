@@ -4,15 +4,16 @@
 ---
 
 > **Mã dự án:** `HANOI-OPEN-REVERIE-3D`  
-> **Phiên bản tài liệu:** `3.1.0-FIX-LOCOMOTION-AND-DISTINCT-CHARACTERS`  
+> **Phiên bản tài liệu:** `3.2.0-PHOTOREALISTIC-HUMANOIDS-AND-HERITAGE-VISUALS`  
 > **Phê duyệt:** Sếp Tổng Game Studio & Hội đồng Kiến trúc sư Trưởng  
-> **Ngày ban hành:** 31/10/2026  
-> **Áp dụng cho 4 Mũi nhọn sản xuất song song:**  
-> 1. `coder-chinh` (Core Logic 3D Engine, GTA V Locomotion Physics, Camera & Systems)  
-> 2. `ui-polish` (Giao diện người dùng, Onboarding, Viewfinder HUD, Modals & Styling)  
-> 3. `animation-master` (Hoạt họa chuyển động 3D Skeletal MoCap & Procedural 60 FPS trong `animations.js`)  
-> 4. `nano-banana` (Họa sĩ Textures PBR, 3D Assets, UI Art, Audio)  
-> & Khâu Kiểm duyệt độc lập: `kiem-duyet-qa`.
+> **Ngày ban hành:** 01/11/2026  
+> **Áp dụng cho 6 Bộ phận chuyên môn Studio AI:**  
+> 1. `game-architect` (Kiến Trúc Sư Hệ Thống, GDD, Ranh Giới 4 Phân Khu & API Contracts)  
+> 2. `nano-banana` (Lead 2D/3D Asset Artist, Textures PBR, Nhân Vật Việt Nam Độc Bản & Audio)  
+> 3. `coder-chinh` (Core Logic 3D Engine, GTA V Locomotion Physics, Camera & Va Chạm Tháp Rùa/Cầu Kim Quy)  
+> 4. `animation-master` (Hoạt Họa 3D Skeletal 60 FPS trong `animations.js`, Nón Lá Lag Damping & VFX)  
+> 5. `ui-polish` (Giao Diện Người Dùng, Onboarding, Viewfinder HUD, Modals & Styling)  
+> 6. `kiem-duyet-qa` (Trưởng Ban Kiểm Định Chất Lượng, Audit 4 Tầng & Săn Lỗi Chí Mạng).
 
 ---
 

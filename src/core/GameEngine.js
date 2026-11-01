@@ -176,7 +176,7 @@ export class GameEngine {
       const scene = this.sceneManager.getScene();
 
       // Tầm nhìn 95m kết hợp sương mù 32-92m (Cắt giảm triệt để draw calls, mượt mà 60 FPS)
-      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 95);
+      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 450);
       this.camera.position.set(45, 2.5, -40);
 
       this._reportProgress(55, 'Dựng 4 phân khu Thế Giới Mở 500m x 500m liền mạch...');
