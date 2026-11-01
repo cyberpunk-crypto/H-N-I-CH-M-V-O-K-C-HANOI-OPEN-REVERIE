@@ -32,8 +32,7 @@ export const CHARACTERS_META = [
     role: 'Nữ sinh Tràng An am tường di tích Đền Ngọc Sơn & Cầu Thê Húc',
     desc: 'Tà áo dài trắng học trò thướt tha trong gió sớm hồ Gươm, chiếc nón lá bài thơ che nghiêng e ấp, nét thanh lịch nghìn năm.',
     avatar: 'assets/characters/avatar_char_nu_sinh_ao_dai.png',
-    bodyFront: 'assets/characters/body_front_char_nu_sinh_ao_dai.png',
-    bodyBack: 'assets/characters/body_back_char_nu_sinh_ao_dai.png',
+    faceTex: 'assets/characters/face_char_nu_sinh_ao_dai.png',
     zone: 'hoan_kiem',
     monumentTitle: 'Đền Ngọc Sơn & Cầu Thê Húc "Ngưng Tụ Ánh Sáng Mặt Trời"',
     greeting: '"Chào lãng tử ghé thăm hồ Gươm! Sáng nay sương bảng lảng trên mặt hồ đẹp lắm. Để em đưa anh/chị qua Cầu Thê Húc son đỏ vào Đền Ngọc Sơn nhé!"'
@@ -47,8 +46,7 @@ export const CHARACTERS_META = [
     role: 'Người dẫn đường khám phá 36 Phố Phường và ngõ đường tàu Phùng Hưng',
     desc: 'Chiếc áo bà ba màu hồng cánh sen dịu dàng, khăn rằn quàng cổ mộc mạc, nón lá đeo sau lưng, nụ cười rạng rỡ đón khách phương xa.',
     avatar: 'assets/characters/avatar_char_co_gai_ao_ba_ba.png',
-    bodyFront: 'assets/characters/body_front_char_co_gai_ao_ba_ba.png',
-    bodyBack: 'assets/characters/body_back_char_co_gai_ao_ba_ba.png',
+    faceTex: 'assets/characters/face_char_co_gai_ao_ba_ba.png',
     zone: 'old_quarter',
     monumentTitle: '36 Phố Phường Hà Nội & Cửa Ô Quan Chưởng Cổ Kính',
     greeting: '"Chào lãng tử ghé phố cổ! Em vừa gánh gánh hoa sớm qua Ô Quan Chưởng, mời anh/chị dừng chân nhấp ngụm nước chè sen và nghe chuyện phố phường nhé!"'
@@ -62,8 +60,7 @@ export const CHARACTERS_META = [
     role: 'KTS nghiên cứu kết cấu thép Eiffel và quy hoạch bảo tồn sông Hồng',
     desc: 'Bộ âu phục suit xám than/navy lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
     avatar: 'assets/characters/avatar_char_nam_tri_thuc_suit.png',
-    bodyFront: 'assets/characters/body_front_char_nam_tri_thuc_suit.png',
-    bodyBack: 'assets/characters/body_back_char_nam_tri_thuc_suit.png',
+    faceTex: 'assets/characters/face_char_nam_tri_thuc_suit.png',
     zone: 'long_bien',
     monumentTitle: 'Cầu Long Biên (1898 - 1902) & Ký Ức Sông Hồng Oai Hùng',
     greeting: '"Rất vui được gặp bạn! Đứng trên nhịp cầu Eiffel thép hơn trăm năm này, ngắm nhìn sông Hồng cuộn sóng, tôi luôn thấy rung động trước kỳ quan kiến trúc vĩ đại của tiền nhân."'
@@ -77,8 +74,7 @@ export const CHARACTERS_META = [
     role: 'Người lưu giữ điển tích và linh khí Tháp Rùa ngàn năm',
     desc: 'Áo dài ngũ thân cách tân gấm dệt hoa văn cổ ngũ thân xanh lam hoàng gia, quần âu trắng mực thước, cốt cách quý ông Tràng An lịch thiệp uyên bác.',
     avatar: 'assets/characters/avatar_char_nam_ao_dai_gam.png',
-    bodyFront: 'assets/characters/body_front_char_nam_ao_dai_gam.png',
-    bodyBack: 'assets/characters/body_back_char_nam_ao_dai_gam.png',
+    faceTex: 'assets/characters/face_char_nam_ao_dai_gam.png',
     zone: 'turtle_tower',
     monumentTitle: 'Tháp Rùa Cổ Kính (1886) • Trái Tim Hồ Hoàn Kiếm',
     greeting: '"Kính chào bạn trẻ! Lão là Văn An, sinh ra và lớn lên bên hồ Tả Vọng này. Tháp Rùa bốn mùa soi bóng, chứng kiến bao thăng trầm của kinh thành Thăng Long."'
@@ -94,7 +90,7 @@ function createPBRMesh(geo, mat) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.visible = false; // Ẩn các hình khối lập trình sơ khai để tôn vinh 100% hình ảnh 3D chính thức của Sếp Tổng
+  mesh.visible = true; // True 3D Solid Humanoid Mesh 60 FPS
   return mesh;
 }
 
@@ -158,58 +154,10 @@ function createSculptedNonLaMesh(materials) {
  * Tuyệt đối 100% hình khối 3D thật (mắt, mày, sống mũi, bờ môi, đôi tai), KHÔNG DÙNG BẤT KỲ 2D PLANE NÀO!
  */
 function createSculptedAsianFace(headGroup, skinMat, isFemale, charId) {
-  const eyeSpacing = 0.026;
-  const eyeY = 0.077;
-  const eyeZ = 0.078;
-
-  const scleraMat = new THREE.MeshStandardMaterial({
-    color: 0xfcfcfc,
-    roughness: 0.15,
-    metalness: 0.05
-  });
-  const irisMat = new THREE.MeshStandardMaterial({
-    color: 0x1b130e, // Đen láy / nâu hạt dẻ Á Đông
-    roughness: 0.22,
-    metalness: 0.08
-  });
-  const pupilMat = new THREE.MeshStandardMaterial({
-    color: 0x060606,
-    roughness: 0.05
-  });
+  const eyeY = 0.065;
+  const eyeZ = 0.075;
 
   [-1, 1].forEach(side => {
-    // 1. Tròng trắng mắt bồ câu 3D
-    const eyeGeo = new THREE.SphereGeometry(0.010, 16, 12);
-    const eyeMesh = createPBRMesh(eyeGeo, scleraMat);
-    eyeMesh.scale.set(1.0, 0.65, 0.6);
-    eyeMesh.position.set(side * eyeSpacing, eyeY, eyeZ);
-    eyeMesh.rotation.y = side * 0.12;
-    headGroup.add(eyeMesh);
-
-    // Tròng đen & con ngươi có hồn
-    const irisGeo = new THREE.SphereGeometry(0.0055, 12, 12);
-    const irisMesh = createPBRMesh(irisGeo, irisMat);
-    irisMesh.scale.set(1.0, 1.0, 0.4);
-    irisMesh.position.set(side * eyeSpacing, eyeY, eyeZ + 0.0045);
-    irisMesh.rotation.y = side * 0.12;
-    headGroup.add(irisMesh);
-
-    const pupilGeo = new THREE.SphereGeometry(0.0028, 8, 8);
-    const pupilMesh = createPBRMesh(pupilGeo, pupilMat);
-    pupilMesh.scale.set(1.0, 1.0, 0.3);
-    pupilMesh.position.set(side * eyeSpacing, eyeY, eyeZ + 0.0062);
-    headGroup.add(pupilMesh);
-
-    // Chân mày lá liễu thanh tú
-    const browMat = new THREE.MeshStandardMaterial({ color: 0x1a1614, roughness: 0.85 });
-    const browGeo = new THREE.CylinderGeometry(0.0018, 0.0008, 0.024, 8);
-    browGeo.rotateZ(Math.PI / 2);
-    const browMesh = createPBRMesh(browGeo, browMat);
-    browMesh.position.set(side * (eyeSpacing + 0.002), eyeY + 0.014, eyeZ + 0.003);
-    browMesh.rotation.z = side * 0.14;
-    browMesh.rotation.y = side * 0.10;
-    headGroup.add(browMesh);
-
     // Đôi tai 3D hai bên thái dương
     const earGeo = new THREE.CylinderGeometry(0.013, 0.009, 0.028, 12);
     const earMesh = createPBRMesh(earGeo, skinMat);
@@ -220,20 +168,20 @@ function createSculptedAsianFace(headGroup, skinMat, isFemale, charId) {
     headGroup.add(earMesh);
   });
 
-  // 2. Sống mũi thon và chóp mũi thanh tú
+  // Sống mũi thon và chóp mũi thanh tú Á Đông
   const noseBridgeGeo = new THREE.CylinderGeometry(0.0032, 0.0052, 0.022, 12);
   const noseBridge = createPBRMesh(noseBridgeGeo, skinMat);
-  noseBridge.position.set(0, eyeY - 0.012, eyeZ + 0.007);
+  noseBridge.position.set(0, eyeY - 0.010, eyeZ + 0.012);
   noseBridge.rotation.x = 0.18;
   headGroup.add(noseBridge);
 
   const noseTipGeo = new THREE.SphereGeometry(0.0048, 12, 12);
   const noseTip = createPBRMesh(noseTipGeo, skinMat);
   noseTip.scale.set(1.1, 0.9, 1.2);
-  noseTip.position.set(0, eyeY - 0.024, eyeZ + 0.010);
+  noseTip.position.set(0, eyeY - 0.022, eyeZ + 0.016);
   headGroup.add(noseTip);
 
-  // 3. Đôi môi hồng chúm chím tự nhiên
+  // Đôi môi hồng tự nhiên
   const lipColor = isFemale ? 0xcc586b : 0xaa5a5d;
   const lipMat = new THREE.MeshStandardMaterial({
     color: lipColor,
@@ -241,20 +189,18 @@ function createSculptedAsianFace(headGroup, skinMat, isFemale, charId) {
     metalness: 0.05
   });
 
-  // Môi trên hình cánh cung Cupid
   const upperLipGeo = new THREE.CylinderGeometry(0.0032, 0.0028, 0.018, 12);
   upperLipGeo.rotateZ(Math.PI / 2);
   const upperLip = createPBRMesh(upperLipGeo, lipMat);
   upperLip.scale.set(1.0, 0.75, 0.9);
-  upperLip.position.set(0, eyeY - 0.038, eyeZ + 0.006);
+  upperLip.position.set(0, eyeY - 0.034, eyeZ + 0.012);
   headGroup.add(upperLip);
 
-  // Môi dưới mọng mềm mại
   const lowerLipGeo = new THREE.CylinderGeometry(0.0038, 0.0030, 0.016, 12);
   lowerLipGeo.rotateZ(Math.PI / 2);
   const lowerLip = createPBRMesh(lowerLipGeo, lipMat);
   lowerLip.scale.set(1.0, 0.9, 1.0);
-  lowerLip.position.set(0, eyeY - 0.044, eyeZ + 0.0045);
+  lowerLip.position.set(0, eyeY - 0.040, eyeZ + 0.010);
   headGroup.add(lowerLip);
 }
 
@@ -267,8 +213,8 @@ function createSculptedTorsoGeometry(isFemale, isSuit) {
   const segmentsY = 24;
   const segmentsRadial = 32;
 
-  const topR = isFemale ? 0.105 : (isSuit ? 0.15 : 0.13);
-  const botR = isFemale ? 0.112 : (isSuit ? 0.135 : 0.125);
+  const topR = isFemale ? 0.125 : (isSuit ? 0.165 : 0.145);
+  const botR = isFemale ? 0.130 : (isSuit ? 0.150 : 0.140);
   
   const geo = new THREE.CylinderGeometry(topR, botR, height, segmentsRadial, segmentsY, false);
   const pos = geo.attributes.position;
@@ -602,55 +548,19 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   torsoGroup.add(clothingGroup);
 
   // =========================================================================
-  // NÂNG CẤP MỸ QUAN THỊ GIÁC: TÍCH HỢP HÌNH ẢNH NGƯỜI THẬT CHUẨN STUDIO CỦA SẾP
-  // Hiển thị trực tiếp hình ảnh chân dung người thật sắc nét (Front & Back High-Resolution Render)
-  // Kết hợp cùng khung xương 3D và vật lý mềm, loại bỏ triệt để cảm giác hình nộm người gỗ!
+  // 2.3. TÀ ÁO MỀM & VẬT LÝ KHĂN PHỤ KIỆN (CLOTH FLAPS RIGGING)
+  // 100% 3D Thể Tích Hữu Cơ - Xóa bỏ vĩnh viễn mọi tấm phẳng 2D Cutout/Billboard
   // =========================================================================
-  const charH = (charId === 'char_nu_sinh_ao_dai') ? 1.84 : 1.80;
-  const charW = (charId === 'char_nu_sinh_ao_dai') ? 0.92 : 1.15;
-  const visualZ = 0.015;
-
-  const frontTex = getCachedTexture(meta.bodyFront);
-  if (frontTex) {
-    const frontMat = new THREE.MeshBasicMaterial({
-      map: frontTex,
-      transparent: true,
-      alphaTest: 0.15,
-      side: THREE.FrontSide,
-      depthWrite: true
-    });
-    const frontVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), frontMat);
-    frontVisual.name = 'Visual_BodyFront';
-    frontVisual.position.set(0, (charH / 2) - baseTorsoY, visualZ);
-    frontVisual.castShadow = true;
-    clothingGroup.add(frontVisual);
-  }
-
-  const backTex = getCachedTexture(meta.bodyBack || meta.bodyFront);
-  if (backTex) {
-    const backMat = new THREE.MeshBasicMaterial({
-      map: backTex,
-      transparent: true,
-      alphaTest: 0.15,
-      side: THREE.FrontSide,
-      depthWrite: true
-    });
-    const backVisual = new THREE.Mesh(new THREE.PlaneGeometry(charW, charH), backMat);
-    backVisual.name = 'Visual_BodyBack';
-    backVisual.rotation.y = Math.PI;
-    backVisual.position.set(0, (charH / 2) - baseTorsoY, -visualZ);
-    backVisual.castShadow = true;
-    clothingGroup.add(backVisual);
-  }
+  const flapZ = isFemale ? 0.088 : 0.105;
 
   const frontFlapGroup = new THREE.Group();
   frontFlapGroup.name = 'Joint_FrontFlap';
-  frontFlapGroup.position.set(0, 0.02, visualZ + 0.005);
+  frontFlapGroup.position.set(0, 0.02, flapZ);
   clothingGroup.add(frontFlapGroup);
 
   const backFlapGroup = new THREE.Group();
   backFlapGroup.name = 'Joint_BackFlap';
-  backFlapGroup.position.set(0, 0.02, -visualZ - 0.005);
+  backFlapGroup.position.set(0, 0.02, -flapZ);
   clothingGroup.add(backFlapGroup);
 
   if (charId === 'char_nu_sinh_ao_dai' || charId === 'char_nam_ao_dai_gam') {
@@ -732,61 +642,61 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   if (charId === 'char_nu_sinh_ao_dai') {
     // Cổ áo dài 3 phân thanh thoát
     const aoDaiCollar = createPBRMesh(
-      new THREE.CylinderGeometry(0.044, 0.048, 0.040, 24),
+      new THREE.CylinderGeometry(0.044, 0.048, 0.035, 24),
       clothTorsoMat
     );
-    aoDaiCollar.position.set(0, 0.065, 0);
+    aoDaiCollar.position.set(0, 0.04, 0);
     chestGroup.add(aoDaiCollar);
 
     // Hàng khuy bấm cài chéo tà áo dài truyền thống
     const btnMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.2 });
     for (let b = 0; b < 4; b++) {
       const btn = createPBRMesh(new THREE.SphereGeometry(0.004, 8, 8), btnMat);
-      btn.position.set(0.022 + b * 0.015, 0.055 - b * 0.022, 0.080 - b * 0.005);
+      btn.position.set(0.022 + b * 0.015, 0.035 - b * 0.022, 0.080 - b * 0.005);
       chestGroup.add(btn);
     }
 
   } else if (isSuit) {
     // Áo sơ mi trắng bên trong
     const shirtMesh = createPBRMesh(
-      new THREE.BoxGeometry(0.11, 0.16, 0.035),
+      new THREE.BoxGeometry(0.11, 0.14, 0.035),
       new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.38 })
     );
-    shirtMesh.position.set(0, 0.07, 0.075);
+    shirtMesh.position.set(0, 0.02, 0.075);
     chestGroup.add(shirtMesh);
 
     // Cà vạt vintage 3D
     const tieMesh = createPBRMesh(
-      new THREE.BoxGeometry(0.038, 0.16, 0.018),
+      new THREE.BoxGeometry(0.038, 0.15, 0.018),
       accessoryMaterials.tie
     );
-    tieMesh.position.set(0, 0.05, 0.095);
+    tieMesh.position.set(0, 0.00, 0.095);
     chestGroup.add(tieMesh);
 
     // Ve áo Notch Lapel chữ V dựng nổi 3D
-    const lapelGeo = new THREE.BoxGeometry(0.042, 0.15, 0.020);
+    const lapelGeo = new THREE.BoxGeometry(0.038, 0.12, 0.016);
     const leftLapel = createPBRMesh(lapelGeo, clothTorsoMat);
-    leftLapel.position.set(-0.072, 0.07, 0.090);
-    leftLapel.rotation.z = -0.24;
+    leftLapel.position.set(-0.065, 0.02, 0.090);
+    leftLapel.rotation.z = -0.22;
     chestGroup.add(leftLapel);
 
     const rightLapel = createPBRMesh(lapelGeo, clothTorsoMat);
-    rightLapel.position.set(0.072, 0.07, 0.090);
-    rightLapel.rotation.z = 0.24;
+    rightLapel.position.set(0.065, 0.02, 0.090);
+    rightLapel.rotation.z = 0.22;
     chestGroup.add(rightLapel);
 
   } else if (charId === 'char_nam_ao_dai_gam') {
     // Cổ đứng cao truyền thống & 5 Khuy ngọc bích
     const collar = createPBRMesh(
-      new THREE.CylinderGeometry(0.052, 0.058, 0.045, 24),
+      new THREE.CylinderGeometry(0.048, 0.054, 0.035, 24),
       clothTorsoMat
     );
-    collar.position.set(0, 0.065, 0);
+    collar.position.set(0, 0.04, 0);
     chestGroup.add(collar);
 
     for (let k = 0; k < 5; k++) {
-      const jadeBtn = createPBRMesh(new THREE.SphereGeometry(0.010, 12, 12), accessoryMaterials.jade);
-      jadeBtn.position.set(0.032 + k * 0.014, 0.06 - k * 0.026, 0.088);
+      const jadeBtn = createPBRMesh(new THREE.SphereGeometry(0.008, 12, 12), accessoryMaterials.jade);
+      jadeBtn.position.set(0.030 + k * 0.012, 0.035 - k * 0.024, 0.088);
       chestGroup.add(jadeBtn);
     }
 
@@ -795,27 +705,27 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     const baBaBtnMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.35 });
     for (let b = 0; b < 5; b++) {
       const btn = createPBRMesh(new THREE.SphereGeometry(0.004, 8, 8), baBaBtnMat);
-      btn.position.set(0, 0.055 - b * 0.025, 0.086);
+      btn.position.set(0, 0.040 - b * 0.022, 0.086);
       chestGroup.add(btn);
     }
 
     // Khăn rằn caro quấn quanh cổ
     const scarfRing = createPBRMesh(
-      new THREE.TorusGeometry(0.072, 0.018, 12, 24),
+      new THREE.TorusGeometry(0.056, 0.015, 12, 24),
       accessoryMaterials.krama
     );
     scarfRing.rotation.x = Math.PI / 2;
-    scarfRing.position.set(0, 0.065, 0);
+    scarfRing.position.set(0, 0.04, 0);
     chestGroup.add(scarfRing);
 
     // Dải khăn rủ trước ngực
-    const scarfDropL = createPBRMesh(new THREE.BoxGeometry(0.042, 0.20, 0.014), accessoryMaterials.krama);
-    scarfDropL.position.set(-0.048, -0.02, 0.088);
+    const scarfDropL = createPBRMesh(new THREE.BoxGeometry(0.038, 0.18, 0.012), accessoryMaterials.krama);
+    scarfDropL.position.set(-0.045, -0.04, 0.088);
     scarfDropL.rotation.z = -0.15;
     chestGroup.add(scarfDropL);
 
-    const scarfDropR = createPBRMesh(new THREE.BoxGeometry(0.042, 0.20, 0.014), accessoryMaterials.krama);
-    scarfDropR.position.set(0.048, -0.02, 0.088);
+    const scarfDropR = createPBRMesh(new THREE.BoxGeometry(0.038, 0.18, 0.012), accessoryMaterials.krama);
+    scarfDropR.position.set(0.045, -0.04, 0.088);
     scarfDropR.rotation.z = 0.15;
     chestGroup.add(scarfDropR);
 
@@ -830,20 +740,20 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   // 2.5. Cổ 3D (Neck Group)
   const neckGroup = new THREE.Group();
   neckGroup.name = 'Joint_Neck';
-  neckGroup.position.set(0, 0.08, 0);
+  neckGroup.position.set(0, 0.12, 0);
   chestGroup.add(neckGroup);
 
   const neckMesh = createPBRMesh(
-    new THREE.CylinderGeometry(0.036, 0.044, 0.07, 20),
+    new THREE.CylinderGeometry(0.038, 0.046, 0.08, 20),
     skinMat
   );
-  neckMesh.position.set(0, 0.035, 0);
+  neckMesh.position.set(0, 0.04, 0);
   neckGroup.add(neckMesh);
 
   // 2.6. Đầu & Khuôn mặt 3D Điêu Khắc (Head Group)
   const headGroup = new THREE.Group();
   headGroup.name = 'Joint_Head';
-  headGroup.position.set(0, 0.07, 0);
+  headGroup.position.set(0, 0.08, 0);
   neckGroup.add(headGroup);
 
   // Khuôn mặt 3D điêu khắc hữu cơ (Asian Face Topology)
@@ -877,11 +787,34 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   // Ngũ quan điêu khắc 3D con người thật Á Đông (Mắt bồ câu, sống mũi thon, môi hồng chúm chím, tai thon)
   createSculptedAsianFace(headGroup, skinMat, isFemale, charId);
 
-  // Tóc 3D điêu khắc (ôm gọn nửa đầu phía sau và đỉnh đầu, không che mặt)
-  const hairGeo = new THREE.SphereGeometry(0.096, 24, 20);
+  // Áp khuôn mặt chân thực Á Đông nguyên bản bằng vòm cầu 3D SphereGeometry
+  if (meta.faceTex) {
+    const faceTex = getCachedTexture(meta.faceTex);
+    if (faceTex) {
+      const faceMat = new THREE.MeshStandardMaterial({
+        map: faceTex,
+        roughness: 0.45,
+        metalness: 0.02,
+        side: THREE.FrontSide,
+        transparent: true,
+        depthWrite: false
+      });
+      // Vòm cầu 3D ôm trọn bán cầu trước của khuôn mặt (z >= 0)
+      const faceGeo = new THREE.SphereGeometry(0.098, 20, 20, 0, Math.PI, Math.PI * 0.18, Math.PI * 0.55);
+      const faceMesh = new THREE.Mesh(faceGeo, faceMat);
+      faceMesh.name = 'Visual_FaceDecal3D';
+      faceMesh.scale.set(0.95, 1.08, 0.98);
+      faceMesh.position.set(0, 0.065, 0);
+      faceMesh.renderOrder = 2;
+      headGroup.add(faceMesh);
+    }
+  }
+
+  // Tóc 3D điêu khắc (ôm trọn bán cầu sau và đỉnh đầu z <= 0, để lộ hoàn toàn khuôn mặt)
+  const hairGeo = new THREE.SphereGeometry(0.097, 24, 20, Math.PI, Math.PI, 0, Math.PI * 0.70);
   const hairMesh = createPBRMesh(hairGeo, hairMat);
   hairMesh.scale.set(0.96, 1.04, 0.95);
-  hairMesh.position.set(0, 0.075, -0.024);
+  hairMesh.position.set(0, 0.065, 0);
   headGroup.add(hairMesh);
 
   if (charId === 'char_nu_sinh_ao_dai') {
@@ -921,7 +854,7 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   if (charId === 'char_nu_sinh_ao_dai') {
     // Nón lá 3D bài thơ đội đầu e ấp, nghiêng nhẹ về sau khoe trọn vẹn khuôn mặt thanh tú
     const nonLa = createSculptedNonLaMesh(accessoryMaterials);
-    nonLa.position.set(0, 0.225, -0.015);
+    nonLa.position.set(0, 0.160, -0.015);
     nonLa.rotation.x = -0.16; // Nghiêng nhẹ về sau, để lộ ngũ quan Á Đông
     accessoryHeadGroup.add(nonLa);
 
@@ -936,15 +869,15 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     // Kính mắt trí thức gọng kim loại 3D
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 });
     const lensL = createPBRMesh(new THREE.TorusGeometry(0.018, 0.003, 8, 16), glassMat);
-    lensL.position.set(-0.036, 0.075, 0.098);
+    lensL.position.set(-0.034, 0.070, 0.095);
     accessoryHeadGroup.add(lensL);
 
     const lensR = createPBRMesh(new THREE.TorusGeometry(0.018, 0.003, 8, 16), glassMat);
-    lensR.position.set(0.036, 0.075, 0.098);
+    lensR.position.set(0.034, 0.070, 0.095);
     accessoryHeadGroup.add(lensR);
 
     const bridge = createPBRMesh(new THREE.BoxGeometry(0.016, 0.002, 0.002), glassMat);
-    bridge.position.set(0, 0.075, 0.100);
+    bridge.position.set(0, 0.070, 0.096);
     accessoryHeadGroup.add(bridge);
   }
 
@@ -952,7 +885,11 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   // 3. KHỚP VAI & TAY 3D (SHOULDERS, ARMS, HANDS)
   // ==========================================
   const shoulderY = 0.03;
-  const shoulderX = isSuit ? 0.18 : 0.145;
+  const shoulderX = isSuit ? 0.20 : (isFemale ? 0.16 : 0.18);
+
+  const deltoidR = isFemale ? 0.046 : (isSuit ? 0.058 : 0.052);
+  const armTopR = isFemale ? 0.036 : (isSuit ? 0.048 : 0.044);
+  const armBotR = isFemale ? 0.030 : (isSuit ? 0.040 : 0.036);
 
   // 3.1. Tay Trái (Left Arm)
   const leftShoulderGroup = new THREE.Group();
@@ -961,16 +898,13 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   chestGroup.add(leftShoulderGroup);
 
   // Ụ vai tròn
-  const leftDeltoid = createPBRMesh(new THREE.SphereGeometry(0.036, 16, 16), clothLimbMat);
+  const leftDeltoid = createPBRMesh(new THREE.SphereGeometry(deltoidR, 16, 16), clothLimbMat);
   leftShoulderGroup.add(leftDeltoid);
 
   // Bắp tay Group & Mesh
   const leftUpperArm = new THREE.Group();
   leftUpperArm.name = 'Joint_L_UpperArm';
   leftShoulderGroup.add(leftUpperArm);
-
-  const armTopR = isFemale ? 0.028 : (isSuit ? 0.038 : 0.034);
-  const armBotR = isFemale ? 0.024 : (isSuit ? 0.032 : 0.028);
 
   const leftUpperArmMesh = createPBRMesh(
     new THREE.CylinderGeometry(armTopR, armBotR, 0.22, 16),
@@ -985,9 +919,12 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   leftElbowGroup.position.set(0, -0.22, 0);
   leftUpperArm.add(leftElbowGroup);
 
+  const leftElbowSphere = createPBRMesh(new THREE.SphereGeometry(armBotR * 0.95, 12, 12), clothLimbMat);
+  leftElbowGroup.add(leftElbowSphere);
+
   // Cẳng tay
   const leftLowerArm = createPBRMesh(
-    new THREE.CylinderGeometry(armBotR, armBotR * 0.9, 0.20, 16),
+    new THREE.CylinderGeometry(armBotR, armBotR * 0.85, 0.20, 16),
     clothLimbMat
   );
   leftLowerArm.position.set(0, -0.10, 0);
@@ -1008,7 +945,7 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   rightShoulderGroup.position.set(shoulderX, shoulderY, 0);
   chestGroup.add(rightShoulderGroup);
 
-  const rightDeltoid = createPBRMesh(new THREE.SphereGeometry(0.036, 16, 16), clothLimbMat);
+  const rightDeltoid = createPBRMesh(new THREE.SphereGeometry(deltoidR, 16, 16), clothLimbMat);
   rightShoulderGroup.add(rightDeltoid);
 
   const rightUpperArm = new THREE.Group();
@@ -1027,8 +964,11 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   rightElbowGroup.position.set(0, -0.22, 0);
   rightUpperArm.add(rightElbowGroup);
 
+  const rightElbowSphere = createPBRMesh(new THREE.SphereGeometry(armBotR * 0.95, 12, 12), clothLimbMat);
+  rightElbowGroup.add(rightElbowSphere);
+
   const rightLowerArm = createPBRMesh(
-    new THREE.CylinderGeometry(armBotR, armBotR * 0.9, 0.20, 16),
+    new THREE.CylinderGeometry(armBotR, armBotR * 0.85, 0.20, 16),
     clothLimbMat
   );
   rightLowerArm.position.set(0, -0.10, 0);
@@ -1045,9 +985,10 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   // ==========================================
   // 4. KHỚP HÁNG & CHÂN 3D (HIPS, LEGS, FEET)
   // ==========================================
-  const hipX = isFemale ? 0.078 : 0.095;
-  const legRadiusTop = isFemale ? 0.052 : 0.062;
-  const legRadiusBottom = isFemale ? 0.044 : 0.052;
+  const hipX = isFemale ? 0.088 : (isSuit ? 0.108 : 0.100);
+  const legRadiusTop = isFemale ? 0.066 : (isSuit ? 0.076 : 0.072);
+  const legRadiusBottom = isFemale ? 0.058 : (isSuit ? 0.062 : 0.060);
+  const lowerLegBotR = isFemale ? legRadiusBottom + 0.012 : legRadiusBottom;
 
   // 4.1. Chân Trái (Left Leg)
   const leftHipGroup = new THREE.Group();
@@ -1072,9 +1013,12 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   leftKneeGroup.position.set(0, -0.42, 0);
   leftUpperLeg.add(leftKneeGroup);
 
+  const leftKneeSphere = createPBRMesh(new THREE.SphereGeometry(legRadiusBottom * 0.96, 14, 14), clothPantsMat);
+  leftKneeGroup.add(leftKneeSphere);
+
   // Cẳng chân trái
   const leftLowerLeg = createPBRMesh(
-    new THREE.CylinderGeometry(legRadiusBottom, legRadiusBottom + 0.010, 0.42, 20),
+    new THREE.CylinderGeometry(legRadiusBottom, lowerLegBotR, 0.42, 20),
     clothPantsMat
   );
   leftLowerLeg.position.set(0, -0.21, 0);
@@ -1111,8 +1055,11 @@ export function createHanoiCharacter3D(characterId, options = {}) {
   rightKneeGroup.position.set(0, -0.42, 0);
   rightUpperLeg.add(rightKneeGroup);
 
+  const rightKneeSphere = createPBRMesh(new THREE.SphereGeometry(legRadiusBottom * 0.96, 14, 14), clothPantsMat);
+  rightKneeGroup.add(rightKneeSphere);
+
   const rightLowerLeg = createPBRMesh(
-    new THREE.CylinderGeometry(legRadiusBottom, legRadiusBottom + 0.010, 0.42, 20),
+    new THREE.CylinderGeometry(legRadiusBottom, lowerLegBotR, 0.42, 20),
     clothPantsMat
   );
   rightLowerLeg.position.set(0, -0.21, 0);
