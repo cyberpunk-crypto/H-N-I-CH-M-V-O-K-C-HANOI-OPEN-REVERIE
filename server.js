@@ -18,6 +18,8 @@ const MIME_TYPES = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
   '.ico': 'image/x-icon'
@@ -62,7 +64,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   console.log(` HÀ NỘI: CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)`);
   console.log(` Server đang chạy tại: http://localhost:${PORT}`);
