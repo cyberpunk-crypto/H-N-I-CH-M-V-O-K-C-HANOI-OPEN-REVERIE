@@ -1,15 +1,15 @@
 /**
  * PlayerController.js - Điều khiển di chuyển mượt mà chuẩn GTA V Third-Person Locomotion
  * 
- * Các tính năng nâng cấp theo chỉ lệnh /lam-game của Sếp Tổng:
- * 1. SỬA LỖI ĐI NGƯỢC (MOONWALKING): targetAngle = Math.atan2(finalDir.x, finalDir.z) + Math.PI;
- * 2. TÁCH BIỆT RÕ RÀNG 4 NHÂN VẬT KHÁC NHAU:
- *    - char_nu_sinh_ao_dai: Michelle.glb lụa trắng (0xffffff), quần trắng (0xf5f5f5), Nón Lá 3D.
- *    - char_co_gai_ao_ba_ba: Michelle.glb Áo bà ba hồng (0xffb6c1), quần đen (0x1a1a1a), Khăn rằn 3D, Nón Lá 3D.
- *    - char_nam_tri_thuc_suit: Soldier.glb Suit xám than/navy (0x2b303a), sơ mi trắng, giày da đen bóng.
- *    - char_nam_ao_dai_gam: Soldier.glb Áo dài gấm xanh thẫm (0x16213e) viền vàng kim (0xd4af37), Khăn Xếp 3D.
- * 3. CHỐNG XUYÊN LAN CAN CẦU (CAPSULE HORIZONTAL COLLIDER): Tim cầu <= 1.6m, chống đâm xuyên bụng.
- * 4. CĂN GÓC CAMERA BAN ĐẦU: Spawn tại (16.5, 0.5, -16.5), yaw = 0.785 rad (45 độ).
+ * Các tính năng nâng cấp theo chỉ lệnh của Sếp Tổng & GAME_SPEC.md:
+ * 1. SỬA TRIỆT ĐỂ LỖI ĐI NGƯỢC (MOONWALKING): targetAngle = Math.atan2(finalDir.x, finalDir.z) (xóa bỏ dứt điểm + Math.PI).
+ * 2. TÁI TẠO DA THỊT NGƯỜI THẬT Á ĐÔNG & TRANG PHỤC 3D ĐỘC LẬP ĐA LỚP:
+ *    - char_nu_sinh_ao_dai: Nữ sinh Tràng An da ấm sáng (#E8BEAC), áo dài lụa trắng 3D, quần lụa, nón lá trúc chỉ 3D, hoa tai ngọc trai.
+ *    - char_co_gai_ao_ba_ba: Cô gái Phố thị da ấm sáng (#E8BEAC), áo bà ba hồng sen 3D, quần lụa đen 3D, khăn rằn caro 3D quấn cổ, nón lá sau lưng.
+ *    - char_nam_tri_thuc_suit: Nam trí thức Hà Nội da ấm (#DEB096), suit xám than tweed 3D, quần âu có ly 3D, giày Oxford 3D, kính mắt.
+ *    - char_nam_ao_dai_gam: Chàng trai Thăng Long da ấm (#DEB096), áo dài ngũ thân gấm xanh hoàng gia (0x16213e) khuy ngọc bích 3D, khăn xếp 5 tầng nếp 3D.
+ * 3. CHỐNG XUYÊN LAN CAN CẦU (CAPSULE HORIZONTAL COLLIDER): dist <= 1.6m, clampFactor giữ an toàn trên Cầu Thê Húc & Cầu Kim Quy.
+ * 4. CĂN GÓC CAMERA BAN ĐẦU: Spawn tại (16.5, 0.5, -16.5), yaw = 0.785 rad (45 độ) dọc tim Cầu Thê Húc.
  * 
  * Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
  */
@@ -233,8 +233,9 @@ export class PlayerController {
   }
 
   /**
-   * Tải mô hình 3D Skinned Humanoid thật (Mixamo 65-68 Khớp MoCap) với đầy đủ AnimationMixer
-   * Tách biệt rõ ràng 4 nhân vật khác nhau theo lệnh của Sếp Tổng
+   * Tải mô hình 3D Da thịt Người thật Á Đông & Trang phục 3D đa lớp độc lập
+   * Tách biệt rõ ràng 4 nhân vật Việt Nam độc bản theo lệnh của Sếp Tổng
+   * Xóa bỏ hoàn toàn vẻ ngoài mannequin/robot Xbot
    */
   async _load3DHumanoidCharacter(characterId) {
     this._isGltfReady = false;
@@ -243,216 +244,37 @@ export class PlayerController {
         this.characterGroup.remove(this.characterGroup.children[0]);
       }
 
-      // 1. Tạo mô hình nhân vật 3D ban đầu từ CharacterFactory (bảo toàn đồng bộ ngay lập tức và unit tests)
-      const placeholderMesh = createHanoiCharacter3D(characterId, { isNPC: false });
-      this.characterGroup.add(placeholderMesh);
+      // 1. TẠO MÔ HÌNH NHÂN VẬT CON NGƯỜI 3D THẬT SỰ TỪ CharacterFactory:
+      // Da thịt người thật Á Đông (#E8BEAC nữ, #DEB096 nam), ngũ quan 3D điêu khắc, trang phục 3D đa lớp độc lập
+      const humanCharacterMesh = createHanoiCharacter3D(characterId, { isNPC: false });
+      this.characterMesh = humanCharacterMesh;
+      this.characterGroup.add(humanCharacterMesh);
 
       // Trích xuất các pivot khớp xương phân cấp
-      this.torsoGroup = placeholderMesh.torsoGroup;
-      this.headGroup = placeholderMesh.headGroup;
-      this.leftArmPivot = placeholderMesh.leftArmPivot;
-      this.rightArmPivot = placeholderMesh.rightArmPivot;
-      this.leftLegPivot = placeholderMesh.leftLegPivot;
-      this.rightLegPivot = placeholderMesh.rightLegPivot;
-      this.baseTorsoY = placeholderMesh.baseTorsoY || 0.95;
+      this.torsoGroup = humanCharacterMesh.rig ? humanCharacterMesh.rig.torsoGroup : humanCharacterMesh.torsoGroup;
+      this.headGroup = humanCharacterMesh.rig ? humanCharacterMesh.rig.headGroup : humanCharacterMesh.headGroup;
+      this.leftArmPivot = humanCharacterMesh.leftArmPivot;
+      this.rightArmPivot = humanCharacterMesh.rightArmPivot;
+      this.leftLegPivot = humanCharacterMesh.leftLegPivot;
+      this.rightLegPivot = humanCharacterMesh.rightLegPivot;
+      this.baseTorsoY = humanCharacterMesh.baseTorsoY || 0.95;
 
       // Gắn rig sang characterGroup
-      this.characterGroup.rig = placeholderMesh.rig;
+      this.characterGroup.rig = humanCharacterMesh.rig;
       if (this.characterGroup.rig) {
         this.characterGroup.rig.rootGroup = this.characterGroup;
       }
+      this.characterGroup.characterMeta = humanCharacterMesh.characterMeta;
+      this.characterGroup.baseTorsoY = this.baseTorsoY;
+      this.characterGroup.isSkinnedMesh = false;
 
-      // Khởi tạo HumanoidAnimator 60 FPS dự phòng
+      // Khởi tạo HumanoidAnimator 60 FPS chuẩn AAA
       this.humanoidAnimator = new HumanoidAnimator(this.characterGroup, {
         baseTorsoY: this.baseTorsoY
       });
 
-      // 2. Tải Mô Hình 3D SkinnedMesh Liền Khối Hữu Cơ (Chuẩn Game GTA V) & AnimationMixer MoCap
-      if (typeof window !== 'undefined' && this._gltfLoader) {
-        const isFemale = (characterId === 'char_nu_sinh_ao_dai' || characterId === 'char_co_gai_ao_ba_ba');
-
-        const loadModel = (url) => {
-          if (this._gltfCache[url]) return Promise.resolve(this._gltfCache[url]);
-          return new Promise((resolve, reject) => {
-            this._gltfLoader.load(url, (gltf) => {
-              this._gltfCache[url] = gltf;
-              resolve(gltf);
-            }, undefined, reject);
-          });
-        };
-
-        const xGltf = await loadModel('assets/models/Xbot.glb');
-        const model = xGltf.scene;
-
-        const texLoader = this._textureLoader || new THREE.TextureLoader();
-        const silkTex = texLoader.load('assets/textures/char_silk_ivory_white.jpg');
-        silkTex.wrapS = THREE.RepeatWrapping;
-        silkTex.wrapT = THREE.RepeatWrapping;
-        silkTex.repeat.set(2, 4);
-
-        if (characterId === 'char_nu_sinh_ao_dai') {
-          model.traverse(c => {
-            if (c.isSkinnedMesh) {
-              if (c.name === 'Beta_Surface') {
-                c.material = new THREE.MeshStandardMaterial({
-                  map: silkTex,
-                  color: 0xffffff,
-                  roughness: 0.32,
-                  metalness: 0.04
-                });
-              } else if (c.name === 'Beta_Joints') {
-                c.material = new THREE.MeshStandardMaterial({
-                  color: 0xf8d7c2,
-                  roughness: 0.45,
-                  metalness: 0.02
-                });
-              }
-            }
-          });
-
-          // Gắn 3D Nón Lá
-          const headBone = model.getObjectByName('mixamorigHead');
-          if (headBone) {
-            const nonLa = this._create3DNonLa();
-            nonLa.position.set(0, 16, -2);
-            nonLa.rotation.x = -0.15;
-            headBone.add(nonLa);
-          }
-
-          // Gắn 2 tà áo dài lụa mềm
-          const hipsBone = model.getObjectByName('mixamorigHips');
-          if (hipsBone) {
-            const flapGeo = new THREE.PlaneGeometry(28, 85, 12, 16);
-            const flapMat = new THREE.MeshStandardMaterial({
-              map: silkTex,
-              color: 0xfafafa,
-              roughness: 0.35,
-              side: THREE.DoubleSide
-            });
-            const frontFlap = new THREE.Mesh(flapGeo, flapMat);
-            frontFlap.position.set(0, -42, 12);
-            frontFlap.rotation.x = 0.08;
-            hipsBone.add(frontFlap);
-
-            const backFlap = new THREE.Mesh(flapGeo, flapMat);
-            backFlap.position.set(0, -42, -12);
-            backFlap.rotation.x = -0.08;
-            hipsBone.add(backFlap);
-          }
-        } else if (characterId === 'char_co_gai_ao_ba_ba') {
-          const pinkTex = texLoader.load('assets/textures/char_pink_ba_ba.jpg');
-          model.traverse(c => {
-            if (c.isSkinnedMesh) {
-              if (c.name === 'Beta_Surface') {
-                c.material = new THREE.MeshStandardMaterial({
-                  map: pinkTex,
-                  color: 0xffb6c1,
-                  roughness: 0.50,
-                  metalness: 0.02
-                });
-              } else if (c.name === 'Beta_Joints') {
-                c.material = new THREE.MeshStandardMaterial({
-                  color: 0x1a1a1a,
-                  roughness: 0.60
-                });
-              }
-            }
-          });
-
-          const headBone = model.getObjectByName('mixamorigHead');
-          if (headBone) {
-            const nonLa = this._create3DNonLa();
-            nonLa.position.set(0, 16, -2);
-            nonLa.rotation.x = -0.15;
-            headBone.add(nonLa);
-
-            const khanRan = this._create3DKhanRan();
-            khanRan.position.set(0, 4, 1);
-            headBone.add(khanRan);
-          }
-        } else if (characterId === 'char_nam_tri_thuc_suit') {
-          const suitTex = texLoader.load('assets/textures/char_wool_charcoal_suit.jpg');
-          model.traverse(c => {
-            if (c.isSkinnedMesh) {
-              if (c.name === 'Beta_Surface') {
-                c.material = new THREE.MeshStandardMaterial({
-                  map: suitTex,
-                  color: 0x2b303a,
-                  roughness: 0.52,
-                  metalness: 0.15
-                });
-              } else if (c.name === 'Beta_Joints') {
-                c.material = new THREE.MeshStandardMaterial({
-                  color: 0x111111,
-                  roughness: 0.35,
-                  metalness: 0.25
-                });
-              }
-            }
-          });
-        } else {
-          // char_nam_ao_dai_gam
-          const brocadeTex = texLoader.load('assets/textures/char_silk_blue_brocade.jpg');
-          model.traverse(c => {
-            if (c.isSkinnedMesh) {
-              if (c.name === 'Beta_Surface') {
-                c.material = new THREE.MeshStandardMaterial({
-                  map: brocadeTex,
-                  color: 0x16213e,
-                  roughness: 0.35,
-                  metalness: 0.25
-                });
-              } else if (c.name === 'Beta_Joints') {
-                c.material = new THREE.MeshStandardMaterial({
-                  color: 0xd4af37,
-                  roughness: 0.30,
-                  metalness: 0.60
-                });
-              }
-            }
-          });
-
-          const headBone = model.getObjectByName('mixamorigHead');
-          if (headBone) {
-            const turban = this._create3DKhanXep();
-            turban.position.set(0, 14, 0);
-            headBone.add(turban);
-          }
-        }
-
-        // Tỷ lệ chuẩn sinh học: Xbot gốc là 1.76m
-        const scaleFactor = isFemale ? 0.98 : 1.02;
-        model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-        model.position.set(0, 0, 0);
-
-        // Cài đặt AnimationMixer & Actions
-        const mixer = new THREE.AnimationMixer(model);
-        const idleClip = xGltf.animations.find(a => a.name === 'idle');
-        const walkClip = xGltf.animations.find(a => a.name === 'walk');
-        const runClip = xGltf.animations.find(a => a.name === 'run');
-
-        const idleAction = mixer.clipAction(idleClip);
-        const walkAction = mixer.clipAction(walkClip);
-        const runAction = mixer.clipAction(runClip);
-
-        idleAction.play();
-
-        this._gltfMixer = mixer;
-        this._animActions = {
-          idle: idleAction,
-          walk: walkAction,
-          run: runAction
-        };
-        this._currentAnim = 'idle';
-
-        // Ẩn placeholder và gắn mô hình 3D SkinnedMesh thật vào Scene
-        placeholderMesh.visible = false;
-        this.characterGroup.add(model);
-        this.humanoidAnimator = null; // Chuyển giao hoàn toàn quyền điều khiển cho AnimationMixer 60 FPS
-
-        this._isGltfReady = true;
-        console.log(`[PlayerController] ĐÃ KÍCH HOẠT NHÂN VẬT 3D SKINNED MESH GTA V THẬT (${characterId}) & ANIMATION MIXER 60 FPS!`);
-      }
+      this._isGltfReady = true;
+      console.log(`[PlayerController] ĐÃ KÍCH HOẠT NHÂN VẬT DA THỊT NGƯỜI THẬT Á ĐÔNG 3D (${characterId}) & HUMANOID ANIMATOR 60 FPS!`);
     } catch (err) {
       console.warn('[PlayerController] Lỗi khởi tạo nhân vật 3D:', err);
     }
@@ -553,9 +375,9 @@ export class PlayerController {
   _handleJumpOrParkour() {
     if (!this.isGrounded || this.isParkouring) return;
 
-    // Kiểm tra gờ tường phía trước mặt
+    // Kiểm tra gờ tường phía trước mặt theo forward vector nhân vật (hướng +Z khi rotation.y = 0)
     const colliders = this.worldManager.getColliders();
-    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.characterGroup.rotation.y);
+    const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.characterGroup.rotation.y);
     const chestPos = this.characterGroup.position.clone().add(new THREE.Vector3(0, 1.1, 0));
 
     this.raycaster.set(chestPos, forward);
@@ -694,6 +516,8 @@ export class PlayerController {
           }
         }
       }
+    }
+
     // 2.1. CHỐNG ĐÂM XUYÊN LAN CAN CẦU KIM QUY (CẦU DẪN RA THÁP RÙA)
     if (this.worldManager.getKimQuyBridgeInfo && pos.x >= 16.0 && pos.x <= 72.0 && pos.z <= -16.0 && pos.z >= -72.0) {
       const bridgeInfo = this.worldManager.getKimQuyBridgeInfo(pos.x, pos.y, pos.z);
@@ -707,7 +531,6 @@ export class PlayerController {
           }
         }
       }
-    }
     }
 
     // 3. Đẩy ngược lại nếu vi phạm ranh giới mặt nước (bảo đảm 100% không chạm nước)
@@ -978,8 +801,9 @@ export class PlayerController {
       this.velocity.z += (desiredVelZ - this.velocity.z) * Math.min(1.0, accel * delta);
 
       // Smooth Turn Slerp: Xoay hướng mặt nhân vật mượt mà theo góc cua di chuyển
-      // SỬA LỖI ĐI NGƯỢC (MOONWALKING): targetAngle = Math.atan2(finalDir.x, finalDir.z) + Math.PI
-      const targetAngle = Math.atan2(finalDir.x, finalDir.z) + Math.PI;
+      // SỬA TRIỆT ĐỂ LỖI ĐI NGƯỢC (MOONWALKING): Sử dụng trực tiếp góc vector tự nhiên
+      // Loại bỏ hoàn toàn góc bù trừ dư thừa: Math.atan2(finalDir.x, finalDir.z) + Math.PI
+      const targetAngle = Math.atan2(finalDir.x, finalDir.z);
       this._targetQuat.setFromAxisAngle(this._worldUp, targetAngle);
       const turnRate = this.keys.sprint ? 13.0 : 11.0;
       this.characterGroup.quaternion.slerp(this._targetQuat, Math.min(1.0, turnRate * delta));

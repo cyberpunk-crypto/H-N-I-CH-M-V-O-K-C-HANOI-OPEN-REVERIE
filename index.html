@@ -56,15 +56,31 @@
       </div>
 
       <div class="hud-top-actions">
-        <button type="button" id="btnToggleCameraHud" class="btn-hud-tool" title="Chuyển góc nhìn máy ảnh">
+        <!-- Bộ chuyển nhanh 4 nhân vật Việt Nam độc bản -->
+        <div class="quick-character-bar" id="quickCharacterBar" title="Chuyển nhanh 4 nhân vật Việt Nam">
+          <button type="button" class="btn-quick-char active" data-char-id="char_nu_sinh_ao_dai" title="Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá">
+            <img src="assets/characters/avatar_char_nu_sinh_ao_dai.png" alt="Nữ Sinh Tràng An">
+          </button>
+          <button type="button" class="btn-quick-char" data-char-id="char_co_gai_ao_ba_ba" title="Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen Khăn Rằn">
+            <img src="assets/characters/avatar_char_co_gai_ao_ba_ba.png" alt="Cô Gái Phố Thị">
+          </button>
+          <button type="button" class="btn-quick-char" data-char-id="char_nam_tri_thuc_suit" title="Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm">
+            <img src="assets/characters/avatar_char_nam_tri_thuc_suit.png" alt="Nam Trí Thức Hà Nội">
+          </button>
+          <button type="button" class="btn-quick-char" data-char-id="char_nam_ao_dai_gam" title="Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia">
+            <img src="assets/characters/avatar_char_nam_ao_dai_gam.png" alt="Chàng Trai Thăng Long">
+          </button>
+        </div>
+
+        <button type="button" id="btnToggleCameraHud" class="btn-hud-tool" title="Chuyển góc nhìn máy ảnh (Phím C hoặc V)">
           <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
             <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
           </svg>
           <span>Máy Ảnh</span>
-          <span class="hotkey-chip">V</span>
+          <span class="hotkey-chip">C / V</span>
         </button>
 
-        <button type="button" id="btnOpenMapHud" class="btn-hud-tool" title="Mở bản đồ du lịch Hà Nội">
+        <button type="button" id="btnOpenMapHud" class="btn-hud-tool" title="Mở bản đồ du lịch Hà Nội (Phím Tab hoặc M)">
           <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
             <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
           </svg>
@@ -72,7 +88,7 @@
           <span class="hotkey-chip">Tab / M</span>
         </button>
 
-        <button type="button" id="btnOpenScrapbookHud" class="btn-hud-tool" title="Mở Cuốn Album Ký Ức">
+        <button type="button" id="btnOpenScrapbookHud" class="btn-hud-tool" title="Mở Cuốn Album Ký Ức (Phím B)">
           <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
             <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
           </svg>
@@ -80,7 +96,7 @@
           <span class="hotkey-chip">B</span>
         </button>
 
-        <button type="button" id="btnRecreateCharacterHud" class="btn-hud-tool" title="Đổi Nhân Vật 3D Khám Phá Hà Nội">
+        <button type="button" id="btnRecreateCharacterHud" class="btn-hud-tool" title="Đổi Nhân Vật 3D Khám Phá Hà Nội (Trước Gương Ký Ức)">
           <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
           </svg>
@@ -103,7 +119,7 @@
           <div class="keycap-group">
             <span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span>
           </div>
-          <span>Dạo phố</span>
+          <span>Di chuyển</span>
         </div>
         <div class="control-hint-item">
           <span class="keycap">Shift</span>
@@ -114,12 +130,18 @@
           <span>Nhảy</span>
         </div>
         <div class="control-hint-item">
-          <span class="keycap">V</span>
-          <span>Chuyển camera 35mm</span>
+          <div class="keycap-group">
+            <span class="keycap">C</span><span class="keycap">V</span>
+          </div>
+          <span>Đổi góc nhìn</span>
+        </div>
+        <div class="control-hint-item highlight-gold">
+          <span class="keycap">F</span>
+          <span>Chụp ảnh film</span>
         </div>
         <div class="control-hint-item">
           <span class="keycap">E</span>
-          <span>Tương tác / Mua hàng</span>
+          <span>Tương tác / Trà đá</span>
         </div>
         <div class="control-hint-item">
           <div class="keycap-group">

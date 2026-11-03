@@ -1,7 +1,7 @@
 /**
  * CharacterCreation.js - Màn hình tạo nhân vật & Chọn diện mạo người 3D trước gương phòng tập thể cũ
  * Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
- * Hỗ trợ 4 nhân vật 3D hoàn chỉnh theo thiết kế của Tổng Giám Đốc
+ * Hỗ trợ 4 nhân vật 3D Việt Nam độc bản hoàn chỉnh chuẩn mực văn hóa Thăng Long
  */
 
 import { GameEventBus } from '../bridge/GameEvents.js';
@@ -12,17 +12,23 @@ export const DEFAULT_CHARACTERS = [
     id: 'char_nu_sinh_ao_dai',
     name: 'Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá',
     shortName: 'Nữ Sinh Tràng An',
-    title: 'Nữ Sinh Tràng An',
+    title: 'Biểu Tượng Vẻ Đẹp Thuần Khiết Đất Thăng Long',
+    culturalTitle: 'Nữ Sinh Tràng An • Thuần Khiết Thăng Long',
     badge: 'Hồ Gươm & Tháp Rùa',
+    culturalHeritage: 'Đền Ngọc Sơn & Cầu Thê Húc "Ngưng Tụ Ánh Sáng Mặt Trời"',
+    outfitFeature: 'Áo dài lụa tơ tằm trắng ngà, quần lụa suông rộng, nón lá bài thơ nan tre vàng óng, hoa tai ngọc trai xà cừ',
     desc: 'Tà áo dài trắng học trò thướt tha trong gió sớm hồ Gươm, chiếc nón lá bài thơ che nghiêng e ấp, nét thanh lịch nghìn năm Thăng Long.',
     avatar: 'assets/characters/avatar_char_nu_sinh_ao_dai.png'
   },
   {
     id: 'char_co_gai_ao_ba_ba',
-    name: 'Cô Gái Phố Thị • Áo Bà Ba Hồng Sen Khăn Rằn',
+    name: 'Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen Khăn Rằn',
     shortName: 'Cô Gái Phố Thị',
-    title: 'Cô Gái Phố Thị',
+    title: 'Thiếu Nữ Phố Hàng Tảo Tần Đôn Hậu',
+    culturalTitle: 'Cô Gái Phố Thị • Tảo Tần Đôn Hậu',
     badge: '36 Phố Phường',
+    culturalHeritage: '36 Phố Phường Hà Nội & Cửa Ô Quan Chưởng Cổ Kính',
+    outfitFeature: 'Áo bà ba đũi tơ tằm hồng cánh sen xẻ tà hông, quần lụa đen bóng mờ, khăn rằn caro dệt thủ công, nón lá đeo sau lưng',
     desc: 'Chiếc áo bà ba màu hồng cánh sen dịu dàng, khăn rằn quàng cổ mộc mạc, nón lá đeo sau lưng, nụ cười rạng rỡ đón khách phương xa.',
     avatar: 'assets/characters/avatar_char_co_gai_ao_ba_ba.png'
   },
@@ -30,34 +36,40 @@ export const DEFAULT_CHARACTERS = [
     id: 'char_nam_tri_thuc_suit',
     name: 'Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm',
     shortName: 'Nam Trí Thức Hà Nội',
-    title: 'Nam Trí Thức Hà Nội',
+    title: 'KTS Trí Thức Hà Thành Hào Hoa Lịch Lãm',
+    culturalTitle: 'Nam Trí Thức Hà Nội • Hào Hoa Lịch Lãm',
     badge: 'Cầu Long Biên',
-    desc: 'Bộ âu phục suit xám than/navy lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
+    culturalHeritage: 'Cầu Long Biên Thép Eiffel (1898 - 1902) & Ký Ức Sông Hồng',
+    outfitFeature: 'Âu phục Suit xám than dạ tweed cao cấp, ve áo Notch Lapel 3D, cà vạt đỏ mận vintage, quần âu có nếp ly, giày da Oxford',
+    desc: 'Bộ âu phục suit xám than lịch lãm chỉn chu, cà vạt thanh lịch, giày da bóng lộn, phong thái trí thức hiện đại giao thoa ký ức hào hoa.',
     avatar: 'assets/characters/avatar_char_nam_tri_thuc_suit.png'
   },
   {
     id: 'char_nam_ao_dai_gam',
     name: 'Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia',
     shortName: 'Chàng Trai Thăng Long',
-    title: 'Chàng Trai Thăng Long',
+    title: 'Quý Ông Tràng An Nho Nhã Di Sản',
+    culturalTitle: 'Chàng Trai Thăng Long • Di Sản Kinh Kỳ',
     badge: 'Di Sản Tràng An',
+    culturalHeritage: 'Tháp Rùa Cổ Kính (1886) & Khí Phách Văn Hiến Thăng Long',
+    outfitFeature: 'Áo dài ngũ thân gấm dệt hoa văn hoàng gia xanh lam, 5 khuy ngọc bích xanh ngọc, quần âu trắng mực thước, khăn xếp 5 tầng nếp',
     desc: 'Áo dài ngũ thân cách tân gấm dệt hoa văn cổ ngũ thân xanh lam hoàng gia, quần âu trắng mực thước, cốt cách quý ông Tràng An lịch thiệp uyên bác.',
     avatar: 'assets/characters/avatar_char_nam_ao_dai_gam.png'
   }
 ];
 
-// Hợp nhất dữ liệu phong phú từ CharacterFactory nếu có
+// Hợp nhất dữ liệu văn hóa phong phú
 export const CHARACTERS = DEFAULT_CHARACTERS.map(c => {
-  const meta = (CHARACTERS_META || []).find(m => m.id === c.id);
+  const meta = (CHARACTERS_META || []).find(m => m.id === c.id || (m.legacyIds && m.legacyIds.includes(c.id)));
   return meta ? { ...meta, ...c } : c;
 });
 
 export const OUTFITS = CHARACTERS; // Giữ tương thích ngược
 
 export const CAMERAS = [
-  { id: 'leica_m3', name: 'Leica M3 Rangefinder (1954)', focal: '50mm f/2' },
-  { id: 'canonet_ql17', name: 'Canonet QL17 GIII', focal: '40mm f/1.7' },
-  { id: 'zenit_e', name: 'Zenit-E Liên Xô Cơ Khí', focal: '58mm f/2 Helios' }
+  { id: 'leica_m3', name: 'Leica M3 Rangefinder (1954)', focal: '50mm f/2 Summicron' },
+  { id: 'canonet_ql17', name: 'Canonet QL17 GIII (1972)', focal: '40mm f/1.7' },
+  { id: 'zenit_e', name: 'Zenit-E Liên Xô Cơ Khí (1965)', focal: '58mm f/2 Helios 44-2' }
 ];
 
 export class CharacterCreation {
@@ -108,20 +120,28 @@ export class CharacterCreation {
       <header class="brand-header">
         <div class="brand-badge">${this.isRecreate ? 'ĐỔI DIỆN MẠO 3D &bull; KHÁM PHÁ HÀ NỘI' : 'CĂN PHÒNG TẬP THỂ CŨ &bull; CHIỀU HOÀNG HÔN'}</div>
         <h1 class="brand-title">TRƯỚC <span>GƯƠNG KÝ ỨC</span></h1>
-        <p class="brand-subtitle">${this.isRecreate ? 'Chọn giữa 4 nhân vật 3D Hà Nội và điều chỉnh thiết bị đồng hành' : 'Chọn nhân vật 3D đại diện, trang phục và chuẩn bị chiếc máy ảnh film dạo phố'}</p>
+        <p class="brand-subtitle">${this.isRecreate ? 'Chọn 1 trong 4 nhân vật Việt Nam độc bản và chuyển đổi tức thì trong thế giới 3D' : 'Chọn nhân vật Việt Nam đại diện, trang phục đặc trưng và chuẩn bị máy ảnh film dạo phố'}</p>
       </header>
 
       <div class="creator-layout">
         <!-- Khung gương soi cổ kính -->
         <div class="vintage-mirror-frame">
           <div class="mirror-overlay-dust"></div>
-          <div class="mirror-status-badge">MÔ HÌNH 3D CHUẨN &bull; <span id="mirrorBadgeText">${selectedChar.badge || 'HÀ NỘI'}</span></div>
+          <div class="mirror-status-badge">MÔ HÌNH 3D VIỆT NAM &bull; <span id="mirrorBadgeText">${selectedChar.badge || 'HÀ NỘI'}</span></div>
           <div class="mirror-reflection">
             <div class="avatar-silhouette">
               <img id="mirrorCharacterPreview" class="mirror-avatar-img" src="${selectedChar.avatar}" alt="${selectedChar.name}">
             </div>
             <p id="mirrorOutfitCaption" class="mirror-caption">${selectedChar.name}</p>
-            <p id="mirrorOutfitDesc" class="mirror-subdesc">${selectedChar.desc}</p>
+            <p id="mirrorCulturalTitle" class="mirror-cultural-title">${selectedChar.title || selectedChar.culturalTitle}</p>
+            <div class="mirror-costume-box">
+              <span class="costume-label">Trang phục đặc trưng:</span>
+              <p id="mirrorOutfitFeature" class="costume-detail">${selectedChar.outfitFeature}</p>
+            </div>
+            <div class="mirror-heritage-box">
+              <span class="heritage-label">Di sản văn hóa:</span>
+              <p id="mirrorHeritageDesc" class="heritage-detail">${selectedChar.culturalHeritage || selectedChar.desc}</p>
+            </div>
           </div>
         </div>
 
@@ -148,9 +168,9 @@ export class CharacterCreation {
             <div id="nameSuggestions" class="name-suggestions" style="display: none;"></div>
           </div>
 
-          <!-- Bộ chọn 4 nhân vật 3D hoài niệm -->
+          <!-- Bộ chọn 4 nhân vật 3D Việt Nam độc bản -->
           <div class="outfit-selector-section">
-            <div class="outfit-selector-title">Danh sách 4 nhân vật người 3D khám phá Hà Nội</div>
+            <div class="outfit-selector-title">4 Nhân Vật Việt Nam Độc Bản • Chọn Diện Mạo</div>
             <div class="outfit-grid">
               ${CHARACTERS.map(char => {
                 const isActive = (char.id === this.selectedCharacterId);
@@ -169,7 +189,8 @@ export class CharacterCreation {
                         <span class="outfit-badge">${char.badge || 'Hà Nội 3D'}</span>
                       </div>
                       <span class="outfit-name">${char.name}</span>
-                      <span class="outfit-desc">${char.desc}</span>
+                      <span class="outfit-title-tag">${char.shortName}</span>
+                      <span class="outfit-costume-hint">${char.outfitFeature}</span>
                     </div>
                     <div class="outfit-check-icon">
                       <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -182,7 +203,7 @@ export class CharacterCreation {
 
           <!-- Chọn máy ảnh film -->
           <div class="form-group-retro">
-            <label for="cameraSelect">Máy ảnh film 35mm mang theo</label>
+            <label for="cameraSelect">Máy ảnh film 35mm mang theo dạo phố</label>
             <select id="cameraSelect" class="retro-select">
               ${CAMERAS.map(cam => `
                 <option value="${cam.id}" ${cam.id === this.selectedCameraId ? 'selected' : ''}>
@@ -327,7 +348,7 @@ export class CharacterCreation {
       card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
     });
 
-    const charObj = CHARACTERS.find(o => o.id === charId);
+    const charObj = CHARACTERS.find(o => o.id === charId) || CHARACTERS[0];
     if (charObj) {
       const previewImg = this.element.querySelector('#mirrorCharacterPreview');
       if (previewImg) {
@@ -337,10 +358,23 @@ export class CharacterCreation {
       }
       const caption = this.element.querySelector('#mirrorOutfitCaption');
       if (caption) caption.textContent = charObj.name;
-      const desc = this.element.querySelector('#mirrorOutfitDesc');
-      if (desc) desc.textContent = charObj.desc;
+
+      const culturalTitle = this.element.querySelector('#mirrorCulturalTitle');
+      if (culturalTitle) culturalTitle.textContent = charObj.title || charObj.culturalTitle;
+
+      const outfitFeature = this.element.querySelector('#mirrorOutfitFeature');
+      if (outfitFeature) outfitFeature.textContent = charObj.outfitFeature || charObj.desc;
+
+      const heritageDesc = this.element.querySelector('#mirrorHeritageDesc');
+      if (heritageDesc) heritageDesc.textContent = charObj.culturalHeritage || charObj.desc;
+
       const badge = this.element.querySelector('#mirrorBadgeText');
       if (badge) badge.textContent = charObj.badge || 'HÀ NỘI';
+
+      // Nếu đang trong chế độ Recreate (mở trong game), phát luôn tín hiệu xem trước nếu muốn
+      if (this.isRecreate) {
+        GameEventBus.emit('CORE:SWITCH_CHARACTER', { characterId: charId });
+      }
     }
   }
 
@@ -457,7 +491,7 @@ export class CharacterCreation {
     if (!this.isNameValid) return;
 
     const charObj = CHARACTERS.find(c => c.id === this.selectedCharacterId) || CHARACTERS[0];
-    const characterTitle = charObj ? (charObj.title || charObj.shortName) : 'Lãng Tử';
+    const characterTitle = charObj ? (charObj.culturalTitle || charObj.title || charObj.shortName) : 'Lãng Tử';
 
     const profile = {
       username: this.currentName,
@@ -473,7 +507,12 @@ export class CharacterCreation {
       window.GameAPI.saveUserProfile(profile);
     }
 
-    // Bắn sự kiện chốt nhân vật sang Core Engine
+    // Bắn sự kiện chuyển đổi nhân vật tức thời sang Core Engine
+    GameEventBus.emit('CORE:SWITCH_CHARACTER', {
+      characterId: this.selectedCharacterId
+    });
+
+    // Bắn sự kiện chốt nhân vật sang Core Engine & UI
     GameEventBus.emit('UI:CHARACTER_CONFIRMED', {
       characterName: this.currentName,
       characterId: this.selectedCharacterId,

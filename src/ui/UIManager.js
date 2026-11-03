@@ -24,6 +24,7 @@ export class UIManager {
     this.audioController = null;
     this.dialogue = null;
     this.chatbox = null;
+    this.currentCharacterId = 'char_nu_sinh_ao_dai';
 
     this.init();
   }
@@ -68,6 +69,8 @@ export class UIManager {
     });
 
     this.bindHudTopBarEvents();
+    this.bindQuickCharacterSwitcher();
+    this.bindGlobalKeyboardShortcuts();
     this.bindCoreHudEvents();
   }
 
@@ -113,6 +116,103 @@ export class UIManager {
     }
   }
 
+  bindQuickCharacterSwitcher() {
+    const quickBar = document.getElementById('quickCharacterBar');
+    if (!quickBar) return;
+
+    const buttons = quickBar.querySelectorAll('.btn-quick-char');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const charId = btn.dataset.charId;
+        if (!charId) return;
+
+        this.switchCharacterQuickly(charId);
+      });
+    });
+  }
+
+  switchCharacterQuickly(charId) {
+    const charObj = CHARACTERS.find(c => c.id === charId) || CHARACTERS[0];
+    this.currentCharacterId = charId;
+
+    // Cập nhật LocalStorage profile
+    let currentUsername = 'Kẻ Mộng Mơ';
+    try {
+      const profile = JSON.parse(localStorage.getItem('hanoi_user_profile') || '{}');
+      if (profile.username) currentUsername = profile.username;
+      profile.characterId = charId;
+      profile.outfit = charId;
+      profile.characterTitle = charObj.culturalTitle || charObj.title;
+      localStorage.setItem('hanoi_user_profile', JSON.stringify(profile));
+    } catch (e) {}
+
+    // Bắn sự kiện chuyển đổi nhân vật tức thời sang Core Engine
+    GameEventBus.emit('CORE:SWITCH_CHARACTER', { characterId: charId });
+
+    // Bắn sự kiện cập nhật hồ sơ UI
+    GameEventBus.emit('UI:CHARACTER_CONFIRMED', {
+      characterName: currentUsername,
+      characterId: charId,
+      characterTitle: charObj.culturalTitle || charObj.title,
+      outfitId: charId,
+      cameraModel: 'leica_m3'
+    });
+
+    this.updateQuickSwitcherActiveState(charId);
+
+    // Thông báo Toast hoài niệm
+    if (this.toast) {
+      this.toast.show({
+        title: 'Diện Mạo Hà Nội',
+        message: `Đã chuyển sang: ${charObj.name}`,
+        type: 'info',
+        duration: 3000
+      });
+    }
+  }
+
+  updateQuickSwitcherActiveState(charId) {
+    this.currentCharacterId = charId;
+    const quickBar = document.getElementById('quickCharacterBar');
+    if (!quickBar) return;
+
+    const buttons = quickBar.querySelectorAll('.btn-quick-char');
+    buttons.forEach(btn => {
+      const match = (btn.dataset.charId === charId);
+      btn.classList.toggle('active', match);
+    });
+  }
+
+  bindGlobalKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const key = e.key.toLowerCase();
+
+      // Phím Tab hoặc M mở Bản đồ
+      if (key === 'm' || (key === 'tab' && !e.shiftKey)) {
+        e.preventDefault();
+        if (this.minimap) {
+          if (typeof this.minimap.toggleMapModal === 'function') {
+            this.minimap.toggleMapModal();
+          } else {
+            this.minimap.openMapModal();
+          }
+        }
+      }
+      // Phím B mở Album Ký Ức Thăng Long
+      else if (key === 'b') {
+        if (this.scrapbook) {
+          if (typeof this.scrapbook.toggleAlbum === 'function') {
+            this.scrapbook.toggleAlbum();
+          } else {
+            this.scrapbook.openAlbum();
+          }
+        }
+      }
+    });
+  }
+
   bindCoreHudEvents() {
     const zoneNameEl = document.getElementById('hudCurrentZoneName');
     const playerNameEl = document.getElementById('hudCurrentPlayerName');
@@ -121,7 +221,7 @@ export class UIManager {
 
     const updatePlayerNameDisplay = (username, charId, charTitle) => {
       const charObj = CHARACTERS.find(c => c.id === charId || (c.legacyIds && c.legacyIds.includes(charId))) || CHARACTERS[0];
-      const title = charTitle || (charObj ? (charObj.title || charObj.shortName) : 'Lãng Tử');
+      const title = charTitle || (charObj ? (charObj.culturalTitle || charObj.title || charObj.shortName) : 'Lãng Tử');
       const name = username || 'Kẻ Mộng Mơ';
 
       if (playerNameEl) {
@@ -132,12 +232,21 @@ export class UIManager {
       if (avatarBadgeEl && charObj && charObj.avatar) {
         avatarBadgeEl.innerHTML = `<img src="${charObj.avatar}" alt="${title}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" />`;
       }
+
+      this.updateQuickSwitcherActiveState(charId);
     };
 
     // Cập nhật tên và danh xưng người chơi khi xác nhận nhân vật
     GameEventBus.on('UI:CHARACTER_CONFIRMED', (payload) => {
       if (payload) {
         updatePlayerNameDisplay(payload.characterName, payload.characterId, payload.characterTitle);
+      }
+    });
+
+    // Lắng nghe sự kiện chuyển đổi nhân vật
+    GameEventBus.on('CORE:SWITCH_CHARACTER', (payload) => {
+      if (payload && payload.characterId) {
+        this.updateQuickSwitcherActiveState(payload.characterId);
       }
     });
 

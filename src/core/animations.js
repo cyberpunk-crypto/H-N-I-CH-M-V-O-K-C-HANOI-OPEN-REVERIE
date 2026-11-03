@@ -34,8 +34,9 @@ export function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
-/** Smoothstep mượt mà từ Hermite interpolation */
+/** Smoothstep mượt mà từ Hermite interpolation (có chốt chống chia cho 0) */
 export function smoothstep(edge0, edge1, x) {
+  if (edge1 <= edge0) return x >= edge1 ? 1.0 : 0.0;
   const t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
   return t * t * (3.0 - 2.0 * t);
 }
@@ -104,7 +105,8 @@ export class HumanoidAnimator {
     this.walkPhase = 0.0;
     this.runPhase = 0.0;
 
-    // Trọng số hòa trộn trạng thái (Cross-Fade Weights)
+    // Trọng số hòa trộn trạng thái (Cross-Fade Weights & 0.22s Crossfade Blending)
+    this.crossfadeDuration = 0.22; // Thời gian chuyển trạng thái 0.22s chuẩn AAA
     this.currentWeight = { idle: 1.0, walk: 0.0, run: 0.0, jump: 0.0 };
     this.targetWeight = { idle: 1.0, walk: 0.0, run: 0.0, jump: 0.0 };
 
@@ -117,6 +119,16 @@ export class HumanoidAnimator {
     this.lookAroundTimer = 2.5 + Math.random() * 3.0;
     this.currentHeadYaw = 0.0;
     this.targetHeadYaw = 0.0;
+
+    // Nhịp chớp mắt sinh học người thật (Organic Blinking Dynamics)
+    this.blinkTimer = 2.8 + Math.random() * 2.8;
+    this.blinkDuration = 0.16; // Chớp mắt trong 0.16s
+    this.blinkProgress = 0.0;
+    this.isBlinking = false;
+    this.blinkValue = 0.0; // 0.0 = mở mắt, 1.0 = nhắm mắt
+
+    // Thích ứng độ dốc địa hình
+    this.groundSlopeAngle = 0.0;
 
     // Cử chỉ tương tác (Gestures: wave, bow, takePhoto, shrug)
     this.activeGesture = null;
@@ -162,6 +174,28 @@ export class HumanoidAnimator {
 
     const r = charGroup.rig || {};
 
+    // Tìm kiếm hai dải khăn rằn 3D nếu có (Áo bà ba & trang phục truyền thống)
+    let scarfDropL = r.scarfDropL || null;
+    let scarfDropR = r.scarfDropR || null;
+    if (!scarfDropL || !scarfDropR) {
+      charGroup.traverse((c) => {
+        if (c.name === 'Joint_ScarfDropL' || c.name === 'ScarfDropL') scarfDropL = c;
+        else if (c.name === 'Joint_ScarfDropR' || c.name === 'ScarfDropR') scarfDropR = c;
+        else if (c.isMesh && c.geometry && c.geometry.type === 'BoxGeometry') {
+          // Mesh dải khăn rằn trong chestGroup: y < 0, z > 0.06
+          if (c.position.y < -0.02 && c.position.z > 0.06) {
+            if (c.position.x < -0.02 && !scarfDropL) {
+              c.name = 'Joint_ScarfDropL';
+              scarfDropL = c;
+            } else if (c.position.x > 0.02 && !scarfDropR) {
+              c.name = 'Joint_ScarfDropR';
+              scarfDropR = c;
+            }
+          }
+        }
+      });
+    }
+
     this.rig = {
       // Trọng tâm & cột sống
       pelvisGroup: r.pelvisGroup || charGroup.pelvisGroup || charGroup.torsoGroup || charGroup,
@@ -184,10 +218,12 @@ export class HumanoidAnimator {
       leftFootGroup: r.leftFootGroup || charGroup.leftFootGroup,
       rightFootGroup: r.rightFootGroup || charGroup.rightFootGroup,
 
-      // Tà áo dài 3D & Nón lá 3D
+      // Tà áo dài 3D & Nón lá 3D & Khăn rằn 3D
       frontFlapGroup: r.frontFlapGroup || charGroup.frontFlapGroup,
       backFlapGroup: r.backFlapGroup || charGroup.backFlapGroup,
       accessoryHeadGroup: r.accessoryHeadGroup || charGroup.accessoryHeadGroup || charGroup.nonLaGroup,
+      scarfDropL: scarfDropL,
+      scarfDropR: scarfDropR,
 
       // 2.5D Planes fallback (nếu có tấm thân 2.5D)
       frontPlane: charGroup.frontPlane,
@@ -205,7 +241,11 @@ export class HumanoidAnimator {
     this.restPositions = {
       pelvisY: (this.rig.pelvisGroup && this.rig.pelvisGroup.position) ? this.rig.pelvisGroup.position.y : this.baseTorsoY,
       leftShoulderY: (this.rig.leftShoulderGroup && this.rig.leftShoulderGroup.position) ? this.rig.leftShoulderGroup.position.y : 0.05,
-      rightShoulderY: (this.rig.rightShoulderGroup && this.rig.rightShoulderGroup.position) ? this.rig.rightShoulderGroup.position.y : 0.05
+      rightShoulderY: (this.rig.rightShoulderGroup && this.rig.rightShoulderGroup.position) ? this.rig.rightShoulderGroup.position.y : 0.05,
+      scarfRotZL: (this.rig.scarfDropL && this.rig.scarfDropL.rotation) ? this.rig.scarfDropL.rotation.z : -0.12,
+      scarfRotZR: (this.rig.scarfDropR && this.rig.scarfDropR.rotation) ? this.rig.scarfDropR.rotation.z : 0.12,
+      scarfRotXL: (this.rig.scarfDropL && this.rig.scarfDropL.rotation) ? this.rig.scarfDropL.rotation.x : 0.0,
+      scarfRotXR: (this.rig.scarfDropR && this.rig.scarfDropR.rotation) ? this.rig.scarfDropR.rotation.x : 0.0
     };
   }
 
@@ -236,11 +276,13 @@ export class HumanoidAnimator {
    * @param {number} delta - Delta time tính bằng giây (seconds)
    * @param {number} speed - Vận tốc di chuyển hiện tại (0 = idle, 5.2 = walk, 9.2 = run)
    * @param {boolean} isGrounded - Đang tiếp đất hay ở trên không
+   * @param {number} groundSlopeAngle - Góc dốc bề mặt địa hình (radians) để thích ứng
    */
-  update(delta, speed = 0, isGrounded = true) {
+  update(delta, speed = 0, isGrounded = true, groundSlopeAngle = 0) {
     // 1. Bảo vệ chống gián đoạn thời gian khi nhảy frame (Tab backgrounding / Lag spikes)
     const dt = clamp(delta, 0.001, 0.08);
     this.animTime += dt;
+    this.groundSlopeAngle = groundSlopeAngle;
 
     // 2. PHÁT HIỆN SỰ KIỆN TIẾP ĐẤT (LANDING SQUASH & STRETCH CUSHION)
     if (!this.wasGrounded && isGrounded) {
@@ -266,7 +308,7 @@ export class HumanoidAnimator {
         this.targetWeight.idle = 1.0;
         this.targetWeight.walk = 0.0;
         this.targetWeight.run = 0.0;
-      } else if (speed <= 5.2) {
+      } else if (speed <= 4.2) {
         // Đi bộ mượt mà (Walk Locomotion)
         const walkFactor = smoothstep(0.08, 1.2, speed);
         this.targetWeight.idle = 1.0 - walkFactor;
@@ -274,14 +316,14 @@ export class HumanoidAnimator {
         this.targetWeight.run = 0.0;
       } else {
         // Chạy nước rút (GTA V Sprint Locomotion)
-        const runFactor = smoothstep(5.2, 8.5, speed);
+        const runFactor = smoothstep(4.2, 6.8, speed);
         this.targetWeight.idle = 0.0;
         this.targetWeight.walk = 1.0 - runFactor;
         this.targetWeight.run = runFactor;
       }
     }
 
-    // 4. NỘI SUY DAMPING CHO CÁC TRỌNG SỐ (CROSS-FADE MƯỢT MÀ KHÔNG GIẬT KHỰNG)
+    // 4. NỘI SUY DAMPING CHO CÁC TRỌNG SỐ (CROSS-FADE 0.22s MƯỢT MÀ KHÔNG GIẬT KHỰNG)
     const blendRate = 10.0; // Tốc độ hòa trộn 10.0/s phản hồi tức thì mà êm ái
     this.currentWeight.idle = damp(this.currentWeight.idle, this.targetWeight.idle, blendRate, dt);
     this.currentWeight.walk = damp(this.currentWeight.walk, this.targetWeight.walk, blendRate, dt);
@@ -312,8 +354,9 @@ export class HumanoidAnimator {
     // 6. TÍNH TOÁN CỬ CHỈ TƯƠNG TÁC (GESTURE OVERLAY)
     this._updateGesture(dt);
 
-    // 7. TÍNH TOÁN LOOK-AROUND TỰ NHIÊN CHO ĐẦU & CỔ
+    // 7. TÍNH TOÁN LOOK-AROUND TỰ NHIÊN & CHỚP MẮT SINH HỌC
     this._updateLookAround(dt, wIdle);
+    this._updateBlinking(dt);
 
     // 8. TÍNH TOÁN CÁC THÔNG SỐ HOẠT HỌA THEO CHUẨN GTA V BIO-MECHANICS
     const time = this.animTime;
@@ -341,9 +384,14 @@ export class HumanoidAnimator {
     const idleNonLaRotZ = Math.sin(time * 1.8) * 0.035;
     const idleNonLaRotX = Math.sin(time * 1.3) * 0.022;
 
+    // Khăn rằn 3D đung đưa nhẹ nhàng trước ngực theo nhịp thở và gió hồ
+    const idleScarfRotX = breathSin * 0.035 + Math.sin(time * 2.4) * 0.022;
+    const idleScarfRotZL = this.restPositions.scarfRotZL + Math.sin(time * 1.6) * 0.018;
+    const idleScarfRotZR = this.restPositions.scarfRotZR - Math.sin(time * 1.6) * 0.018;
+
     const idlePelvisY = this.baseTorsoY + breathSin * 0.008;
 
-    // --- B. CHU KỲ ĐI BỘ (WALK CYCLE - GTA V LOCOMOTION) ---
+    // --- B. CHU KỲ ĐI BỘ (WALK CYCLE - GTA V LOCOMOTION ĐỒNG BỘ TIẾN) ---
     // Sải chân rộng, nhịp nhàng đối xứng sinh học
     const walkLeftHip = Math.sin(wp) * 0.52;
     const walkRightHip = Math.sin(wp + Math.PI) * 0.52;
@@ -372,9 +420,16 @@ export class HumanoidAnimator {
     const walkTorsoRotY = -Math.sin(wp) * 0.045; // Cột sống xoay đối xứng đối trọng
     const walkTorsoRotX = 0.045; // Hơi dấn nhẹ về phía trước
 
-    // Tà áo dài 3D vẫy về sau theo luồng gió bước đi
-    const walkFrontFlap = (Math.sin(wp * 2.0) * 0.07 - 0.14) * clothScale;
-    const walkBackFlap = (-Math.sin(wp * 2.0 + 0.4) * 0.12 - 0.24) * clothScale;
+    // Tà áo lụa 3D tách nhau ra tự nhiên khi bước đi và vẫy về sau theo luồng gió
+    const walkFrontFlap = (Math.sin(wp * 2.0) * 0.08 - 0.14) * clothScale;
+    const walkBackFlap = (-Math.sin(wp * 2.0 + 0.45) * 0.14 - 0.26) * clothScale;
+    const walkFrontFlapRollZ = Math.sin(wp) * 0.045 * clothScale;
+    const walkBackFlapRollZ = -Math.sin(wp) * 0.055 * clothScale;
+
+    // Khăn rằn đung đưa nhịp nhàng trước ngực theo bước chân
+    const walkScarfRotX = Math.sin(wp * 2.0) * 0.045 - 0.040;
+    const walkScarfRotZL = this.restPositions.scarfRotZL + Math.sin(wp) * 0.035;
+    const walkScarfRotZR = this.restPositions.scarfRotZR + Math.sin(wp) * 0.035;
 
     // --- C. CHU KỲ CHẠY NHANH (RUN CYCLE - GTA V SPRINT) ---
     // Sải chân dài dứt khoát (-0.88 đến +0.88 rad)
@@ -397,8 +452,8 @@ export class HumanoidAnimator {
     const runLeftShoulderX = Math.sin(rp + Math.PI) * 0.75 * armScale;
     const runRightShoulderX = Math.sin(rp) * 0.75 * armScale;
 
-    // Nghiêng thân mình về phía trước 15° (15 * PI / 180 ≈ 0.2618 rad)
-    const runTorsoRotX = 0.2618;
+    // Nghiêng thân dấn bước chuẩn Sprint Lean 11.0° (0.1920 rad, trong khoảng 8 - 12 độ)
+    const runTorsoRotX = 0.192;
     const runTorsoRotY = -Math.sin(rp) * 0.10;
     const runPelvisRotZ = Math.sin(rp) * 0.06;
 
@@ -406,11 +461,18 @@ export class HumanoidAnimator {
     const runPelvisY = this.baseTorsoY + Math.abs(Math.sin(rp)) * 0.075 - 0.038;
 
     // Tà áo dài bay mạnh mẽ về phía sau do luồng gió cản tốc độ cao
-    const runFrontFlap = (-0.30 + Math.sin(rp * 2.0) * 0.10) * clothScale;
-    const runBackFlap = (-0.52 - Math.sin(rp * 2.0) * 0.16) * clothScale;
+    const runFrontFlap = (-0.32 + Math.sin(rp * 2.0) * 0.10) * clothScale;
+    const runBackFlap = (-0.56 - Math.sin(rp * 2.0) * 0.18) * clothScale;
+    const runFrontFlapRollZ = Math.sin(rp) * 0.060 * clothScale;
+    const runBackFlapRollZ = -Math.sin(rp) * 0.075 * clothScale;
+
+    // Khăn rằn bay ép theo thân khi chạy nước rút
+    const runScarfRotX = -0.14 + Math.sin(rp * 2.0) * 0.060;
+    const runScarfRotZL = this.restPositions.scarfRotZL + Math.sin(rp) * 0.045;
+    const runScarfRotZR = this.restPositions.scarfRotZR + Math.sin(rp) * 0.045;
 
     // --- D. CHU KỲ TRÊN KHÔNG / NHẢY (JUMP / AIRBORNE) ---
-    const jumpPelvisY = this.baseTorsoY + 0.06;
+    const jumpPelvisY = this.baseTorsoY + 0.075;
     const jumpLeftHip = -0.22;
     const jumpRightHip = -0.22;
     const jumpLeftKnee = 0.42;
@@ -423,15 +485,20 @@ export class HumanoidAnimator {
     const jumpRightElbow = 0.35;
     const jumpFrontFlap = 0.22 * clothScale;
     const jumpBackFlap = 0.28 * clothScale;
+    const jumpScarfRotX = 0.18;
+    const jumpScarfRotZL = this.restPositions.scarfRotZL - 0.08;
+    const jumpScarfRotZR = this.restPositions.scarfRotZR + 0.08;
 
-    // --- E. SQUASH & STRETCH CUSHION KHI TIẾP ĐẤT ---
+    // --- E. SQUASH & STRETCH CUSHION KHI TIẾP ĐẤT (HẤP THỤ PHẢN LỰC MẶT ĐẤT) ---
     let landingCushionY = 0.0;
     let landingSquashScale = 1.0;
+    let landingKneeCushion = 0.0;
     if (this.landingTimer > 0) {
       const landProg = this.landingTimer / this.landingDuration; // 1.0 -> 0.0
       const landCurve = Math.sin(landProg * Math.PI); // Đỉnh nén ở giữa
       landingCushionY = -landCurve * 0.055;
       landingSquashScale = 1.0 - landCurve * 0.08; // Nén trục Y
+      landingKneeCushion = landCurve * 0.18; // Nhún gối đàn hồi êm ái hấp thụ phản lực
     }
 
     // 9. HÒA TRỘN TỔNG HỢP CÁC KHỚP (FINAL TRANSFORMATION BLENDING)
@@ -453,9 +520,9 @@ export class HumanoidAnimator {
       }
     }
 
-    // 2. Torso (Thân mình & độ nghiêng cột sống)
+    // 2. Torso (Thân mình & độ nghiêng dấn bước + thích ứng độ dốc)
     if (r.torsoGroup) {
-      r.torsoGroup.rotation.x = walkTorsoRotX * wWalk + runTorsoRotX * wRun;
+      r.torsoGroup.rotation.x = walkTorsoRotX * wWalk + runTorsoRotX * wRun + this.groundSlopeAngle * 0.45;
       r.torsoGroup.rotation.y = walkTorsoRotY * wWalk + runTorsoRotY * wRun;
       r.torsoGroup.rotation.z = -idleWeightShift * 0.4 * wIdle;
     }
@@ -501,40 +568,53 @@ export class HumanoidAnimator {
       r.rightElbowGroup.rotation.x = 0.14 * wIdle + walkRightElbow * wWalk + runRightElbow * wRun + jumpRightElbow * wJump;
     }
 
-    // 6. Chi Dưới (Háng, Đầu Gối, Cổ Chân)
+    // 6. Chi Dưới (Háng, Đầu Gối, Cổ Chân - Nhún gối tiếp đất đàn hồi)
     if (r.leftHipGroup) {
-      r.leftHipGroup.rotation.x = walkLeftHip * wWalk + runLeftHip * wRun + jumpLeftHip * wJump;
+      r.leftHipGroup.rotation.x = walkLeftHip * wWalk + runLeftHip * wRun + jumpLeftHip * wJump - landingKneeCushion * 0.35;
       r.leftHipGroup.rotation.z = idleWeightShift * 0.25 * wIdle;
     }
 
     if (r.rightHipGroup) {
-      r.rightHipGroup.rotation.x = walkRightHip * wWalk + runRightHip * wRun + jumpRightHip * wJump;
+      r.rightHipGroup.rotation.x = walkRightHip * wWalk + runRightHip * wRun + jumpRightHip * wJump - landingKneeCushion * 0.35;
       r.rightHipGroup.rotation.z = idleWeightShift * 0.25 * wIdle;
     }
 
     if (r.leftKneeGroup) {
-      r.leftKneeGroup.rotation.x = 0.02 * wIdle + walkLeftKnee * wWalk + runLeftKnee * wRun + jumpLeftKnee * wJump;
+      r.leftKneeGroup.rotation.x = 0.02 * wIdle + walkLeftKnee * wWalk + runLeftKnee * wRun + jumpLeftKnee * wJump + landingKneeCushion;
     }
 
     if (r.rightKneeGroup) {
-      r.rightKneeGroup.rotation.x = 0.02 * wIdle + walkRightKnee * wWalk + runRightKnee * wRun + jumpRightKnee * wJump;
+      r.rightKneeGroup.rotation.x = 0.02 * wIdle + walkRightKnee * wWalk + runRightKnee * wRun + jumpRightKnee * wJump + landingKneeCushion;
     }
 
     if (r.leftFootGroup) {
-      r.leftFootGroup.rotation.x = walkLeftFoot * wWalk + runLeftFoot * wRun + jumpLeftFoot * wJump;
+      r.leftFootGroup.rotation.x = walkLeftFoot * wWalk + runLeftFoot * wRun + jumpLeftFoot * wJump + this.groundSlopeAngle * 0.8;
     }
 
     if (r.rightFootGroup) {
-      r.rightFootGroup.rotation.x = walkRightFoot * wWalk + runRightFoot * wRun + jumpRightFoot * wJump;
+      r.rightFootGroup.rotation.x = walkRightFoot * wWalk + runRightFoot * wRun + jumpRightFoot * wJump + this.groundSlopeAngle * 0.8;
     }
 
-    // 7. Tà Áo Dài 3D & Nón Lá 3D (Flowing Cloth & Accessories)
+    // 7. Tà Áo Dài 3D & Nón Lá 3D & Khăn Rằn 3D (Flowing Cloth & Accessories)
     if (r.frontFlapGroup) {
       r.frontFlapGroup.rotation.x = idleFrontFlap * wIdle + walkFrontFlap * wWalk + runFrontFlap * wRun + jumpFrontFlap * wJump;
+      r.frontFlapGroup.rotation.z = walkFrontFlapRollZ * wWalk + runFrontFlapRollZ * wRun;
     }
 
     if (r.backFlapGroup) {
       r.backFlapGroup.rotation.x = idleBackFlap * wIdle + walkBackFlap * wWalk + runBackFlap * wRun + jumpBackFlap * wJump;
+      r.backFlapGroup.rotation.z = walkBackFlapRollZ * wWalk + runBackFlapRollZ * wRun;
+    }
+
+    // Hoạt họa 2 dải khăn rằn 3D đung đưa trước ngực
+    if (r.scarfDropL) {
+      r.scarfDropL.rotation.x = idleScarfRotX * wIdle + walkScarfRotX * wWalk + runScarfRotX * wRun + jumpScarfRotX * wJump;
+      r.scarfDropL.rotation.z = idleScarfRotZL * wIdle + walkScarfRotZL * wWalk + runScarfRotZL * wRun + jumpScarfRotZL * wJump;
+    }
+
+    if (r.scarfDropR) {
+      r.scarfDropR.rotation.x = idleScarfRotX * wIdle + walkScarfRotX * wWalk + runScarfRotX * wRun + jumpScarfRotX * wJump;
+      r.scarfDropR.rotation.z = idleScarfRotZR * wIdle + walkScarfRotZR * wWalk + runScarfRotZR * wRun + jumpScarfRotZR * wJump;
     }
 
     // --- TÍNH TOÁN ĐỘ TRỄ QUÁN TÍNH NÓN LÁ (INERTIAL LAG DAMPING) ---
@@ -618,6 +698,69 @@ export class HumanoidAnimator {
     }
 
     this.currentHeadYaw = damp(this.currentHeadYaw, this.targetHeadYaw, 2.5, dt);
+  }
+
+  /**
+   * Cập nhật chớp mắt sinh học nhẹ nhàng tự nhiên
+   */
+  _updateBlinking(dt) {
+    if (!this.isBlinking) {
+      this.blinkTimer -= dt;
+      if (this.blinkTimer <= 0) {
+        this.isBlinking = true;
+        this.blinkProgress = 0.0;
+        this.blinkDuration = 0.16; // Chớp mắt sinh học 0.16s
+        this.blinkTimer = 2.8 + Math.random() * 3.2; // 2.8s - 6s mỗi lần chớp
+      }
+      this.blinkValue = 0.0;
+    } else {
+      this.blinkProgress += dt / this.blinkDuration;
+      if (this.blinkProgress >= 1.0) {
+        this.isBlinking = false;
+        this.blinkProgress = 0.0;
+        this.blinkValue = 0.0;
+      } else {
+        // Đường cong Hermite sin: 0 -> 1 -> 0
+        this.blinkValue = Math.sin(this.blinkProgress * Math.PI);
+      }
+    }
+  }
+
+  /**
+   * Đặt chủ động trạng thái di chuyển (Locomotion State Blending)
+   * @param {'idle' | 'walk' | 'run' | 'jump'} stateName 
+   * @param {number} speed 
+   */
+  setLocomotionState(stateName, speed = 0) {
+    this.targetWeight.idle = stateName === 'idle' ? 1.0 : 0.0;
+    this.targetWeight.walk = stateName === 'walk' ? 1.0 : 0.0;
+    this.targetWeight.run = stateName === 'run' ? 1.0 : 0.0;
+    this.targetWeight.jump = stateName === 'jump' ? 1.0 : 0.0;
+  }
+
+  /**
+   * Cấu hình thời lượng hòa trộn Crossfade giữa các trạng thái (mặc định 0.22s)
+   * @param {number} duration 
+   */
+  setCrossfadeDuration(duration) {
+    this.crossfadeDuration = Math.max(0.05, duration);
+  }
+
+  /**
+   * Chủ động kích hoạt một cái chớp mắt
+   * @param {number} duration 
+   */
+  triggerBlink(duration = 0.16) {
+    this.isBlinking = true;
+    this.blinkProgress = 0.0;
+    this.blinkDuration = duration;
+  }
+
+  /**
+   * Lấy giá trị chớp mắt hiện tại (0.0 = mở, 1.0 = nhắm)
+   */
+  getBlinkValue() {
+    return this.blinkValue;
   }
 
   /**
@@ -805,6 +948,12 @@ export class HumanoidAnimator {
     if (r.frontFlapGroup) r.frontFlapGroup.rotation.set(0, 0, 0);
     if (r.backFlapGroup) r.backFlapGroup.rotation.set(0, 0, 0);
     if (r.accessoryHeadGroup) r.accessoryHeadGroup.rotation.set(0, 0, 0);
+    if (r.scarfDropL) r.scarfDropL.rotation.set(this.restPositions.scarfRotXL || 0, 0, this.restPositions.scarfRotZL || -0.12);
+    if (r.scarfDropR) r.scarfDropR.rotation.set(this.restPositions.scarfRotXR || 0, 0, this.restPositions.scarfRotZR || 0.12);
+
+    this.isBlinking = false;
+    this.blinkProgress = 0.0;
+    this.blinkValue = 0.0;
   }
 
   /**
@@ -816,7 +965,10 @@ export class HumanoidAnimator {
       weights: { ...this.currentWeight },
       activeGesture: this.activeGesture,
       isGrounded: this.wasGrounded,
-      landingTimer: this.landingTimer
+      landingTimer: this.landingTimer,
+      blinkValue: this.blinkValue,
+      isBlinking: this.isBlinking,
+      crossfadeDuration: this.crossfadeDuration
     };
   }
 }
