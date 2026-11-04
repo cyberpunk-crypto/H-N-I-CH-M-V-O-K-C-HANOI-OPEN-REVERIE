@@ -25,17 +25,17 @@ export const CHARACTER_MODELS_MAP = {
   char_nu_sinh_ao_dai: {
     id: 'char_nu_sinh_ao_dai',
     name: 'Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá',
-    modelUrl: 'assets/models/Michelle.glb',
+    modelUrl: 'assets/models/Xbot.glb',
     fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: true,
     targetHeight: 1.62,
-    scale: 1.02,
+    scale: 0.92,
     facingOffset: 0,
     outfitColor: 0xfcfdfd,
     pantsColor: 0xf2f2f7,
     roughness: 0.32,
     metalness: 0.04,
-    skinColor: 0xE8BEAC,
+    skinColor: 0xF3D2C1,
     textures: {
       diffuse: 'assets/textures/char_silk_ivory_white.jpg',
       normal: 'assets/textures/char_silk_ivory_white_norm.jpg',
@@ -47,17 +47,17 @@ export const CHARACTER_MODELS_MAP = {
   char_co_gai_ao_ba_ba: {
     id: 'char_co_gai_ao_ba_ba',
     name: 'Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen Khăn Rằn',
-    modelUrl: 'assets/models/Michelle.glb',
+    modelUrl: 'assets/models/Xbot.glb',
     fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: true,
     targetHeight: 1.58,
-    scale: 1.00,
+    scale: 0.90,
     facingOffset: 0,
     outfitColor: 0xdf648a,
     pantsColor: 0x181818,
     roughness: 0.58,
     metalness: 0.02,
-    skinColor: 0xE8BEAC,
+    skinColor: 0xF3D2C1,
     textures: {
       diffuse: 'assets/textures/char_cotton_pink_lotus.jpg',
       normal: 'assets/textures/char_cotton_pink_lotus_norm.jpg',
@@ -69,14 +69,14 @@ export const CHARACTER_MODELS_MAP = {
   char_nam_tri_thuc_suit: {
     id: 'char_nam_tri_thuc_suit',
     name: 'Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm',
-    modelUrl: 'assets/models/readyplayer.me.glb',
-    fallbackModelUrl: 'assets/models/Asian_Male_Suit.glb',
+    modelUrl: 'assets/models/Xbot.glb',
+    fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: false,
     targetHeight: 1.72,
     scale: 0.98,
     facingOffset: 0,
-    outfitColor: 0x4a5568,
-    pantsColor: 0x4a5568,
+    outfitColor: 0x3a4046,
+    pantsColor: 0x1a202c,
     roughness: 0.52,
     metalness: 0.15,
     skinColor: 0xDEB096,
@@ -91,7 +91,7 @@ export const CHARACTER_MODELS_MAP = {
   char_nam_ao_dai_gam: {
     id: 'char_nam_ao_dai_gam',
     name: 'Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia',
-    modelUrl: 'assets/models/readyplayer.me.glb',
+    modelUrl: 'assets/models/Xbot.glb',
     fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: false,
     targetHeight: 1.72,
@@ -620,32 +620,22 @@ export class PlayerController {
                   }
                 }
 
-                // Thiết lập màu sắc trang phục độc bản
-                if (charConfig.id === 'char_nu_sinh_ao_dai') {
-                  if (child.name === 'Ch03' && child.material) {
-                    child.material.color.setHex(0xffffff); // Áo dài trắng tinh khôi
-                  }
-                } else if (charConfig.id === 'char_co_gai_ao_ba_ba') {
-                  if (child.name === 'Ch03' && child.material) {
-                    child.material.color.setHex(0xdf648a); // Áo bà ba hồng sen
-                  }
-                } else if (charConfig.id === 'char_nam_tri_thuc_suit') {
-                  if (child.name === 'Wolf3D_Outfit_Top' && child.material) {
-                    child.material.color.setHex(0x3a4046); // Áo suit xám than
-                  } else if (child.name === 'Wolf3D_Outfit_Bottom' && child.material) {
-                    child.material.color.setHex(0x2b3035); // Quần âu xám
-                  } else if (child.name === 'Wolf3D_Outfit_Footwear' && child.material) {
-                    child.material.color.setHex(0x181818); // Giày da Oxford
-                  }
-                } else if (charConfig.id === 'char_nam_ao_dai_gam') {
-                  if (child.name === 'Wolf3D_Outfit_Top' && child.material) {
-                    child.material.color.setHex(0x16213e); // Áo dài gấm xanh hoàng gia Thăng Long
-                    if (outfitTex) child.material.map = outfitTex;
-                  } else if (child.name === 'Wolf3D_Outfit_Bottom' && child.material) {
-                    child.material.color.setHex(0xf5f5f0); // Quần lụa trắng mực thước
-                  } else if (child.name === 'Wolf3D_Outfit_Footwear' && child.material) {
-                    child.material.color.setHex(0x16213e);
-                  }
+                // Thiết lập màu sắc & chất liệu trang phục độc bản trên Xbot (Beta_Surface & Beta_Joints)
+                if ((child.name === 'Beta_Surface' || child.name === 'Ch03') && child.material) {
+                  child.material.color.setHex(charConfig.outfitColor || 0xffffff);
+                  if (outfitTex) child.material.map = outfitTex;
+                  child.material.roughness = charConfig.roughness || 0.4;
+                  child.material.metalness = charConfig.metalness || 0.05;
+                  child.material.needsUpdate = true;
+                } else if ((child.name === 'Beta_Joints' || child.name.includes('Bottom')) && child.material) {
+                  child.material.color.setHex(charConfig.pantsColor || 0x222222);
+                  child.material.roughness = 0.5;
+                  child.material.metalness = 0.1;
+                  child.material.needsUpdate = true;
+                } else if (child.name.includes('Top') && child.material) {
+                  child.material.color.setHex(charConfig.outfitColor || 0xffffff);
+                  if (outfitTex) child.material.map = outfitTex;
+                  child.material.needsUpdate = true;
                 }
               }
             });
@@ -785,17 +775,23 @@ export class PlayerController {
 
                   newTracks.push(clonedTrack);
                 } else if (prop === 'position' && (targetBoneName === 'Hips' || targetBoneName === 'mixamorigHips')) {
-                  const nativeHips = modelBoneMap.get(targetBoneName);
-                  const nativeY = nativeHips.position.y;
-                  const initialY = track.values[1];
-                  const scalePos = isRpm ? 0.01 : 1.0;
-                  const newVals = new Float32Array(track.values.length);
-                  for (let i = 0; i < track.values.length; i += 3) {
-                    newVals[i] = track.values[i] * scalePos;
-                    newVals[i + 1] = nativeY + (track.values[i + 1] - initialY) * scalePos;
-                    newVals[i + 2] = track.values[i + 2] * scalePos;
+                  if (!isRpm) {
+                    const clonedTrack = track.clone();
+                    clonedTrack.name = `${targetBoneName}.position`;
+                    newTracks.push(clonedTrack);
+                  } else {
+                    const nativeHips = modelBoneMap.get(targetBoneName);
+                    const nativeY = nativeHips.position.y;
+                    const initialY = track.values[1];
+                    const scalePos = 0.01;
+                    const newVals = new Float32Array(track.values.length);
+                    for (let i = 0; i < track.values.length; i += 3) {
+                      newVals[i] = track.values[i] * scalePos;
+                      newVals[i + 1] = nativeY + (track.values[i + 1] - initialY) * scalePos;
+                      newVals[i + 2] = track.values[i + 2] * scalePos;
+                    }
+                    newTracks.push(new THREE.VectorKeyframeTrack(`${targetBoneName}.position`, track.times, newVals));
                   }
-                  newTracks.push(new THREE.VectorKeyframeTrack(`${targetBoneName}.position`, track.times, newVals));
                 }
               }
 
