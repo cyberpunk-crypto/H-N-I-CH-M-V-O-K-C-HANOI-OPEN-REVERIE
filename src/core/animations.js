@@ -105,8 +105,8 @@ export class HumanoidAnimator {
     this.walkPhase = 0.0;
     this.runPhase = 0.0;
 
-    // Trọng số hòa trộn trạng thái (Cross-Fade Weights & 0.22s Crossfade Blending)
-    this.crossfadeDuration = 0.22; // Thời gian chuyển trạng thái 0.22s chuẩn AAA
+    // Trọng số hòa trộn trạng thái (Cross-Fade Weights & 0.25s Crossfade Blending)
+    this.crossfadeDuration = this.options.crossfadeDuration || 0.25; // Thời gian chuyển trạng thái 0.25s chuẩn AAA
     this.currentWeight = { idle: 1.0, walk: 0.0, run: 0.0, jump: 0.0 };
     this.targetWeight = { idle: 1.0, walk: 0.0, run: 0.0, jump: 0.0 };
 
@@ -475,8 +475,8 @@ export class HumanoidAnimator {
     const jumpPelvisY = this.baseTorsoY + 0.075;
     const jumpLeftHip = -0.22;
     const jumpRightHip = -0.22;
-    const jumpLeftKnee = 0.42;
-    const jumpRightKnee = 0.42;
+    const jumpLeftKnee = 0.85; // Gập đầu gối sinh học rõ nét khi co chân nhảy
+    const jumpRightKnee = 0.85;
     const jumpLeftFoot = -0.20;
     const jumpRightFoot = -0.20;
     const jumpLeftShoulderX = -0.35;
@@ -1026,6 +1026,213 @@ export class ParticleVFXAnimator {
   update(delta) {
     this.time += delta;
     // Cung cấp hook cho các hiệu ứng hạt tuân thủ Zero-Allocation
+  }
+}
+
+// ============================================================================
+// HỆ THỐNG RETARGETING HOẠT HỌA HUMANOID / MIXAMO CHUYÊN SÂU
+// ============================================================================
+
+/**
+ * Bảng ánh xạ các khớp xương chuẩn Humanoid / Mixamo sang cây khung xương nhân vật
+ */
+export const HUMANOID_BONE_MAP = {
+  // Pelvis / Hips (Trọng tâm)
+  'mixamorigHips': 'pelvisGroup',
+  'Hips': 'pelvisGroup',
+  'pelvis': 'pelvisGroup',
+  'Pelvis': 'pelvisGroup',
+  'Joint_Pelvis': 'pelvisGroup',
+
+  // Spine / Torso (Thân mình)
+  'mixamorigSpine': 'torsoGroup',
+  'Spine': 'torsoGroup',
+  'torso': 'torsoGroup',
+  'Torso': 'torsoGroup',
+  'Joint_Torso': 'torsoGroup',
+
+  // Chest / Upper Spine (Ngực)
+  'mixamorigSpine1': 'chestGroup',
+  'mixamorigSpine2': 'chestGroup',
+  'Spine1': 'chestGroup',
+  'Spine2': 'chestGroup',
+  'Chest': 'chestGroup',
+  'Joint_Chest': 'chestGroup',
+
+  // Neck (Cổ)
+  'mixamorigNeck': 'neckGroup',
+  'Neck': 'neckGroup',
+  'Joint_Neck': 'neckGroup',
+
+  // Head (Đầu)
+  'mixamorigHead': 'headGroup',
+  'Head': 'headGroup',
+  'Joint_Head': 'headGroup',
+
+  // Left Arm (Chi trên trái)
+  'mixamorigLeftShoulder': 'leftShoulderGroup',
+  'LeftShoulder': 'leftShoulderGroup',
+  'Joint_L_Shoulder': 'leftShoulderGroup',
+  'mixamorigLeftArm': 'leftUpperArm',
+  'LeftArm': 'leftUpperArm',
+  'Joint_L_UpperArm': 'leftUpperArm',
+  'mixamorigLeftForeArm': 'leftElbowGroup',
+  'LeftForeArm': 'leftElbowGroup',
+  'Joint_L_Elbow': 'leftElbowGroup',
+  'mixamorigLeftHand': 'leftHandGroup',
+  'LeftHand': 'leftHandGroup',
+  'Joint_L_Hand': 'leftHandGroup',
+
+  // Right Arm (Chi trên phải)
+  'mixamorigRightShoulder': 'rightShoulderGroup',
+  'RightShoulder': 'rightShoulderGroup',
+  'Joint_R_Shoulder': 'rightShoulderGroup',
+  'mixamorigRightArm': 'rightUpperArm',
+  'RightArm': 'rightUpperArm',
+  'Joint_R_UpperArm': 'rightUpperArm',
+  'mixamorigRightForeArm': 'rightElbowGroup',
+  'RightForeArm': 'rightElbowGroup',
+  'Joint_R_Elbow': 'rightElbowGroup',
+  'mixamorigRightHand': 'rightHandGroup',
+  'RightHand': 'rightHandGroup',
+  'Joint_R_Hand': 'rightHandGroup',
+
+  // Left Leg (Chi dưới trái)
+  'mixamorigLeftUpLeg': 'leftHipGroup',
+  'LeftUpLeg': 'leftHipGroup',
+  'Joint_L_Hip': 'leftHipGroup',
+  'mixamorigLeftLeg': 'leftKneeGroup',
+  'LeftLeg': 'leftKneeGroup',
+  'Joint_L_Knee': 'leftKneeGroup',
+  'mixamorigLeftFoot': 'leftFootGroup',
+  'LeftFoot': 'leftFootGroup',
+  'Joint_L_Foot': 'leftFootGroup',
+
+  // Right Leg (Chi dưới phải)
+  'mixamorigRightUpLeg': 'rightHipGroup',
+  'RightUpLeg': 'rightHipGroup',
+  'Joint_R_Hip': 'rightHipGroup',
+  'mixamorigRightLeg': 'rightKneeGroup',
+  'RightLeg': 'rightKneeGroup',
+  'Joint_R_Knee': 'rightKneeGroup',
+  'mixamorigRightFoot': 'rightFootGroup',
+  'RightFoot': 'rightFootGroup',
+  'Joint_R_Foot': 'rightFootGroup'
+};
+
+/**
+ * Retargeting AnimationClip từ nguồn Mixamo / Humanoid sang mô hình nhân vật đích
+ * Chuyển đổi tên đường dẫn track, khử gián đoạn và chuẩn hóa tỉ lệ chiều cao
+ * @param {THREE.AnimationClip} sourceClip - Clip hoạt ảnh gốc
+ * @param {THREE.Object3D|Object} target - Mô hình nhân vật hoặc Rig đích
+ * @param {Object} options - Tùy chọn retargeting { boneMap, scaleFactor }
+ * @returns {THREE.AnimationClip} - AnimationClip mới tương thích hoàn toàn với target
+ */
+export function retargetHumanoidClip(sourceClip, target, options = {}) {
+  if (!sourceClip || !sourceClip.tracks) return sourceClip;
+
+  const boneMap = options.boneMap || HUMANOID_BONE_MAP;
+  const newTracks = [];
+
+  // Thu thập danh sách tên khớp hiện diện trên mô hình đích
+  const targetBoneNames = new Set();
+  if (target && target.traverse) {
+    target.traverse(c => {
+      if (c.name) targetBoneNames.add(c.name);
+    });
+  } else if (target && target.rig) {
+    Object.keys(target.rig).forEach(k => {
+      targetBoneNames.add(k);
+      if (target.rig[k] && target.rig[k].name) {
+        targetBoneNames.add(target.rig[k].name);
+      }
+    });
+  }
+
+  for (const track of sourceClip.tracks) {
+    const dotIdx = track.name.lastIndexOf('.');
+    if (dotIdx === -1) continue;
+
+    const sourceBoneName = track.name.substring(0, dotIdx);
+    const property = track.name.substring(dotIdx); // .position, .quaternion, .scale
+
+    let targetBoneName = boneMap[sourceBoneName];
+    if (!targetBoneName) {
+      const cleanName = sourceBoneName.replace(/^mixamorig/, '');
+      targetBoneName = boneMap[cleanName] || cleanName;
+    }
+
+    // Xác định tên track đích
+    let finalTrackName = null;
+    if (targetBoneNames.has(targetBoneName)) {
+      finalTrackName = targetBoneName + property;
+    } else if (target && target.rig && target.rig[targetBoneName] && target.rig[targetBoneName].name) {
+      finalTrackName = target.rig[targetBoneName].name + property;
+    } else {
+      finalTrackName = targetBoneName + property;
+    }
+
+    if (finalTrackName) {
+      const clonedTrack = track.clone();
+      clonedTrack.name = finalTrackName;
+
+      // Scale vị trí hip nếu có tỷ lệ khác nhau
+      if (property === '.position' && options.scaleFactor && options.scaleFactor !== 1.0) {
+        for (let i = 0; i < clonedTrack.values.length; i++) {
+          clonedTrack.values[i] *= options.scaleFactor;
+        }
+      }
+
+      newTracks.push(clonedTrack);
+    }
+  }
+
+  return new THREE.AnimationClip(
+    sourceClip.name || 'RetargetedHumanoidClip',
+    sourceClip.duration,
+    newTracks
+  );
+}
+
+/**
+ * Chuyển đổi tư thế xương (Pose Retargeting) giữa hai Rig Humanoid thời gian thực
+ * @param {Object} sourceRig - Cây khung xương nguồn
+ * @param {Object} targetRig - Cây khung xương đích
+ * @param {number} blendFactor - Hệ số hòa trộn (0.0 đến 1.0)
+ */
+export function retargetHumanoidPose(sourceRig, targetRig, blendFactor = 1.0) {
+  if (!sourceRig || !targetRig) return;
+
+  const jointPairs = [
+    ['pelvisGroup', 'pelvisGroup'],
+    ['torsoGroup', 'torsoGroup'],
+    ['chestGroup', 'chestGroup'],
+    ['neckGroup', 'neckGroup'],
+    ['headGroup', 'headGroup'],
+    ['leftShoulderGroup', 'leftShoulderGroup'],
+    ['rightShoulderGroup', 'rightShoulderGroup'],
+    ['leftElbowGroup', 'leftElbowGroup'],
+    ['rightElbowGroup', 'rightElbowGroup'],
+    ['leftHipGroup', 'leftHipGroup'],
+    ['rightHipGroup', 'rightHipGroup'],
+    ['leftKneeGroup', 'leftKneeGroup'],
+    ['rightKneeGroup', 'rightKneeGroup'],
+    ['leftFootGroup', 'leftFootGroup'],
+    ['rightFootGroup', 'rightFootGroup']
+  ];
+
+  for (const [srcName, dstName] of jointPairs) {
+    const src = sourceRig[srcName];
+    const dst = targetRig[dstName];
+    if (src && dst && src.rotation && dst.rotation) {
+      if (blendFactor >= 1.0) {
+        dst.rotation.copy(src.rotation);
+      } else {
+        dst.rotation.x = lerp(dst.rotation.x, src.rotation.x, blendFactor);
+        dst.rotation.y = lerp(dst.rotation.y, src.rotation.y, blendFactor);
+        dst.rotation.z = lerp(dst.rotation.z, src.rotation.z, blendFactor);
+      }
+    }
   }
 }
 

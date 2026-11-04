@@ -746,6 +746,31 @@
   box-shadow: 0 0 16px rgba(212, 175, 55, 0.4);
 }
 
+/* Trạng thái Cooldown chống spam click trong modal chọn nhân vật (Lỗi 6) */
+.outfit-grid.switching-cooldown {
+  pointer-events: none;
+}
+
+.outfit-card.disabled-state {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+  pointer-events: none;
+  cursor: not-allowed;
+  transform: scale(0.98);
+  transition: all 0.25s ease;
+}
+
+.vintage-mirror-frame.mirror-switching {
+  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.85), 0 0 24px rgba(212, 175, 55, 0.55);
+  transition: box-shadow 0.3s ease;
+}
+
+.btn-enter-reverie.disabled-state {
+  opacity: 0.65;
+  cursor: wait;
+  pointer-events: none;
+}
+
 .outfit-avatar-box {
   width: 46px;
   height: 46px;

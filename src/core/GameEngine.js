@@ -7,7 +7,7 @@ import { THREE } from './ThreeLib.js';
 import { SceneManager } from './SceneManager.js';
 import { WorldManager } from './WorldManager.js?v=4.9';
 import { ZoneManager } from './ZoneManager.js';
-import { PlayerController } from './PlayerController.js?v=4.9';
+import { PlayerController } from './PlayerController.js?v=5.0';
 import { CameraController } from './CameraController.js';
 import { PerspectivePuzzle } from './PerspectivePuzzle.js';
 import { PhotoSystem } from './PhotoSystem.js';
@@ -60,7 +60,11 @@ export class GameEngine {
       console.log('[GameEngine] Đã chốt nhân vật:', payload);
       await this.initWorld();
 
-      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 16.5, y: 0.5, z: -16.5 };
+      if (this.playerController && payload && (payload.characterId || payload.outfitId)) {
+        await this.playerController.setCharacter(payload.characterId || payload.outfitId);
+      }
+
+      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 20.0, y: 0.5, z: -20.0 };
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
         playerPosition: {
@@ -69,6 +73,21 @@ export class GameEngine {
           z: parseFloat(spawnPos.z.toFixed(2))
         }
       });
+    });
+
+    // 3b. Khi UI hoặc hệ thống yêu cầu chuyển đổi nhân vật trực tiếp (CORE:SWITCH_CHARACTER)
+    this.eventBus.on('CORE:SWITCH_CHARACTER', async (payload) => {
+      const charId = payload && (payload.characterId || payload.id || payload.outfitId);
+      if (charId && this.playerController) {
+        await this.playerController.setCharacter(charId);
+      }
+    });
+
+    this.eventBus.on('UI:SWITCH_CHARACTER', async (payload) => {
+      const charId = payload && (payload.characterId || payload.id || payload.outfitId);
+      if (charId && this.playerController) {
+        await this.playerController.setCharacter(charId);
+      }
     });
 
     // 4. Khi UI yêu cầu chuyển chế độ camera
@@ -106,6 +125,19 @@ export class GameEngine {
     this.eventBus.on('UI:START_ENGINE_REQUEST', () => {
       this.initWorld();
     });
+  }
+
+  /**
+   * Chuyển đổi mô hình nhân vật người chơi trong thế giới 3D
+   * @param {string} characterId
+   * @returns {Promise<boolean>}
+   */
+  async switchCharacter(characterId) {
+    if (this.playerController && typeof this.playerController.setCharacter === 'function') {
+      await this.playerController.setCharacter(characterId);
+      return true;
+    }
+    return false;
   }
 
   /**

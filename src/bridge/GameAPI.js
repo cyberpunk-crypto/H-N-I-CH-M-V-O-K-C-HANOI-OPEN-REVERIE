@@ -124,6 +124,26 @@ globalScope.GameAPI = {
   },
 
   /**
+   * Chuyển đổi mô hình nhân vật người chơi trong thế giới 3D
+   * @param {string} characterId - 'char_nu_sinh_ao_dai' | 'char_co_gai_ao_ba_ba' | 'char_nam_tri_thuc_suit' | 'char_nam_ao_dai_gam'
+   * @returns {Promise<boolean>}
+   */
+  switchCharacter: async (characterId) => {
+    const engine = globalScope._GameCoreInstance || globalScope.gameEngine;
+    if (engine && typeof engine.switchCharacter === 'function') {
+      return await engine.switchCharacter(characterId);
+    } else if (engine && engine.playerController) {
+      await engine.playerController.setCharacter(characterId);
+      return true;
+    }
+    if (globalScope.GameEventBus && typeof globalScope.GameEventBus.emit === 'function') {
+      globalScope.GameEventBus.emit('CORE:SWITCH_CHARACTER', { characterId });
+      return true;
+    }
+    return false;
+  },
+
+  /**
    * Lấy trạng thái hiện tại của hệ thống camera
    * @returns {{ mode: 'TPS' | 'FPS', fov: number, isAiming: boolean }}
    */

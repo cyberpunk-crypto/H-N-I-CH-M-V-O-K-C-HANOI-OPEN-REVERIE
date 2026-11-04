@@ -26,6 +26,13 @@ export class UIManager {
     this.chatbox = null;
     this.currentCharacterId = 'char_nu_sinh_ao_dai';
 
+    // Cơ chế Debounce / Cooldown chống spam click đổi nhân vật (Khắc phục Lỗi 6)
+    this.isSwitching = false;
+    this.isSwitchingCharacter = false; // alias đồng bộ đặc tả
+    this.lastSwitchTime = 0;
+    this.SWITCH_COOLDOWN_MS = 600; // Cooldown tối thiểu 600ms chống race condition
+    this.switchCooldownTimer = null;
+
     this.init();
   }
 
@@ -129,11 +136,48 @@ export class UIManager {
         this.switchCharacterQuickly(charId);
       });
     });
+
+    // Lắng nghe sự kiện Core đã chuyển đổi xong nhân vật
+    GameEventBus.on('CORE:CHARACTER_SWITCHED', (payload) => {
+      this.unlockQuickSwitcher();
+      if (payload && payload.characterId) {
+        this.updateQuickSwitcherActiveState(payload.characterId);
+      }
+    });
   }
 
   switchCharacterQuickly(charId) {
-    const charObj = CHARACTERS.find(c => c.id === charId) || CHARACTERS[0];
+    if (!charId || charId === this.currentCharacterId) return;
+
+    // 1. KIỂM TRA COOLDOWN 600MS & CỜ isSwitching CHỐNG SPAM CLICK (KHẮC PHỤC LỖI 6)
+    const now = Date.now();
+    if (this.isSwitching || this.isSwitchingCharacter || (now - this.lastSwitchTime < this.SWITCH_COOLDOWN_MS)) {
+      return;
+    }
+
+    this.isSwitching = true;
+    this.isSwitchingCharacter = true;
+    this.lastSwitchTime = now;
     this.currentCharacterId = charId;
+
+    // 2. KHÓA TẠM THỜI VÀ LÀM MỜ NHẸ CÁC NÚT ĐỂ NGĂN BẤM LIÊN HỒI GÂY RACE CONDITION
+    const quickBar = document.getElementById('quickCharacterBar');
+    if (quickBar) {
+      quickBar.classList.add('switching-cooldown');
+      const buttons = quickBar.querySelectorAll('.btn-quick-char');
+      buttons.forEach(btn => {
+        const isTarget = (btn.dataset.charId === charId);
+        btn.classList.toggle('active', isTarget);
+        if (!isTarget) {
+          btn.classList.add('disabled-state');
+        } else {
+          btn.classList.remove('disabled-state');
+          btn.classList.add('switching-pulse');
+        }
+      });
+    }
+
+    const charObj = CHARACTERS.find(c => c.id === charId) || CHARACTERS[0];
 
     // Cập nhật LocalStorage profile
     let currentUsername = 'Kẻ Mộng Mơ';
@@ -158,15 +202,34 @@ export class UIManager {
       cameraModel: 'leica_m3'
     });
 
-    this.updateQuickSwitcherActiveState(charId);
-
-    // Thông báo Toast hoài niệm
+    // 3. THÔNG BÁO TOAST TINH TẾ VỚI AVATAR VÀ THÔNG TIN TRANG PHỤC HÀ NỘI
     if (this.toast) {
       this.toast.show({
-        title: 'Diện Mạo Hà Nội',
-        message: `Đã chuyển sang: ${charObj.name}`,
+        title: 'Hóa Thân Nhân Vật',
+        message: `${charObj.name} — ${charObj.culturalTitle || charObj.title}`,
         type: 'info',
-        duration: 3000
+        duration: 3200
+      });
+    }
+
+    // 4. THIẾT LẬP TIMER COOLDOWN TỐI THIỂU 600MS ĐỂ MỞ KHÓA NÚT BẤM
+    clearTimeout(this.switchCooldownTimer);
+    this.switchCooldownTimer = setTimeout(() => {
+      this.unlockQuickSwitcher();
+    }, this.SWITCH_COOLDOWN_MS);
+  }
+
+  unlockQuickSwitcher() {
+    this.isSwitching = false;
+    this.isSwitchingCharacter = false;
+
+    const quickBar = document.getElementById('quickCharacterBar');
+    if (quickBar) {
+      quickBar.classList.remove('switching-cooldown');
+      const buttons = quickBar.querySelectorAll('.btn-quick-char');
+      buttons.forEach(btn => {
+        btn.classList.remove('disabled-state');
+        btn.classList.remove('switching-pulse');
       });
     }
   }
@@ -289,6 +352,8 @@ export class UIManager {
 }
 
 // Khởi tạo tự động khi DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', () => {
-  window._UIManagerInstance = new UIManager();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window._UIManagerInstance = new UIManager();
+  });
+}

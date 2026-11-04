@@ -111,6 +111,16 @@ export class AgeGateModal {
         this.submitVerification();
       }
     });
+
+    const confirmBtn = this.element.querySelector('#btnConfirmAge');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', (e) => {
+        if (this.isAdult) {
+          e.preventDefault();
+          this.submitVerification();
+        }
+      });
+    }
   }
 
   /**

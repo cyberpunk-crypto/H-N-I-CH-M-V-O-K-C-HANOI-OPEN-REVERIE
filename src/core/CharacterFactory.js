@@ -98,58 +98,307 @@ function createPBRMesh(geo, mat) {
 }
 
 /**
- * Tạo hình học nón lá điêu khắc hữu cơ 3D (3D Organic Conical Nón Lá)
+ * Tạo mô hình 3D Nón Lá truyền thống Việt Nam (3D Organic Conical Nón Lá)
+ * Phù hợp gắn vào xương Head hoặc đeo sau lưng (Spine2/Chest)
  */
-function createSculptedNonLaMesh(materials) {
+export function create3DNonLa(options = {}) {
+  const materials = options.materials || {};
+  const forBack = options.forBack || false;
+  const scale = options.scale || (forBack ? 0.78 : 1.0);
+
   const nonLaGroup = new THREE.Group();
-  nonLaGroup.name = 'SculptedNonLa3D';
+  nonLaGroup.name = forBack ? 'SculptedNonLa3D_Back' : 'SculptedNonLa3D';
 
-  const coneRadius = 0.22;
-  const coneHeight = 0.135;
+  const coneRadius = 0.22 * scale;
+  const coneHeight = 0.135 * scale;
 
-  // Chóp nón hình nón lá truyền thống Việt Nam
+  // Lấy hoặc tạo vật liệu nón lá PBR
+  let nonLaMat = materials.nonLa;
+  if (!nonLaMat) {
+    const bambooTex = getCachedTexture('assets/textures/char_bamboo_non_la.jpg');
+    const bambooNorm = getCachedTexture('assets/textures/char_bamboo_non_la_norm.jpg');
+    if (bambooTex) bambooTex.repeat.set(3, 3);
+    nonLaMat = new THREE.MeshStandardMaterial({
+      map: bambooTex,
+      normalMap: bambooNorm,
+      color: 0xf2e0b8,
+      roughness: 0.68,
+      side: THREE.DoubleSide
+    });
+  }
+
+  const rimMat = materials.bambooRim || new THREE.MeshStandardMaterial({ color: 0xb5955a, roughness: 0.5 });
+  const strapMat = materials.silkStrap || new THREE.MeshStandardMaterial({
+    color: forBack ? 0x222222 : (options.strapColor || 0xde6f8c),
+    roughness: 0.4
+  });
+
+  // Chóp nón hình nón lá truyền thống Việt Nam có độ loe tự nhiên
   const outerConeGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 36, 12, false);
   const pos = outerConeGeo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
     const rRatio = (coneHeight * 0.5 - y) / coneHeight; // 0 ở đỉnh chóp, 1 ở vành
-    const flare = Math.pow(rRatio, 2.0) * 0.015;
+    const flare = Math.pow(rRatio, 2.0) * (0.015 * scale);
     pos.setX(i, pos.getX(i) + pos.getX(i) * flare);
     pos.setZ(i, pos.getZ(i) + pos.getZ(i) * flare);
   }
   outerConeGeo.computeVertexNormals();
 
-  const outerCone = createPBRMesh(outerConeGeo, materials.nonLa);
+  const outerCone = createPBRMesh(outerConeGeo, nonLaMat);
   nonLaGroup.add(outerCone);
 
   // Chóp đỉnh nón lá bọc gỗ/chỉ khâu
-  const apexGeo = new THREE.ConeGeometry(0.016, 0.022, 16);
-  const apexMesh = createPBRMesh(apexGeo, materials.bambooRim);
-  apexMesh.position.y = coneHeight * 0.5 + 0.006;
+  const apexGeo = new THREE.ConeGeometry(0.016 * scale, 0.022 * scale, 16);
+  const apexMesh = createPBRMesh(apexGeo, rimMat);
+  apexMesh.position.y = coneHeight * 0.5 + 0.006 * scale;
   nonLaGroup.add(apexMesh);
 
   // Vành nan tre bo tròn quanh miệng nón (Bamboo Rim Beading)
   const rimTorus = createPBRMesh(
-    new THREE.TorusGeometry(coneRadius + 0.003, 0.004, 12, 36),
-    materials.bambooRim
+    new THREE.TorusGeometry(coneRadius + 0.003 * scale, 0.004 * scale, 12, 36),
+    rimMat
   );
   rimTorus.rotation.x = Math.PI / 2;
   rimTorus.position.y = -coneHeight * 0.5;
   nonLaGroup.add(rimTorus);
 
-  // Quai nón lụa mềm mại rủ xuống cằm
-  const strapCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.095, -0.04, 0),
-    new THREE.Vector3(-0.045, -0.125, 0.02),
-    new THREE.Vector3(0, -0.142, 0.025),
-    new THREE.Vector3(0.045, -0.125, 0.02),
-    new THREE.Vector3(0.095, -0.04, 0)
-  ]);
-  const strapGeo = new THREE.TubeGeometry(strapCurve, 20, 0.004, 8, false);
-  const strapMesh = createPBRMesh(strapGeo, materials.silkStrap || materials.bambooRim);
-  nonLaGroup.add(strapMesh);
+  if (!forBack) {
+    // Quai nón lụa mềm mại rủ xuống cằm khi đội đầu
+    const strapCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.095 * scale, -0.04 * scale, 0),
+      new THREE.Vector3(-0.045 * scale, -0.125 * scale, 0.02 * scale),
+      new THREE.Vector3(0, -0.142 * scale, 0.025 * scale),
+      new THREE.Vector3(0.045 * scale, -0.125 * scale, 0.02 * scale),
+      new THREE.Vector3(0.095 * scale, -0.04 * scale, 0)
+    ]);
+    const strapGeo = new THREE.TubeGeometry(strapCurve, 20, 0.004 * scale, 8, false);
+    const strapMesh = createPBRMesh(strapGeo, strapMat);
+    nonLaGroup.add(strapMesh);
+  } else {
+    // Quai đeo chéo vai khi quàng sau lưng
+    const backStrapCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.08 * scale, 0.02 * scale, 0.05 * scale),
+      new THREE.Vector3(0, 0.12 * scale, 0.12 * scale),
+      new THREE.Vector3(0.08 * scale, 0.02 * scale, 0.05 * scale)
+    ]);
+    const backStrapGeo = new THREE.TubeGeometry(backStrapCurve, 16, 0.004 * scale, 8, false);
+    const backStrapMesh = createPBRMesh(backStrapGeo, strapMat);
+    nonLaGroup.add(backStrapMesh);
+  }
 
   return nonLaGroup;
+}
+
+export const createSculptedNonLaMesh = (materials) => create3DNonLa({ materials });
+
+/**
+ * Tạo mô hình 3D Khăn Rằn truyền thống Nam Bộ / Phố Thị (Sculpted 3D Krama Scarf)
+ * Khăn rằn caro quàng quanh cổ và 2 vạt rủ chéo mềm mại trước ngực
+ */
+export function create3DKhanRan(options = {}) {
+  const materials = options.materials || {};
+  const scale = options.scale || 1.0;
+
+  const khanGroup = new THREE.Group();
+  khanGroup.name = 'SculptedKhanRan3D';
+
+  let kramaMat = materials.krama;
+  if (!kramaMat) {
+    const kramaTex = getCachedTexture('assets/textures/char_krama_scarf.jpg');
+    const kramaNorm = getCachedTexture('assets/textures/char_krama_scarf_norm.jpg');
+    kramaMat = new THREE.MeshStandardMaterial({
+      map: kramaTex,
+      normalMap: kramaNorm,
+      roughness: 0.72,
+      side: THREE.DoubleSide
+    });
+  }
+
+  // 1. Vòng khăn quàng cổ bo cong mềm mại theo cổ áo (Torus khum hình elip)
+  const collarGeo = new THREE.TorusGeometry(0.058 * scale, 0.015 * scale, 12, 28);
+  collarGeo.rotateX(Math.PI / 2);
+  const collarMesh = createPBRMesh(collarGeo, kramaMat);
+  collarMesh.scale.set(1.0, 1.0, 1.15);
+  collarMesh.position.set(0, 0.04 * scale, 0);
+  khanGroup.add(collarMesh);
+
+  // Nút thắt / vắt chéo trước ngực
+  const knotGeo = new THREE.SphereGeometry(0.018 * scale, 12, 12);
+  const knotMesh = createPBRMesh(knotGeo, kramaMat);
+  knotMesh.scale.set(1.2, 0.9, 0.9);
+  knotMesh.position.set(0, 0.025 * scale, 0.075 * scale);
+  khanGroup.add(knotMesh);
+
+  // 2. Hai vạt khăn rủ chéo trước ngực (uốn lượn có thể tích vải 3D)
+  [-1, 1].forEach(side => {
+    const flapCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(side * 0.012 * scale, 0.02 * scale, 0.075 * scale),
+      new THREE.Vector3(side * 0.038 * scale, -0.06 * scale, 0.088 * scale),
+      new THREE.Vector3(side * 0.046 * scale, -0.15 * scale, 0.084 * scale),
+      new THREE.Vector3(side * 0.042 * scale, -0.22 * scale, 0.078 * scale)
+    ]);
+    const flapTubeGeo = new THREE.TubeGeometry(flapCurve, 16, 0.016 * scale, 10, false);
+    const flapMesh = createPBRMesh(flapTubeGeo, kramaMat);
+    flapMesh.scale.set(1.4, 1.0, 0.35);
+    khanGroup.add(flapMesh);
+
+    // Tua rua mép vải cuối vạt khăn (Fringes)
+    const fringeGeo = new THREE.BoxGeometry(0.042 * scale, 0.012 * scale, 0.005 * scale);
+    const fringeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 });
+    const fringeMesh = createPBRMesh(fringeGeo, fringeMat);
+    fringeMesh.position.set(side * 0.042 * scale, -0.226 * scale, 0.078 * scale);
+    khanGroup.add(fringeMesh);
+  });
+
+  return khanGroup;
+}
+
+/**
+ * Tạo mô hình 3D Khăn Xếp (Khăn Đóng) truyền thống Thăng Long 5 tầng nếp (Sculpted 3D Khan Xep)
+ * 5 tầng xếp chồng so le với nếp chữ V (Chevron Fold) phía trước trán đặc trưng
+ */
+export function create3DKhanXep(options = {}) {
+  const materials = options.materials || {};
+  const scale = options.scale || 1.0;
+  const layers = options.layers || 5;
+  const color = options.color || 0x16213e;
+
+  const turbanGroup = new THREE.Group();
+  turbanGroup.name = 'SculptedKhanXep3D';
+
+  let turbanMat = materials.turban;
+  if (!turbanMat) {
+    const turbanTex = getCachedTexture('assets/textures/char_silk_blue_brocade.jpg');
+    const turbanNorm = getCachedTexture('assets/textures/char_silk_blue_brocade_norm.jpg');
+    turbanMat = new THREE.MeshStandardMaterial({
+      map: turbanTex,
+      normalMap: turbanNorm,
+      color: color,
+      roughness: 0.45,
+      metalness: 0.20
+    });
+  }
+
+  const goldTrim = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.28,
+    metalness: 0.65
+  });
+
+  // 5 tầng nếp xếp chồng so le (Torus xếp nấc)
+  for (let i = 0; i < layers; i++) {
+    const r = (0.088 + i * 0.003) * scale;
+    const tubeR = 0.011 * scale;
+    const ringGeo = new THREE.TorusGeometry(r, tubeR, 10, 32);
+    ringGeo.rotateX(Math.PI / 2);
+    // Tầng giữa (i === 2) viền chỉ kim tuyến vàng đồng Thăng Long
+    const mat = (i === 2 && options.goldAccent) ? goldTrim : turbanMat;
+    const ringMesh = createPBRMesh(ringGeo, mat);
+    ringMesh.position.set(0, (0.02 + i * 0.012) * scale, -0.004 * scale);
+    ringMesh.scale.set(1.0, 1.0, 1.06);
+    turbanGroup.add(ringMesh);
+  }
+
+  // Nếp gấp chữ V giao thoa chính diện trán (Frontal Chevron Fold)
+  const chevronGeo = new THREE.BoxGeometry(0.018 * scale, 0.065 * scale, 0.012 * scale);
+  const chevronMesh = createPBRMesh(chevronGeo, turbanMat);
+  chevronMesh.position.set(0, (0.02 + layers * 0.006) * scale, 0.092 * scale);
+  chevronMesh.rotation.x = -0.15;
+  turbanGroup.add(chevronMesh);
+
+  return turbanGroup;
+}
+
+/**
+ * Tạo mô hình 3D Mũ Fedora Cổ Điển Hà Nội (Classic Vintage 3D Fedora Hat)
+ * Vành nỉ uốn lượn phong trần, chỏm mũ vát nếp gấp thanh lịch, dải ruy băng lụa đen
+ */
+export function create3DFedoraHat(options = {}) {
+  const scale = options.scale || 1.0;
+  const hatColor = options.color || 0x3a424e; // Xám than chì / slate tweed felt
+  const ribbonColor = options.ribbonColor || 0x181c22; // Ruy băng lụa đen tuyền
+
+  const fedoraGroup = new THREE.Group();
+  fedoraGroup.name = 'SculptedFedoraHat3D';
+
+  const feltMat = new THREE.MeshStandardMaterial({
+    color: hatColor,
+    roughness: 0.76,
+    metalness: 0.02
+  });
+
+  const ribbonMat = new THREE.MeshStandardMaterial({
+    color: ribbonColor,
+    roughness: 0.35,
+    metalness: 0.15
+  });
+
+  const brimRadius = 0.185 * scale;
+  const brimHeight = 0.006 * scale;
+
+  // 1. Vành mũ Fedora cong lượn tự nhiên (Brim with undulating curve)
+  const brimGeo = new THREE.CylinderGeometry(brimRadius, brimRadius * 1.02, brimHeight, 36, 4, false);
+  const pos = brimGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const curve = -Math.sin(z / brimRadius * Math.PI * 0.5) * (0.018 * scale) +
+                   Math.pow(Math.abs(x) / brimRadius, 2.0) * (0.012 * scale);
+    pos.setY(i, pos.getY(i) + curve);
+    pos.setZ(i, z * 1.12);
+  }
+  brimGeo.computeVertexNormals();
+
+  const brimMesh = createPBRMesh(brimGeo, feltMat);
+  brimMesh.position.set(0, 0.01 * scale, -0.005 * scale);
+  fedoraGroup.add(brimMesh);
+
+  // 2. Chỏm mũ (Crown) với vết lõm vát giọt nước (Teardrop / C-Crown Pinch Crease)
+  const crownHeight = 0.11 * scale;
+  const crownGeo = new THREE.CylinderGeometry(0.082 * scale, 0.094 * scale, crownHeight, 32, 12, false);
+  const crownPos = crownGeo.attributes.position;
+  for (let i = 0; i < crownPos.count; i++) {
+    const y = crownPos.getY(i);
+    const normY = (y + crownHeight * 0.5) / crownHeight;
+    let x = crownPos.getX(i);
+    let z = crownPos.getZ(i);
+
+    if (normY > 0.4 && z > 0) {
+      const pinchFactor = (normY - 0.4) / 0.6;
+      x *= (1.0 - pinchFactor * 0.22);
+    }
+
+    if (normY > 0.85) {
+      const distFromCenter = Math.abs(x) / (0.082 * scale);
+      const creaseDepth = Math.max(0, 1.0 - distFromCenter * 1.5) * (0.022 * scale);
+      crownPos.setY(i, y - creaseDepth);
+    }
+
+    crownPos.setX(i, x);
+    crownPos.setZ(i, z * 1.10);
+  }
+  crownGeo.computeVertexNormals();
+
+  const crownMesh = createPBRMesh(crownGeo, feltMat);
+  crownMesh.position.set(0, (crownHeight * 0.5 + 0.008) * scale, -0.005 * scale);
+  fedoraGroup.add(crownMesh);
+
+  // 3. Dải ruy băng lụa đen sang trọng ôm quanh chân chỏm mũ (Hatband Ribbon)
+  const bandGeo = new THREE.CylinderGeometry(0.095 * scale, 0.096 * scale, 0.022 * scale, 32);
+  bandGeo.scale(1.0, 1.0, 1.10);
+  const bandMesh = createPBRMesh(bandGeo, ribbonMat);
+  bandMesh.position.set(0, 0.018 * scale, -0.005 * scale);
+  fedoraGroup.add(bandMesh);
+
+  // Nơ ruy băng nhỏ cài bên sườn trái (Side Ribbon Bow)
+  const bowGeo = new THREE.BoxGeometry(0.004 * scale, 0.022 * scale, 0.018 * scale);
+  const bowMesh = createPBRMesh(bowGeo, ribbonMat);
+  bowMesh.position.set(-0.096 * scale, 0.018 * scale, -0.005 * scale);
+  bowMesh.rotation.y = 0.15;
+  fedoraGroup.add(bowMesh);
+
+  return fedoraGroup;
 }
 
 /**
@@ -1055,6 +1304,12 @@ export function createHanoiCharacter3D(characterId, options = {}) {
     accessoryHeadGroup.add(turbanGroup);
 
   } else if (charId === 'char_nam_tri_thuc_suit') {
+    // Mũ Fedora Cổ Điển Hà Nội 3D (Vintage Felt Fedora Hat)
+    const fedora = create3DFedoraHat({ scale: 1.0, color: 0x3a424e, ribbonColor: 0x181c22 });
+    fedora.position.set(0, 0.128, -0.006);
+    fedora.rotation.x = -0.06;
+    accessoryHeadGroup.add(fedora);
+
     // Kính mắt trí thức gọng kim loại 3D
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 });
     const lensL = createPBRMesh(new THREE.TorusGeometry(0.018, 0.003, 8, 16), glassMat);
@@ -1308,17 +1563,173 @@ export function createHanoiCharacter3D(characterId, options = {}) {
 }
 
 /**
- * Nạp file GLTF/GLB SkinnedMesh (Michelle.glb, Soldier.glb, Xbot.glb)
- * Hợp đồng giao tiếp GAME_SPEC.md mục 3.5.1
+ * Nạp file GLTF/GLB SkinnedMesh (readyplayer.me.glb, Michelle.glb, Xbot.glb)
+ * Tuyệt đối không dùng mô hình Sci-Fi Soldier hay con rối hình trụ
+ * Tự động gắn các phụ kiện văn hóa 3D hữu cơ (Nón Lá, Khăn Rằn, Khăn Xếp, Mũ Fedora) lên xương
  */
 export async function loadSkinnedMeshCharacter(gltfUrl, options = {}) {
+  const characterId = options.characterId || (typeof gltfUrl === 'string' && gltfUrl.startsWith('char_') ? gltfUrl : 'char_nam_tri_thuc_suit');
+  const meta = findCharacterMeta(characterId);
+  const charId = meta.id;
+
   const characterGroup = new THREE.Group();
-  characterGroup.name = `SkinnedMesh_${options.characterId || 'Character'}`;
+  characterGroup.name = `SkinnedMesh_${charId}`;
   characterGroup.baseTorsoY = 0.95;
-  characterGroup.characterMeta = findCharacterMeta(options.characterId);
+  characterGroup.characterMeta = meta;
   characterGroup.isSkinnedMesh = true;
 
-  // Placeholder rig tương thích
+  let modelPath = (typeof gltfUrl === 'string' && gltfUrl.endsWith('.glb')) ? gltfUrl : null;
+  if (!modelPath) {
+    if (charId === 'char_nam_tri_thuc_suit') {
+      modelPath = 'assets/models/readyplayer.me.glb';
+    } else {
+      modelPath = 'assets/models/readyplayer.me.glb';
+    }
+  }
+
+  // Tự động nạp GLTF nếu loader được truyền vào
+  if (options.loader && typeof options.loader.load === 'function') {
+    try {
+      const gltf = await new Promise((resolve, reject) => {
+        options.loader.load(modelPath, resolve, undefined, reject);
+      });
+
+      if (gltf && gltf.scene) {
+        const model = gltf.scene;
+        model.scale.set(1.0, 1.0, 1.0);
+        characterGroup.add(model);
+
+        // Tìm các xương chính để gắn phụ kiện
+        let headBone = null;
+        let spine2Bone = null;
+        let hipsBone = null;
+
+        model.traverse(child => {
+          if (child.isBone || child.type === 'Bone') {
+            const bName = child.name.toLowerCase();
+            if (!headBone && (bName.includes('head') && !bName.includes('top') && !bName.includes('end'))) {
+              headBone = child;
+            }
+            if (!spine2Bone && (bName.includes('spine2') || bName.includes('spine1') || bName.includes('chest'))) {
+              spine2Bone = child;
+            }
+            if (!hipsBone && (bName.includes('hips') || bName.includes('pelvis'))) {
+              hipsBone = child;
+            }
+          }
+
+          // Áp vật liệu PBR văn hóa cho SkinnedMesh
+          if (child.isMesh || child.isSkinnedMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            const mName = (child.material && child.material.name) ? child.material.name.toLowerCase() : '';
+
+            if (mName.includes('skin') || mName.includes('body') || mName.includes('head')) {
+              const isFem = (charId === 'char_nu_sinh_ao_dai' || charId === 'char_co_gai_ao_ba_ba');
+              child.material = new THREE.MeshStandardMaterial({
+                color: isFem ? 0xE8BEAC : 0xDEB096,
+                roughness: 0.46,
+                metalness: 0.00
+              });
+            } else if (mName.includes('top') || mName.includes('bottom') || mName.includes('outfit')) {
+              if (charId === 'char_nam_tri_thuc_suit') {
+                const woolTex = getCachedTexture('assets/textures/char_wool_charcoal_suit.jpg');
+                const woolNorm = getCachedTexture('assets/textures/char_wool_charcoal_suit_norm.jpg');
+                child.material = new THREE.MeshStandardMaterial({
+                  map: woolTex,
+                  normalMap: woolNorm,
+                  color: 0x4a5568,
+                  roughness: 0.52
+                });
+              }
+            } else if (mName.includes('footwear') || mName.includes('shoes')) {
+              const leatherTex = getCachedTexture('assets/textures/char_oxford_leather.jpg');
+              const leatherNorm = getCachedTexture('assets/textures/char_oxford_leather_norm.jpg');
+              child.material = new THREE.MeshStandardMaterial({
+                map: leatherTex,
+                normalMap: leatherNorm,
+                color: 0x111111,
+                roughness: 0.22,
+                metalness: 0.28
+              });
+            }
+          }
+        });
+
+        // Gắn phụ kiện tương ứng theo nhân vật lên đúng khớp xương
+        if (charId === 'char_nu_sinh_ao_dai') {
+          const nonLa = create3DNonLa();
+          nonLa.position.set(0, 0.16, -0.015);
+          nonLa.rotation.x = -0.16;
+          if (headBone) headBone.add(nonLa);
+          else model.add(nonLa);
+
+        } else if (charId === 'char_co_gai_ao_ba_ba') {
+          const khanRan = create3DKhanRan();
+          khanRan.position.set(0, 0.04, 0.02);
+          if (spine2Bone) spine2Bone.add(khanRan);
+          else model.add(khanRan);
+
+          const nonLaBack = create3DNonLa({ forBack: true });
+          nonLaBack.position.set(0, -0.04, -0.14);
+          nonLaBack.rotation.x = -0.38;
+          if (spine2Bone) spine2Bone.add(nonLaBack);
+          else model.add(nonLaBack);
+
+        } else if (charId === 'char_nam_tri_thuc_suit') {
+          const fedora = create3DFedoraHat({ color: 0x3a424e, ribbonColor: 0x181c22 });
+          fedora.position.set(0, 0.14, -0.005);
+          fedora.rotation.x = -0.06;
+          if (headBone) headBone.add(fedora);
+          else model.add(fedora);
+
+        } else if (charId === 'char_nam_ao_dai_gam') {
+          const turban = create3DKhanXep({ color: 0x16213e });
+          turban.position.set(0, 0.11, -0.005);
+          if (headBone) headBone.add(turban);
+          else model.add(turban);
+        }
+
+        characterGroup.rig = {
+          rootGroup: characterGroup,
+          pelvisGroup: hipsBone || model,
+          torsoGroup: spine2Bone || model,
+          chestGroup: spine2Bone || model,
+          neckGroup: headBone || model,
+          headGroup: headBone || model,
+          accessoryHeadGroup: headBone || model,
+          leftShoulderGroup: model,
+          rightShoulderGroup: model,
+          leftUpperArm: model,
+          rightUpperArm: model,
+          leftElbowGroup: model,
+          rightElbowGroup: model,
+          leftLowerArm: model,
+          rightLowerArm: model,
+          leftHandGroup: model,
+          rightHandGroup: model,
+          leftHipGroup: model,
+          rightHipGroup: model,
+          leftUpperLeg: model,
+          rightUpperLeg: model,
+          leftKneeGroup: model,
+          rightKneeGroup: model,
+          leftLowerLeg: model,
+          rightLowerLeg: model,
+          leftFootGroup: model,
+          rightFootGroup: model,
+          frontFlapGroup: model,
+          backFlapGroup: model
+        };
+
+        return characterGroup;
+      }
+    } catch (err) {
+      console.warn('[CharacterFactory] Lỗi nạp SkinnedMesh, fallback sang procedural rig:', err);
+    }
+  }
+
+  // Placeholder rig tương thích cho node.js test suite
   characterGroup.rig = {
     rootGroup: characterGroup,
     pelvisGroup: characterGroup,

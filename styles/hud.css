@@ -152,6 +152,38 @@
   box-shadow: 0 0 4px #2ecc71;
 }
 
+/* Trạng thái Cooldown chống spam click trên thanh đổi nhanh (Lỗi 6) */
+.quick-character-bar.switching-cooldown {
+  opacity: 0.88;
+  cursor: wait;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.55);
+  animation: barPulseGold 0.6s infinite alternate;
+}
+
+.btn-quick-char.disabled-state {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+  pointer-events: none;
+  transform: scale(0.92);
+  transition: all 0.25s ease;
+}
+
+.btn-quick-char.switching-pulse {
+  animation: quickBtnPulse 0.6s infinite alternate;
+  border-color: #ffd700;
+  pointer-events: none;
+}
+
+@keyframes quickBtnPulse {
+  0% { transform: scale(1.05); box-shadow: 0 0 8px #ffd700; }
+  100% { transform: scale(1.15); box-shadow: 0 0 16px #f39c12; }
+}
+
+@keyframes barPulseGold {
+  0% { border-color: rgba(212, 175, 55, 0.45); }
+  100% { border-color: rgba(255, 215, 0, 0.85); }
+}
+
 .btn-hud-tool {
   display: flex;
   align-items: center;

@@ -129,7 +129,7 @@ export class WorldManager {
       }
     }
     const dist = Math.sqrt(minDistSq);
-    const onBridge = (dist <= 2.2 && Math.abs(y - closestY) <= 1.2);
+    const onBridge = (dist <= 2.4 && y >= closestY - 2.5 && y <= closestY + 3.5);
     return {
       dist,
       closestX,
@@ -176,7 +176,7 @@ export class WorldManager {
       }
     }
     const dist = Math.sqrt(minDistSq);
-    const onBridge = (dist <= 2.2 && Math.abs(y - closestY) <= 1.2);
+    const onBridge = (dist <= 2.4 && y >= closestY - 2.5 && y <= closestY + 3.5);
     return {
       dist,
       closestX,

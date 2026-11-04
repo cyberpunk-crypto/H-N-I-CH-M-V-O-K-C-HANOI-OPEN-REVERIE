@@ -2,6 +2,7 @@
  * CharacterCreation.js - Màn hình tạo nhân vật & Chọn diện mạo người 3D trước gương phòng tập thể cũ
  * Dự án: HÀ NỘI CHẠM VÀO KÝ ỨC (HANOI: OPEN REVERIE)
  * Hỗ trợ 4 nhân vật 3D Việt Nam độc bản hoàn chỉnh chuẩn mực văn hóa Thăng Long
+ * Tích hợp Debounce 500ms kiểm tra tên và Cooldown 600ms chống spam click (Khắc phục triệt để Lỗi 6)
  */
 
 import { GameEventBus } from '../bridge/GameEvents.js';
@@ -99,6 +100,19 @@ export class CharacterCreation {
     this.isNameValid = false;
     this.currentName = this.initialName;
     this.debounceTimer = null;
+
+    // Cơ chế Debounce / Cooldown chống spam click (Khắc phục Lỗi 6)
+    this.isSwitching = false;
+    this.isSwitchingCharacter = false; // alias đồng bộ đặc tả
+    this.lastSwitchTime = 0;
+    this.COOLDOWN_MS = 600; // Tối thiểu 600ms chống race condition
+    this.switchCooldownTimer = null;
+
+    // Lắng nghe sự kiện Core đã chuyển đổi xong
+    this._onCharacterSwitched = (payload) => {
+      this.unlockSwitching();
+    };
+    GameEventBus.on('CORE:CHARACTER_SWITCHED', this._onCharacterSwitched);
   }
 
   render() {
@@ -171,7 +185,7 @@ export class CharacterCreation {
           <!-- Bộ chọn 4 nhân vật 3D Việt Nam độc bản -->
           <div class="outfit-selector-section">
             <div class="outfit-selector-title">4 Nhân Vật Việt Nam Độc Bản • Chọn Diện Mạo</div>
-            <div class="outfit-grid">
+            <div class="outfit-grid" id="outfitGridContainer">
               ${CHARACTERS.map(char => {
                 const isActive = (char.id === this.selectedCharacterId);
                 return `
@@ -292,7 +306,7 @@ export class CharacterCreation {
       }, 500);
     });
 
-    // Chọn nhân vật 3D
+    // Chọn nhân vật 3D với Debounce & Cooldown chống spam
     outfitCards.forEach(card => {
       const charId = card.dataset.characterId || card.dataset.outfitId;
       card.addEventListener('click', () => {
@@ -338,14 +352,36 @@ export class CharacterCreation {
 
   selectCharacter(charId) {
     if (!charId) return;
+    if (charId === this.selectedCharacterId) return;
+
+    // 1. KIỂM TRA COOLDOWN & CỜ isSwitching CHỐNG SPAM CLICK (TRIỆT TIÊU LỖI 6)
+    const now = Date.now();
+    if (this.isSwitching || this.isSwitchingCharacter || (now - this.lastSwitchTime < this.COOLDOWN_MS)) {
+      return;
+    }
+
+    this.isSwitching = true;
+    this.isSwitchingCharacter = true;
+    this.lastSwitchTime = now;
     this.selectedCharacterId = charId;
     this.selectedOutfitId = charId; // alias
+
+    // 2. KHÓA TẠM THỜI VÀ LÀM MỜ NHẸ CÁC THẺ KHÁC ĐỂ TRÁNH CLICK LIÊN HỒI
+    const outfitGrid = this.element.querySelector('#outfitGridContainer') || this.element.querySelector('.outfit-grid');
+    if (outfitGrid) {
+      outfitGrid.classList.add('switching-cooldown');
+    }
 
     const outfitCards = this.element.querySelectorAll('.outfit-card');
     outfitCards.forEach(card => {
       const isSelected = (card.dataset.characterId === charId || card.dataset.outfitId === charId);
       card.classList.toggle('active', isSelected);
       card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      if (!isSelected) {
+        card.classList.add('disabled-state');
+      } else {
+        card.classList.remove('disabled-state');
+      }
     });
 
     const charObj = CHARACTERS.find(o => o.id === charId) || CHARACTERS[0];
@@ -371,10 +407,45 @@ export class CharacterCreation {
       const badge = this.element.querySelector('#mirrorBadgeText');
       if (badge) badge.textContent = charObj.badge || 'HÀ NỘI';
 
-      // Nếu đang trong chế độ Recreate (mở trong game), phát luôn tín hiệu xem trước nếu muốn
+      // Hiệu ứng gương soi chuyển diện mạo
+      const mirrorFrame = this.element.querySelector('.vintage-mirror-frame');
+      if (mirrorFrame) {
+        mirrorFrame.classList.add('mirror-switching');
+        setTimeout(() => mirrorFrame.classList.remove('mirror-switching'), 450);
+      }
+
+      // Nếu đang trong chế độ Recreate (mở trong game), phát luôn tín hiệu xem trước
       if (this.isRecreate) {
         GameEventBus.emit('CORE:SWITCH_CHARACTER', { characterId: charId });
       }
+    }
+
+    // 3. THIẾT LẬP TIMER COOLDOWN TỐI THIỂU 600MS MỞ KHÓA
+    clearTimeout(this.switchCooldownTimer);
+    this.switchCooldownTimer = setTimeout(() => {
+      this.unlockSwitching();
+    }, this.COOLDOWN_MS);
+  }
+
+  unlockSwitching() {
+    this.isSwitching = false;
+    this.isSwitchingCharacter = false;
+
+    if (!this.element) return;
+    const outfitGrid = this.element.querySelector('#outfitGridContainer') || this.element.querySelector('.outfit-grid');
+    if (outfitGrid) {
+      outfitGrid.classList.remove('switching-cooldown');
+    }
+
+    const outfitCards = this.element.querySelectorAll('.outfit-card');
+    outfitCards.forEach(card => {
+      card.classList.remove('disabled-state');
+    });
+
+    const btnEnter = this.element.querySelector('#btnEnterReverie');
+    if (btnEnter && this.isNameValid) {
+      btnEnter.disabled = false;
+      btnEnter.classList.remove('disabled-state');
     }
   }
 
@@ -489,6 +560,20 @@ export class CharacterCreation {
 
   confirmCharacter() {
     if (!this.isNameValid) return;
+    if (this.isSwitching || this.isSwitchingCharacter) return;
+
+    const now = Date.now();
+    if (now - this.lastSwitchTime < this.COOLDOWN_MS) return;
+
+    this.isSwitching = true;
+    this.isSwitchingCharacter = true;
+    this.lastSwitchTime = now;
+
+    const btnEnter = this.element.querySelector('#btnEnterReverie');
+    if (btnEnter) {
+      btnEnter.disabled = true;
+      btnEnter.classList.add('disabled-state');
+    }
 
     const charObj = CHARACTERS.find(c => c.id === this.selectedCharacterId) || CHARACTERS[0];
     const characterTitle = charObj ? (charObj.culturalTitle || charObj.title || charObj.shortName) : 'Lãng Tử';
@@ -524,12 +609,25 @@ export class CharacterCreation {
     if (typeof this.onCharacterConfirmed === 'function') {
       this.onCharacterConfirmed(profile);
     }
+
+    clearTimeout(this.switchCooldownTimer);
+    this.switchCooldownTimer = setTimeout(() => {
+      this.unlockSwitching();
+    }, this.COOLDOWN_MS);
   }
 
   destroy() {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
+    }
+    if (this.switchCooldownTimer) {
+      clearTimeout(this.switchCooldownTimer);
+      this.switchCooldownTimer = null;
+    }
+    if (this._onCharacterSwitched) {
+      GameEventBus.off('CORE:CHARACTER_SWITCHED', this._onCharacterSwitched);
+      this._onCharacterSwitched = null;
     }
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
