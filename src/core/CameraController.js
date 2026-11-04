@@ -29,10 +29,10 @@ export class CameraController {
     this.smoothFactor = 0.22; // Độ phản hồi chuột nhạy bén, không bị trễ/lì lợm
 
     // Thông số TPS Spring-Arm
-    this.targetArmLength = 4.5;
-    this.currentArmLength = 4.5;
-    this.minArmLength = 0.8;
-    this.eyeHeight = 1.65;
+    this.targetArmLength = 4.2;
+    this.currentArmLength = 4.2;
+    this.minArmLength = 1.8;
+    this.eyeHeight = 1.58;
 
     // Thông số FOV
     this.tpsFov = 65;
@@ -143,7 +143,7 @@ export class CameraController {
       if (this.mode === 'TPS') {
         this.targetArmLength = THREE.MathUtils.clamp(
           this.targetArmLength + e.deltaY * 0.005,
-          1.8,
+          2.0,
           7.0
         );
       }

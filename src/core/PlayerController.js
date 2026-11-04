@@ -28,8 +28,8 @@ export const CHARACTER_MODELS_MAP = {
     modelUrl: 'assets/models/Michelle.glb',
     fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: true,
-    targetHeight: 1.63,
-    scale: 1.12,
+    targetHeight: 1.62,
+    scale: 1.02,
     facingOffset: 0,
     outfitColor: 0xfcfdfd,
     pantsColor: 0xf2f2f7,
@@ -50,8 +50,8 @@ export const CHARACTER_MODELS_MAP = {
     modelUrl: 'assets/models/Michelle.glb',
     fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: true,
-    targetHeight: 1.60,
-    scale: 1.10,
+    targetHeight: 1.58,
+    scale: 1.00,
     facingOffset: 0,
     outfitColor: 0xdf648a,
     pantsColor: 0x181818,
@@ -72,8 +72,8 @@ export const CHARACTER_MODELS_MAP = {
     modelUrl: 'assets/models/readyplayer.me.glb',
     fallbackModelUrl: 'assets/models/Asian_Male_Suit.glb',
     isFemale: false,
-    targetHeight: 1.75,
-    scale: 0.93,
+    targetHeight: 1.72,
+    scale: 0.98,
     facingOffset: 0,
     outfitColor: 0x4a5568,
     pantsColor: 0x4a5568,
@@ -94,8 +94,8 @@ export const CHARACTER_MODELS_MAP = {
     modelUrl: 'assets/models/readyplayer.me.glb',
     fallbackModelUrl: 'assets/models/Xbot.glb',
     isFemale: false,
-    targetHeight: 1.75,
-    scale: 0.93,
+    targetHeight: 1.72,
+    scale: 0.98,
     facingOffset: 0,
     outfitColor: 0x16213e,
     pantsColor: 0xf5f5f0,
@@ -469,6 +469,78 @@ export class PlayerController {
   }
 
   /**
+   * Tạo AnimationClip bật nhảy vượt chướng ngại vật phong cách GTA V (Vault / Hurdle Leap)
+   * Trích xuất tư thế động học đỉnh cao từ khung xương Mixamo gốc của Xbot.glb
+   * Tuyệt đối không can thiệp thủ công bằng phép cộng góc quay (+=) tránh xoắn gãy xương
+   */
+  _createGTA5JumpClip(xbotGltf) {
+    if (!xbotGltf || !xbotGltf.scene || !xbotGltf.animations) return null;
+    try {
+      const xbot = xbotGltf.scene;
+      const idle = xbotGltf.animations.find(a => /^idle$/i.test(a.name)) || xbotGltf.animations[0];
+      const run = xbotGltf.animations.find(a => /^run$/i.test(a.name)) || xbotGltf.animations.find(a => /walk/i.test(a.name)) || idle;
+      if (!idle || !run) return null;
+
+      const tempMixer = new THREE.AnimationMixer(xbot);
+      const idleAct = tempMixer.clipAction(idle);
+      const runAct = tempMixer.clipAction(run);
+
+      const bones = [];
+      xbot.traverse((c) => { if (c.isBone) bones.push(c); });
+      const times = [0.0, 0.20, 0.38, 0.60, 0.80];
+      const boneSamples = new Map();
+      for (const b of bones) boneSamples.set(b.name, []);
+
+      // 1. t = 0.0s: Tư thế chùng nhẹ gối lấy đà bật nhảy
+      tempMixer.stopAllAction();
+      idleAct.reset().play();
+      tempMixer.setTime(0.2);
+      tempMixer.update(0);
+      for (const b of bones) boneSamples.get(b.name).push(b.quaternion.clone());
+
+      // 2. t = 0.20s: Bật đẩy cơ thể lên không trung
+      tempMixer.stopAllAction();
+      runAct.reset().play();
+      tempMixer.setTime(0.08);
+      tempMixer.update(0);
+      for (const b of bones) boneSamples.get(b.name).push(b.quaternion.clone());
+
+      // 3. t = 0.38s: Đỉnh cao quỹ đạo nhảy vượt chướng ngại vật (Hurdle Leap) chuẩn GTA V
+      // Chân dẫn co đùi gập gối tự nhiên (~38°), chân sau duỗi thoát đà, hai tay vung đón gió
+      tempMixer.setTime(0.18);
+      tempMixer.update(0);
+      for (const b of bones) boneSamples.get(b.name).push(b.quaternion.clone());
+
+      // 4. t = 0.60s: Pha hạ thấp tiếp đất, hai chân vươn xuống đón mặt sàn
+      tempMixer.setTime(0.30);
+      tempMixer.update(0);
+      for (const b of bones) boneSamples.get(b.name).push(b.quaternion.clone());
+
+      // 5. t = 0.80s: Tiếp đất êm ái nhún gối giảm chấn (Landing Cushion)
+      tempMixer.stopAllAction();
+      idleAct.reset().play();
+      tempMixer.setTime(0.0);
+      tempMixer.update(0);
+      for (const b of bones) boneSamples.get(b.name).push(b.quaternion.clone());
+
+      tempMixer.stopAllAction();
+      tempMixer.uncacheRoot(xbot);
+
+      const jumpTracks = [];
+      for (const [boneName, quats] of boneSamples) {
+        const vals = [];
+        for (const q of quats) vals.push(q.x, q.y, q.z, q.w);
+        jumpTracks.push(new THREE.QuaternionKeyframeTrack(`${boneName}.quaternion`, times, vals));
+      }
+
+      return new THREE.AnimationClip('jump', 0.80, jumpTracks);
+    } catch (e) {
+      console.warn('[PlayerController] Lỗi khởi tạo GTA5 Jump Clip:', e);
+      return null;
+    }
+  }
+
+  /**
    * Khởi tạo Mô Hình Nhân Vật 3D SkinnedMesh Liền Khối Chuẩn Công Nghiệp Game
    * Khử 100% Race Condition (Bóng ma dính đè) thông qua token kiểm soát bất đồng bộ
    */
@@ -516,17 +588,9 @@ export class PlayerController {
             const model = SkeletonUtils.clone ? SkeletonUtils.clone(mainGltf.scene) : mainGltf.scene.clone(true);
             const isFemale = charConfig.isFemale;
 
-            // Chuẩn hóa scale theo nhân trắc học: Nữ 1.68m, Nam 1.78m
-            // Chuẩn hóa scale theo nhân trắc học: Nữ 1.60m-1.63m, Nam 1.75m (Kích thước vừa vặn chuẩn mực thế giới)
-            const preBox = new THREE.Box3().setFromObject(model);
-            const preSize = new THREE.Vector3();
-            preBox.getSize(preSize);
-            
-            let scaleFactor = charConfig.scale || 1.0;
-            if (preSize.y > 0.1) {
-              const targetH = charConfig.targetHeight || (charConfig.isFemale ? 1.63 : 1.75);
-              scaleFactor = targetH / preSize.y;
-            }
+            // Chuẩn hóa kích thước nhân vật theo tỷ lệ nhân trắc học tự nhiên (Nữ: ~1.60m, Nam: ~1.72m)
+            // CỐ ĐỊNH SCALE CHUẨN XÁC: Tuyệt đối không đo Box3 unskinned bind pose vì mesh Michelle nằm ngang gây phình to scale 5.6x
+            const scaleFactor = charConfig.scale || (charConfig.isFemale ? 1.02 : 0.98);
             model.scale.set(scaleFactor, scaleFactor, scaleFactor);
             model.position.set(0, 0, 0);
 
@@ -646,12 +710,17 @@ export class PlayerController {
             }
 
             // HỆ THỐNG HOẠT HỌA CHUYỂN ĐỘNG MOTION CAPTURE CHUẨN 60 FPS:
-            // Nạp toàn bộ animation chất lượng cao từ Xbot.glb (idle tĩnh lặng thở êm, walk, run)
+            // Nạp toàn bộ animation chất lượng cao từ Xbot.glb (idle tĩnh lặng thở êm, walk, run, jump leap GTA V)
             let baseClips = [];
             try {
               const xbotGltf = await loadGltfPromise('assets/models/Xbot.glb');
               if (xbotGltf && xbotGltf.animations && xbotGltf.animations.length > 0) {
-                baseClips = xbotGltf.animations;
+                baseClips = [...xbotGltf.animations];
+                // Tích hợp động tác bật nhảy vượt chướng ngại vật GTA V (Vault / Hurdle Leap)
+                if (!baseClips.find(c => c.name === 'jump')) {
+                  const jumpClip = this._createGTA5JumpClip(xbotGltf);
+                  if (jumpClip) baseClips.push(jumpClip);
+                }
               }
             } catch (errX) {}
 
@@ -675,6 +744,9 @@ export class PlayerController {
 
             // RETARGETING CLIP ĐẢM BẢO CHUYỂN ĐỘNG MƯỢT MÀ, KHÔNG CO GIÃN ĐỘ DÀI XƯƠNG
             const retargetedClips = [];
+            const _tempQuat = new THREE.Quaternion();
+            const _tempEuler = new THREE.Euler();
+
             for (const clip of baseClips) {
               const newTracks = [];
               for (const track of clip.tracks) {
@@ -688,6 +760,29 @@ export class PlayerController {
                 if (prop === 'quaternion') {
                   const clonedTrack = track.clone();
                   clonedTrack.name = `${targetBoneName}.quaternion`;
+
+                  // Hiệu chỉnh trục tọa độ cánh tay ReadyPlayerMe:
+                  // Khung xương Mixamo hạ tay bằng trục Z (Local Euler Z), trong khi ReadyPlayerMe hạ tay bằng trục X.
+                  // Chuyển trục giúp hai tay nhân vật nam buông xuôi tự nhiên bên hông, triệt tiêu tư thế dang rộng T-pose.
+                  if (isRpm && (targetBoneName === 'LeftArm' || targetBoneName === 'RightArm')) {
+                    const isLeft = targetBoneName === 'LeftArm';
+                    const vals = clonedTrack.values;
+                    for (let i = 0; i < vals.length; i += 4) {
+                      _tempQuat.set(vals[i], vals[i + 1], vals[i + 2], vals[i + 3]);
+                      _tempEuler.setFromQuaternion(_tempQuat, 'XYZ');
+                      if (isLeft) {
+                        _tempEuler.set(-_tempEuler.z + 0.10, _tempEuler.y, -_tempEuler.x, 'XYZ');
+                      } else {
+                        _tempEuler.set(_tempEuler.z + 0.10, _tempEuler.y, -_tempEuler.x, 'XYZ');
+                      }
+                      _tempQuat.setFromEuler(_tempEuler);
+                      vals[i] = _tempQuat.x;
+                      vals[i + 1] = _tempQuat.y;
+                      vals[i + 2] = _tempQuat.z;
+                      vals[i + 3] = _tempQuat.w;
+                    }
+                  }
+
                   newTracks.push(clonedTrack);
                 } else if (prop === 'position' && (targetBoneName === 'Hips' || targetBoneName === 'mixamorigHips')) {
                   const nativeHips = modelBoneMap.get(targetBoneName);
@@ -715,6 +810,7 @@ export class PlayerController {
               const idleClip = retargetedClips.find(a => /^idle$/i.test(a.name)) || retargetedClips.find(a => /idle/i.test(a.name)) || retargetedClips[0];
               const walkClip = retargetedClips.find(a => /^walk$/i.test(a.name)) || retargetedClips.find(a => /walk/i.test(a.name)) || retargetedClips[1] || idleClip;
               const runClip = retargetedClips.find(a => /^run$/i.test(a.name)) || retargetedClips.find(a => /run/i.test(a.name)) || retargetedClips[2] || walkClip;
+              const jumpClip = retargetedClips.find(a => /^jump$/i.test(a.name));
 
               const idleAction = mixer.clipAction(idleClip);
               const walkAction = mixer.clipAction(walkClip);
@@ -729,18 +825,16 @@ export class PlayerController {
                 walk: walkAction,
                 run: runAction
               };
+
+              if (jumpClip) {
+                const jumpAction = mixer.clipAction(jumpClip);
+                jumpAction.setLoop(THREE.LoopOnce);
+                jumpAction.clampWhenFinished = true;
+                this._animActions.jump = jumpAction;
+              }
+
               this._currentAnim = 'idle';
               this.humanoidAnimator = null;
-
-              // Lưu tham chiếu xương chi dưới để kích hoạt co đầu gối khi bấm SPACE nhảy
-              this._jumpBones = {
-                leftLeg: modelBoneMap.get('mixamorigLeftLeg') || modelBoneMap.get('LeftLeg'),
-                rightLeg: modelBoneMap.get('mixamorigRightLeg') || modelBoneMap.get('RightLeg'),
-                leftUpLeg: modelBoneMap.get('mixamorigLeftUpLeg') || modelBoneMap.get('LeftUpLeg'),
-                rightUpLeg: modelBoneMap.get('mixamorigRightUpLeg') || modelBoneMap.get('RightUpLeg'),
-                leftFoot: modelBoneMap.get('mixamorigLeftFoot') || modelBoneMap.get('LeftFoot'),
-                rightFoot: modelBoneMap.get('mixamorigRightFoot') || modelBoneMap.get('RightFoot')
-              };
             }
 
             this.characterMesh = model;
@@ -929,10 +1023,25 @@ export class PlayerController {
       }
     }
 
-    // Nhảy tự do
+    // Nhảy tự do theo phong cách bật nhảy vượt chướng ngại vật GTA V:
     this.velocity.y = this.jumpForce;
     this.isGrounded = false;
     this.isJumping = true;
+
+    // Nếu đang đứng im, tạo đà dấn nhẹ về phía trước chuẩn động tác nhảy hurdle GTA V
+    const horizSpeedSq = this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z;
+    if (horizSpeedSq < 0.25) {
+      const facingAngle = this.characterGroup.rotation.y;
+      this.velocity.x = Math.sin(facingAngle) * 2.4;
+      this.velocity.z = Math.cos(facingAngle) * 2.4;
+    }
+  }
+
+  /**
+   * Kích hoạt bật nhảy chuẩn GTA V (Hỗ trợ gọi từ GameAPI, UI & Phím Space)
+   */
+  jump() {
+    this._handleJumpOrParkour();
   }
 
   _handleInteract() {
@@ -1495,7 +1604,9 @@ export class PlayerController {
     if (this._gltfMixer && this._animActions) {
       const horizSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
       let targetAnim = 'idle';
-      if (horizSpeed > 0.15) {
+      if (!this.isGrounded || this.isJumping) {
+        targetAnim = this._animActions.jump ? 'jump' : (horizSpeed > 0.15 ? (this.keys.sprint ? 'run' : 'walk') : 'idle');
+      } else if (horizSpeed > 0.15) {
         targetAnim = this.keys.sprint ? 'run' : 'walk';
       }
 
@@ -1503,26 +1614,13 @@ export class PlayerController {
         const prev = this._animActions[this._currentAnim];
         const next = this._animActions[targetAnim];
         if (prev && next) {
-          next.reset().fadeIn(0.2).play();
-          prev.fadeOut(0.2);
+          const fadeTime = targetAnim === 'jump' ? 0.08 : 0.20;
+          next.reset().fadeIn(fadeTime).play();
+          prev.fadeOut(fadeTime);
           this._currentAnim = targetAnim;
         }
       }
       this._gltfMixer.update(delta);
-
-      // ĐẶC BIỆT LƯU Ý: KHI BẤM NÚT SPACE NHẢY -> ĐẦU GỐI CO LÊN RÕ RỆT TRÊN KHÔNG
-      if (!this.isGrounded || this.isJumping) {
-        const jb = this._jumpBones;
-        if (jb) {
-          const kneeFlex = 0.85; // Co đầu gối lên ~50 độ tự nhiên
-          if (jb.leftLeg) jb.leftLeg.rotation.x += kneeFlex;
-          if (jb.rightLeg) jb.rightLeg.rotation.x += kneeFlex;
-          if (jb.leftUpLeg) jb.leftUpLeg.rotation.x -= 0.35; // Nâng đùi hướng về phía trước
-          if (jb.rightUpLeg) jb.rightUpLeg.rotation.x -= 0.35;
-          if (jb.leftFoot) jb.leftFoot.rotation.x -= 0.25; // Duỗi mũi chân tự nhiên
-          if (jb.rightFoot) jb.rightFoot.rotation.x -= 0.25;
-        }
-      }
     } else if (this.humanoidAnimator) {
       const moveSpeed = this.velocity.length();
       this.humanoidAnimator.update(delta, moveSpeed, this.isGrounded, this.groundSlopeAngle || 0);
