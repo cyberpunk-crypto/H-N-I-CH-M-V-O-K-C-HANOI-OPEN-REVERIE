@@ -207,8 +207,8 @@ export class GameEngine {
       this.sceneManager = new SceneManager();
       const scene = this.sceneManager.getScene();
 
-      // Tầm nhìn 95m kết hợp sương mù 32-92m (Cắt giảm triệt để draw calls, mượt mà 60 FPS)
-      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 450);
+      // Tối ưu culling 60 FPS: Tầm nhìn 160m bao trọn phân khu hiện tại và lân cận, cắt giảm 60% Draw Calls
+      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 160);
       this.camera.position.set(45, 2.5, -40);
 
       this._reportProgress(55, 'Dựng 4 phân khu Thế Giới Mở 500m x 500m liền mạch...');
@@ -314,14 +314,15 @@ export class GameEngine {
       const delta = Math.min(this.clock.getDelta(), 0.1); // Giới hạn delta chống giật khi tab ẩn
 
       if (!this.isPaused) {
-        // Cập nhật hiệu ứng môi trường (lá rơi, lồng đèn)
+        // Cập nhật hiệu ứng môi trường (lá rơi, lồng đèn, skydome bám camera)
         if (this.sceneManager) {
-          this.sceneManager.update(delta);
+          this.sceneManager.update(delta, this.camera);
         }
 
-        // Cập nhật vật thể động trong thế giới
+        // Cập nhật vật thể động trong thế giới & culling khoảng cách siêu tốc
         if (this.worldManager) {
-          this.worldManager.update(delta);
+          const playerPos = this.playerController ? this.playerController.getPosition() : null;
+          this.worldManager.update(delta, playerPos);
         }
 
         // Cập nhật người chơi

@@ -27,7 +27,7 @@ export class SceneManager {
   _initFog() {
     const fogColor = new THREE.Color(0xf5e6d3); // Sắc thu vàng nhạt tự nhiên, không ám cam đục
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.Fog(fogColor.getHex(), 160, 420); // Đẩy xa 160m - 420m, phố cổ sắc nét cận cảnh
+    this.scene.fog = new THREE.Fog(fogColor.getHex(), 65, 155); // Tối ưu 60 FPS: Che mờ viền chân trời ở 65m - 155m
   }
 
   /**
@@ -69,8 +69,8 @@ export class SceneManager {
     skyTexture.wrapS = THREE.ClampToEdgeWrapping;
     skyTexture.wrapT = THREE.ClampToEdgeWrapping;
 
-    // Vòm bán cầu Skydome bán kính 420m bao quanh trọn vẹn thế giới 500m x 500m
-    const skyGeo = new THREE.SphereGeometry(420, 32, 24);
+    // Vòm bán cầu Skydome bán kính 140m bám tâm camera, luôn hiển thị trong tầm nhìn 160m
+    const skyGeo = new THREE.SphereGeometry(140, 24, 16);
     const skyMat = new THREE.MeshBasicMaterial({
       map: skyTexture,
       side: THREE.BackSide,
@@ -124,8 +124,8 @@ export class SceneManager {
    * Hệ thống hạt lá vàng rơi mùa thu & bụi nắng hoàng hôn
    */
   _initAutumnParticles() {
-    // 1. Hạt lá vàng thu (Autumn Leaf Particles)
-    const leafCount = 280;
+    // 1. Hạt lá vàng thu (Autumn Leaf Particles - Tối ưu 60 FPS: 140 hạt)
+    const leafCount = 140;
     const leafGeo = new THREE.BufferGeometry();
     const leafPos = new Float32Array(leafCount * 3);
     const leafVel = [];
@@ -170,8 +170,8 @@ export class SceneManager {
     this.leafVelocities = leafVel;
     this.scene.add(this.leafPoints);
 
-    // 2. Bụi nắng vàng lấp lánh (Golden Dust Motes)
-    const dustCount = 220;
+    // 2. Bụi nắng vàng lấp lánh (Golden Dust Motes - Tối ưu 60 FPS: 90 hạt)
+    const dustCount = 90;
     const dustGeo = new THREE.BufferGeometry();
     const dustPos = new Float32Array(dustCount * 3);
 

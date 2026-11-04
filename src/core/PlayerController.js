@@ -1079,12 +1079,12 @@ export class PlayerController {
 
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
-      // Bộ lọc không gian chuẩn xác theo AABB (Spatial Distance Culling) - hoạt động tốt cả với vật cản dài
-      const halfX = (obs.maxX - obs.minX) * 0.5;
-      const halfZ = (obs.maxZ - obs.minZ) * 0.5;
-      const centerX = (obs.minX + obs.maxX) * 0.5;
-      const centerZ = (obs.minZ + obs.maxZ) * 0.5;
-      if (Math.abs(pos.x - centerX) > (halfX + 14) || Math.abs(pos.z - centerZ) > (halfZ + 14)) {
+      // Bộ lọc không gian chuẩn xác theo AABB (Spatial Distance Culling) - sử dụng dữ liệu tiền tính toán 60 FPS
+      const cX = obs._centerX !== undefined ? obs._centerX : (obs.minX + obs.maxX) * 0.5;
+      const cZ = obs._centerZ !== undefined ? obs._centerZ : (obs.minZ + obs.maxZ) * 0.5;
+      const rX = obs._maxRadiusX !== undefined ? obs._maxRadiusX : (obs.maxX - obs.minX) * 0.5 + 16;
+      const rZ = obs._maxRadiusZ !== undefined ? obs._maxRadiusZ : (obs.maxZ - obs.minZ) * 0.5 + 16;
+      if (Math.abs(pos.x - cX) > rX || Math.abs(pos.z - cZ) > rZ) {
         continue;
       }
       // Bỏ qua nếu không trùng độ cao nhân vật
@@ -1321,12 +1321,12 @@ export class PlayerController {
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
 
-      // Bộ lọc không gian chuẩn xác theo AABB (Spatial Culling) - bảo vệ trọn vẹn cả cầu dài và tường dài
-      const halfX = (obs.maxX - obs.minX) * 0.5;
-      const halfZ = (obs.maxZ - obs.minZ) * 0.5;
-      const centerX = (obs.minX + obs.maxX) * 0.5;
-      const centerZ = (obs.minZ + obs.maxZ) * 0.5;
-      if (Math.abs(testPos.x - centerX) > (halfX + 16) || Math.abs(testPos.z - centerZ) > (halfZ + 16)) {
+      // Bộ lọc không gian chuẩn xác theo AABB (Spatial Culling) - sử dụng dữ liệu tiền tính toán
+      const cX = obs._centerX !== undefined ? obs._centerX : (obs.minX + obs.maxX) * 0.5;
+      const cZ = obs._centerZ !== undefined ? obs._centerZ : (obs.minZ + obs.maxZ) * 0.5;
+      const rX = obs._maxRadiusX !== undefined ? obs._maxRadiusX : (obs.maxX - obs.minX) * 0.5 + 16;
+      const rZ = obs._maxRadiusZ !== undefined ? obs._maxRadiusZ : (obs.maxZ - obs.minZ) * 0.5 + 16;
+      if (Math.abs(testPos.x - cX) > rX || Math.abs(testPos.z - cZ) > rZ) {
         continue;
       }
 
@@ -1493,8 +1493,32 @@ export class PlayerController {
     this._resolvePenetrations(currentPos);
 
     // 4. KIỂM TRA ĐỘ CAO MẶT ĐẤT & FOOT GROUND SNAPPING CHUẨN GTA V (CẦU THÊ HÚC & VỈA HÈ)
-    const colliders = this.worldManager.getColliders();
+    const allColliders = this.worldManager.getColliders();
     const charPos = this.characterGroup.position;
+
+    if (!this._nearbyColliders) this._nearbyColliders = [];
+    this._nearbyColliders.length = 0;
+    const cX = charPos.x;
+    const cZ = charPos.z;
+
+    for (let i = 0; i < allColliders.length; i++) {
+      const col = allColliders[i];
+      if (col._isBaseGround) {
+        this._nearbyColliders.push(col);
+        continue;
+      }
+      const p = col.position;
+      if (p) {
+        const dx = cX - p.x;
+        const dz = cZ - p.z;
+        if (dx * dx + dz * dz <= 1024) { // Bán kính 32m
+          this._nearbyColliders.push(col);
+        }
+      } else {
+        this._nearbyColliders.push(col);
+      }
+    }
+    const colliders = this._nearbyColliders.length > 0 ? this._nearbyColliders : allColliders;
 
     this._rayOrigin.copy(charPos);
     this._rayOrigin.y += 1.4;

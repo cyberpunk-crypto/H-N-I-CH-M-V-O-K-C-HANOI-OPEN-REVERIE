@@ -256,17 +256,22 @@ export class CameraController {
     // Vị trí TPS lý tưởng phía sau nhân vật
     const desiredTpsPos = this._desiredTpsPos.copy(eyePos).addScaledVector(camDir, this.targetArmLength);
 
-    // Raycast chống xuyên tường (Collision Detection có bộ lọc cự ly gần - giảm 90% tải CPU)
+    // Raycast chống xuyên tường (Collision Detection có bộ lọc cự ly gần - Zero Heap Allocation)
     const allColliders = this.worldManager ? this.worldManager.getColliders() : [];
-    const nearColliders = [];
+    if (!this._nearColliders) this._nearColliders = [];
+    this._nearColliders.length = 0;
+    const eX = eyePos.x;
+    const eZ = eyePos.z;
     for (let c = 0; c < allColliders.length; c++) {
       const col = allColliders[c];
-      if (col.position && Math.hypot(col.position.x - eyePos.x, col.position.z - eyePos.z) > 28) {
-        continue;
+      if (col.position) {
+        const dx = col.position.x - eX;
+        const dz = col.position.z - eZ;
+        if (dx * dx + dz * dz > 784) continue; // 28m * 28m
       }
-      nearColliders.push(col);
+      this._nearColliders.push(col);
     }
-    const colliders = nearColliders.length > 0 ? nearColliders : allColliders;
+    const colliders = this._nearColliders.length > 0 ? this._nearColliders : allColliders;
 
     if (colliders.length > 0) {
       const rayDir = this._rayDir.copy(desiredTpsPos).sub(eyePos).normalize();

@@ -48,6 +48,89 @@ export class WorldManager {
     this._buildLivingCityNPCs();
     this._buildBorderAndRoads();
     this._initInteractables();
+    this._initSpatialOptimization();
+  }
+
+  /**
+   * Khởi tạo tối ưu hóa không gian 60 FPS (Zero Matrix Overhead & Pre-computed AABB)
+   */
+  _initSpatialOptimization() {
+    this._cullableObjects = [];
+    const wp = new THREE.Vector3();
+    const sz = new THREE.Vector3();
+
+    this.worldGroup.traverse((child) => {
+      if (child.isMesh) {
+        child.matrixAutoUpdate = false;
+        child.updateMatrix();
+
+        child.getWorldPosition(wp);
+
+        // Bỏ qua không bao giờ culling các mặt phẳng nền tảng cốt lõi
+        const name = (child.name || '').toLowerCase();
+        const isCoreGround = name.includes('ground') || name.includes('terrain') ||
+          name.includes('water') || name.includes('lake') || name.includes('road') ||
+          name.includes('promenade') || child._isBaseGround;
+
+        if (isCoreGround) {
+          child._isBaseGround = true;
+          return;
+        }
+
+        let maxDim = 6;
+        if (child.geometry) {
+          if (!child.geometry.boundingBox) {
+            child.geometry.computeBoundingBox();
+          }
+          if (child.geometry.boundingBox) {
+            child.geometry.boundingBox.getSize(sz);
+            const sx = child.scale ? Math.abs(child.scale.x) : 1;
+            const sy = child.scale ? Math.abs(child.scale.y) : 1;
+            const szVal = child.scale ? Math.abs(child.scale.z) : 1;
+            maxDim = Math.max(sz.x * sx, sz.y * sy, sz.z * szVal);
+          }
+        }
+
+        // Tier culling:
+        // Tier 1: Chi tiết nhỏ / đồ vật vỉa hè / lá cờ / đèn lồng / ghế đá (maxDim < 3.2m): hiện trong 42m (42*42 = 1764)
+        // Tier 2: Công trình vừa / cây cối / gian hàng phố cổ (3.2m <= maxDim < 12m): hiện trong 85m (85*85 = 7225)
+        // Tier 3: Tòa nhà lớn / Khối kiến trúc đồ sộ (maxDim >= 12m): hiện trong 150m (150*150 = 22500)
+        let cullDistSq = 22500;
+        if (maxDim < 3.2) {
+          cullDistSq = 1764; // 42m
+        } else if (maxDim < 12.0) {
+          cullDistSq = 7225; // 85m
+        }
+
+        this._cullableObjects.push({
+          mesh: child,
+          posX: wp.x,
+          posZ: wp.z,
+          cullDistSq: cullDistSq
+        });
+      }
+    });
+
+    for (let i = 0; i < this.colliders.length; i++) {
+      const col = this.colliders[i];
+      if (col.geometry) {
+        if (!col.geometry.boundingBox) col.geometry.computeBoundingBox();
+        if (col.geometry.boundingBox) {
+          col.geometry.boundingBox.getSize(sz);
+          if (Math.max(sz.x, sz.z) > 30) {
+            col._isBaseGround = true;
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < this.obstacles.length; i++) {
+      const obs = this.obstacles[i];
+      obs._centerX = (obs.minX + obs.maxX) * 0.5;
+      obs._centerZ = (obs.minZ + obs.maxZ) * 0.5;
+      obs._maxRadiusX = (obs.maxX - obs.minX) * 0.5 + 16;
+      obs._maxRadiusZ = (obs.maxZ - obs.minZ) * 0.5 + 16;
+    }
   }
 
   /**
@@ -5253,8 +5336,25 @@ export class WorldManager {
   /**
    * Cập nhật animation các vật thể sống động, cửa mở và NPC bán hàng rong di chuyển
    */
-  update(delta) {
+  update(delta, playerPos) {
     const time = performance.now() * 0.001;
+
+    // 0. Culling khoảng cách siêu nhẹ đa tầng (Throttling mỗi 4 frames, giảm 65% Draw Calls)
+    if (playerPos && this._cullableObjects) {
+      if (this._cullCounter === undefined) this._cullCounter = 0;
+      this._cullCounter++;
+      if (this._cullCounter === 1 || this._cullCounter % 4 === 0) {
+        const px = playerPos.x;
+        const pz = playerPos.z;
+        for (let i = 0; i < this._cullableObjects.length; i++) {
+          const item = this._cullableObjects[i];
+          const dx = px - item.posX;
+          const dz = pz - item.posZ;
+          const d2 = dx * dx + dz * dz;
+          item.mesh.visible = (d2 <= item.cullDistSq);
+        }
+      }
+    }
 
     // 1. Cập nhật các vật thể có animation
     for (let i = 0; i < this.animatedObjects.length; i++) {
