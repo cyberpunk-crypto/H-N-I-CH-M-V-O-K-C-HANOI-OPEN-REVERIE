@@ -1562,7 +1562,9 @@ export class PlayerController {
       // Nâng nhẹ chân khi đứng trên sàn Tháp Rùa, tam cấp hoặc sân đảo để đế giày luôn hiển thị trọn vẹn trên mặt gạch đá
       if (this._groundHits.length > 0 && this._groundHits[0].object) {
         const hitName = this._groundHits[0].object.name || '';
-        if (hitName === 'thapRuaInteriorFloor' || hitName === 'thapRuaPlinth' || hitName === 'thapRuaStep') {
+        if (hitName === 'thapRuaInteriorFloor') {
+          groundY = Math.max(groundY + 0.045, 2.060);
+        } else if (hitName === 'thapRuaPlinth' || hitName === 'thapRuaStep') {
           groundY = Math.max(groundY + 0.045, 2.045);
         } else if (hitName.includes('island') || hitName.includes('courtyard') || hitName.includes('Grass') || hitName.includes('grass')) {
           groundY = Math.max(groundY + 0.045, 1.685);

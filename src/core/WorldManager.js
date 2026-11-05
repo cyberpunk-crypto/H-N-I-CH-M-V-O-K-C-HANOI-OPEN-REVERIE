@@ -877,7 +877,10 @@ export class WorldManager {
     this.materials.thapRuaBpFloor = new THREE.MeshStandardMaterial({
       map: bpFloorTex,
       roughness: 0.85,
-      metalness: 0.02
+      metalness: 0.02,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.0,
+      polygonOffsetUnits: -1.0
     });
 
     const bpAltarTex = this.textureLoader.load('assets/textures/thap_rua_bp_interior_altar.png');
@@ -1628,21 +1631,13 @@ export class WorldManager {
     const plinthH = 0.45; // Đưa mặt sân thềm lên độ cao 2.0m
 
     const plinthMesh = new THREE.Mesh(new THREE.BoxGeometry(plinthW, plinthH, plinthD), this.materials.thapRuaPlinth);
-    plinthMesh.position.set(0, plinthH / 2, 0);
+    plinthMesh.name = 'thapRuaPlinth';
+    plinthMesh.position.set(80, 1.55 + plinthH / 2, -80); // Tâm Y = 1.775, Đỉnh Y = 2.000m chuẩn xác duy nhất, triệt tiêu 100% Z-fighting
     plinthMesh.castShadow = true;
     plinthMesh.receiveShadow = true;
-    towerGroup.add(plinthMesh);
-
-    // SÀN ĐI BỘ NGUYÊN KHỐI TOÀN DIỆN THÁP RÙA (TERRACE + 4 LỐI CỬA + NỘI ĐIỆN)
-    // Cao độ mặt sàn đỉnh: đúng chuẩn y = 2.00m (bằng mặt thềm đá và sàn gạch Bát Tràng)
-    // Chiều dày 0.40m (y: 1.60m -> 2.00m), bao phủ trọn vẹn 11.6m x 9.4m
-    const terraceFloor = new THREE.Mesh(new THREE.BoxGeometry(plinthW + 0.2, 0.40, plinthD + 0.2), this.materials.thapRuaPlinth);
-    terraceFloor.name = 'thapRuaPlinth';
-    terraceFloor.position.set(80, 1.80, -80); // Tâm Y = 1.80, đỉnh Y = 2.00m
-    terraceFloor.receiveShadow = true;
-    terraceFloor._isBaseGround = true;
-    zoneGroup.add(terraceFloor); // THÊM VÀO zoneGroup ĐỂ MATRIXWORLD ĐỒNG BỘ 100%!
-    this.colliders.push(terraceFloor);
+    plinthMesh._isBaseGround = true;
+    zoneGroup.add(plinthMesh);
+    this.colliders.push(plinthMesh);
 
     // 4 Dãy tam cấp dẫn lên thềm đá 4 phía (Mỗi tam cấp 4 bậc, cao 11cm mỗi bậc, có má gà đá vát chéo)
     const stairConfigs = [
@@ -1660,6 +1655,7 @@ export class WorldManager {
         const stepY = (s + 0.5) * stepH;
         const stepDist = (numSteps - s) * (st.len / numSteps);
 
+        // Bậc tam cấp đá nguyên khối (Duy nhất 1 Mesh vừa hiển thị vừa đăng ký va chạm)
         const stepMesh = new THREE.Mesh(
           new THREE.BoxGeometry(
             st.dirX !== 0 ? (st.len / numSteps + 0.05) : st.w,
@@ -1668,28 +1664,15 @@ export class WorldManager {
           ),
           this.materials.thapRuaPlinth
         );
-
+        stepMesh.name = 'thapRuaStep';
         const posX = st.dirX !== 0 ? st.dirX * (plinthW / 2 + stepDist - 0.25) : 0;
         const posZ = st.dirZ !== 0 ? st.dirZ * (plinthD / 2 + stepDist - 0.25) : 0;
-        stepMesh.position.set(posX, stepY, posZ);
+        stepMesh.position.set(80 + posX, 1.55 + stepY, -80 + posZ);
+        stepMesh.castShadow = true;
         stepMesh.receiveShadow = true;
-        towerGroup.add(stepMesh);
-
-        // Đăng ký va chạm bước chân cho từng bậc
-        const stepCol = new THREE.Mesh(
-          new THREE.BoxGeometry(
-            st.dirX !== 0 ? (st.len / numSteps + 0.05) : st.w,
-            0.15,
-            st.dirZ !== 0 ? (st.len / numSteps + 0.05) : st.w
-          ),
-          this.materials.thapRuaPlinth
-        );
-        stepCol.name = 'thapRuaStep';
-        stepCol.position.set(80 + posX, 1.55 + stepY, -80 + posZ);
-        stepCol.receiveShadow = true;
-        stepCol._isBaseGround = true;
-        zoneGroup.add(stepCol);
-        this.colliders.push(stepCol);
+        stepMesh._isBaseGround = true;
+        zoneGroup.add(stepMesh);
+        this.colliders.push(stepMesh);
       }
 
       // Má gà đá vát dốc hai bên cạnh tam cấp (Flanking angled cheek stringers)
@@ -1828,22 +1811,42 @@ export class WorldManager {
 
     // =========================================================================
     // SÀN NỘI ĐIỆN GẠCH BÁT TRÀNG MỘC & ĐĂNG KÝ BƯỚC ĐI TỰ DO (WALKABLE INTERIOR FLOOR)
+    // Sàn gạch Bát Tràng nằm gọn 100% trong lòng 4 vách tường (7.8m x 5.8m), đỉnh Y = 2.015m
+    // Cao hơn mặt thềm đá ngoài 1.5cm tạo gờ bậu cửa truyền thống & triệt tiêu hoàn toàn lỗi chớp nháy (Z-fighting)
     // =========================================================================
-    const interiorFloorGeo = new THREE.PlaneGeometry(t1W - 0.2, t1D - 0.2);
-    interiorFloorGeo.rotateX(-Math.PI / 2);
-    const interiorFloorMesh = new THREE.Mesh(interiorFloorGeo, this.materials.thapRuaBpFloor);
-    interiorFloorMesh.position.set(0, t1BaseY + 0.002, 0);
-    interiorFloorMesh.receiveShadow = true;
-    towerGroup.add(interiorFloorMesh);
-
-    // Collider sàn đi bộ vững chắc bên trong Tháp Rùa (bao trọn lòng tháp và vươn qua các mép cửa, đỉnh y = 2.00m)
-    const walkFloorCol = new THREE.Mesh(new THREE.BoxGeometry(t1W + 0.8, 0.40, t1D + 0.8), this.materials.thapRuaBpFloor);
+    const walkFloorCol = new THREE.Mesh(
+      new THREE.BoxGeometry(t1W - 0.2, 0.40, t1D - 0.2),
+      this.materials.thapRuaBpFloor
+    );
     walkFloorCol.name = 'thapRuaInteriorFloor';
-    walkFloorCol.position.set(80, 1.80, -80); // Tâm Y = 1.80, đỉnh Y = 2.00m
+    walkFloorCol.position.set(80, 1.815, -80); // Tâm Y = 1.815, đỉnh Y = 2.015m
     walkFloorCol.receiveShadow = true;
     walkFloorCol._isBaseGround = true;
     zoneGroup.add(walkFloorCol);
     this.colliders.push(walkFloorCol);
+
+    // Bốn ngưỡng bậu cửa đá cổ kết nối thềm ngoại thất và sàn gạch nội điện
+    const threshGeoW = new THREE.BoxGeometry(0.45, 0.03, 2.0);
+    const threshW = new THREE.Mesh(threshGeoW, this.materials.thapRuaPlinth);
+    threshW.position.set(76.0, 2.015, -80.0);
+    threshW.receiveShadow = true;
+    zoneGroup.add(threshW);
+
+    const threshE = new THREE.Mesh(threshGeoW, this.materials.thapRuaPlinth);
+    threshE.position.set(84.0, 2.015, -80.0);
+    threshE.receiveShadow = true;
+    zoneGroup.add(threshE);
+
+    const threshGeoNS = new THREE.BoxGeometry(2.0, 0.03, 0.45);
+    const threshS = new THREE.Mesh(threshGeoNS, this.materials.thapRuaPlinth);
+    threshS.position.set(80.0, 2.015, -77.0);
+    threshS.receiveShadow = true;
+    zoneGroup.add(threshS);
+
+    const threshN = new THREE.Mesh(threshGeoNS, this.materials.thapRuaPlinth);
+    threshN.position.set(80.0, 2.015, -83.0);
+    threshN.receiveShadow = true;
+    zoneGroup.add(threshN);
 
     // =========================================================================
     // 1. CỬA VÒM MẶT TÂY (MẶT TRƯỚC - ĐÓN KHÁCH TỪ CẦU KIM QUY VÀO TRONG THÁP)
