@@ -1497,33 +1497,14 @@ export class PlayerController {
     const charPos = this.characterGroup.position;
 
     if (!this._nearbyColliders) this._nearbyColliders = [];
-    this._nearbyColliders.length = 0;
-    const cX = charPos.x;
-    const cZ = charPos.z;
-
-    for (let i = 0; i < allColliders.length; i++) {
-      const col = allColliders[i];
-      if (col._isBaseGround) {
-        this._nearbyColliders.push(col);
-        continue;
-      }
-      const p = col.position;
-      if (p) {
-        const dx = cX - p.x;
-        const dz = cZ - p.z;
-        if (dx * dx + dz * dz <= 1024) { // Bán kính 32m
-          this._nearbyColliders.push(col);
-        }
-      } else {
-        this._nearbyColliders.push(col);
-      }
-    }
-    const colliders = this._nearbyColliders.length > 0 ? this._nearbyColliders : allColliders;
+    // Quét toàn diện tất cả các colliders sàn/đảo/cầu cốt lõi (không bỏ sót bất kỳ mặt phẳng nào)
+    const colliders = allColliders;
 
     this._rayOrigin.copy(charPos);
-    this._rayOrigin.y += 1.4;
+    // Luôn bắn tia từ cao xuống (tối thiểu 2.8m) để không bao giờ bị kẹt dưới sàn thềm Tháp Rùa hay Đền Ngọc Sơn
+    this._rayOrigin.y = Math.max(charPos.y + 1.8, 2.8);
     this.raycaster.set(this._rayOrigin, this.downVector);
-    this.raycaster.far = 4.0;
+    this.raycaster.far = 6.0;
 
     // Zero Heap Allocation: Tái sử dụng mảng _groundHits
     this._groundHits.length = 0;
@@ -1547,11 +1528,8 @@ export class PlayerController {
     if (this._groundHits.length > 0 || bridgeGroundY !== null) {
       let groundY = (this._groundHits.length > 0) ? this._groundHits[0].point.y : 0;
       if (bridgeGroundY !== null) {
-        if (this._groundHits.length === 0 || Math.abs(groundY - bridgeGroundY) > 0.35) {
-          groundY = bridgeGroundY;
-        } else {
-          groundY = Math.max(groundY, bridgeGroundY);
-        }
+        // Khi bước lên thềm đảo/đền thờ thì luôn lấy độ cao lớn hơn, tuyệt đối không bị kéo sụt xuống gầm sàn
+        groundY = (this._groundHits.length === 0) ? bridgeGroundY : Math.max(groundY, bridgeGroundY);
       }
 
       // CHỐNG RƠI XUYÊN CẦU / XUYÊN ĐẤT:
@@ -1570,12 +1548,12 @@ export class PlayerController {
         charPos.y += this.velocity.y * delta;
         this.isGrounded = false;
       } else {
-        // Foot Ground Snapping (Cầu Thê Húc, dốc Cầu Long Biên & vỉa hè):
-        if (verticalDiff >= -this.maxStepDown && verticalDiff <= 0.95) { // Cho phép bước lên dốc cầu cong tới 95cm
+        // Foot Ground Snapping (Cầu Thê Húc, dốc Cầu Long Biên, Tháp Rùa & Đền Ngọc Sơn):
+        if (verticalDiff >= -this.maxStepDown && verticalDiff <= 1.25) { // Cho phép bước lên dốc thềm tam cấp tới 1.25m
           if (Math.abs(verticalDiff) < 0.02) {
             charPos.y = groundY;
           } else if (verticalDiff > 0) {
-            // Leo lên dốc / bước lên vỉa hè: nâng chân êm ái
+            // Leo lên dốc / bước lên thềm đá: nâng chân êm ái
             charPos.y = THREE.MathUtils.lerp(charPos.y, groundY, Math.min(1.0, 24.0 * delta));
             if (Math.abs(groundY - charPos.y) < 0.02) charPos.y = groundY;
           } else {
@@ -1606,9 +1584,24 @@ export class PlayerController {
         this.isJumping = false;
       }
     } else {
-      // Bảo vệ mép bờ hồ: nếu ở khu vực Hồ Gươm, sàn đá vỉa hè dạo bộ tối thiểu là y = 0.38m
-      const lakeDistSq = (charPos.x - 80) * (charPos.x - 80) + (charPos.z - (-80)) * (charPos.z - (-80));
-      const minGround = (lakeDistSq <= 99 * 99) ? 0.38 : 0.0;
+      // Bảo vệ mặt đất / đảo / mép bờ hồ (Triệt tiêu 100% lỗi chìm nửa thân dưới đất):
+      const dxTR = charPos.x - 80;
+      const dzTR = charPos.z - (-80);
+      const distSqTR = dxTR * dxTR + dzTR * dzTR;
+
+      const dxNS = charPos.x - 122;
+      const dzNS = charPos.z - (-73);
+      const distSqNS = dxNS * dxNS + dzNS * dzNS;
+
+      let minGround = 0.0;
+      if (distSqTR <= 19.5 * 19.5) {
+        minGround = 1.50; // Sân Đảo Tháp Rùa (tuyệt đối không chìm xuống 0.38m)
+      } else if (distSqNS <= 22.0 * 22.0) {
+        minGround = 0.80; // Sân Đền Ngọc Sơn (tuyệt đối không chìm xuống 0.38m)
+      } else if (distSqTR <= 99 * 99) {
+        minGround = 0.38; // Vỉa hè dạo ven Hồ Gươm
+      }
+
       if (charPos.y + this.velocity.y * delta <= minGround) {
         charPos.y = minGround;
         this.velocity.y = 0;

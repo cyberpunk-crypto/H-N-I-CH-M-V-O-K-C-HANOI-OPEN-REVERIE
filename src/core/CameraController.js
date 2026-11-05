@@ -31,7 +31,7 @@ export class CameraController {
     // Thông số TPS Spring-Arm
     this.targetArmLength = 4.2;
     this.currentArmLength = 4.2;
-    this.minArmLength = 1.8;
+    this.minArmLength = 0.35; // Cho phép co sát vai nhân vật, triệt tiêu 100% hiện tượng camera lọt vào trong tường
     this.eyeHeight = 1.58;
 
     // Thông số FOV
@@ -256,12 +256,75 @@ export class CameraController {
     // Vị trí TPS lý tưởng phía sau nhân vật
     const desiredTpsPos = this._desiredTpsPos.copy(eyePos).addScaledVector(camDir, this.targetArmLength);
 
-    // Raycast chống xuyên tường (Collision Detection có bộ lọc cự ly gần - Zero Heap Allocation)
+    // CHỐNG CAMERA NHÌN XUYÊN TƯỜNG / XUYÊN NHÀ KHI LẠI GẦN CÔNG TRÌNH:
+    // Kết hợp Ray-AABB với toàn bộ 480+ khối kiến trúc nhà cửa và Raycast colliders
+    let minAllowedArm = this.targetArmLength;
+    const rayDir = this._rayDir.copy(desiredTpsPos).sub(eyePos).normalize();
+    const maxRayDist = this.targetArmLength + 0.3;
+    const eX = eyePos.x;
+    const eZ = eyePos.z;
+
+    // A. Kiểm tra va chạm với các khối kiến trúc / nhà phố / đền chùa (AABB Obstacles)
+    const obstacles = (this.worldManager && typeof this.worldManager.getObstacles === 'function') ? this.worldManager.getObstacles() : [];
+    for (let i = 0; i < obstacles.length; i++) {
+      const obs = obstacles[i];
+      const cX = obs._centerX !== undefined ? obs._centerX : (obs.minX + obs.maxX) * 0.5;
+      const cZ = obs._centerZ !== undefined ? obs._centerZ : (obs.minZ + obs.maxZ) * 0.5;
+      const maxR = Math.max(obs.maxX - obs.minX, obs.maxZ - obs.minZ) * 0.5 + maxRayDist;
+      if (Math.abs(eX - cX) > maxR || Math.abs(eZ - cZ) > maxR) continue;
+
+      // Slab test tìm điểm giao cắt gần nhất giữa tia camera và hộp AABB của nhà
+      let tMin = 0.0;
+      let tMax = maxRayDist;
+
+      // Trục X
+      if (Math.abs(rayDir.x) < 1e-6) {
+        if (eyePos.x < obs.minX || eyePos.x > obs.maxX) continue;
+      } else {
+        const invD = 1.0 / rayDir.x;
+        let t1 = (obs.minX - eyePos.x) * invD;
+        let t2 = (obs.maxX - eyePos.x) * invD;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) continue;
+      }
+
+      // Trục Y
+      if (Math.abs(rayDir.y) < 1e-6) {
+        if (eyePos.y < obs.minY || eyePos.y > obs.maxY) continue;
+      } else {
+        const invD = 1.0 / rayDir.y;
+        let t1 = (obs.minY - eyePos.y) * invD;
+        let t2 = (obs.maxY - eyePos.y) * invD;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) continue;
+      }
+
+      // Trục Z
+      if (Math.abs(rayDir.z) < 1e-6) {
+        if (eyePos.z < obs.minZ || eyePos.z > obs.maxZ) continue;
+      } else {
+        const invD = 1.0 / rayDir.z;
+        let t1 = (obs.minZ - eyePos.z) * invD;
+        let t2 = (obs.maxZ - eyePos.z) * invD;
+        if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) continue;
+      }
+
+      if (tMin < minAllowedArm) {
+        minAllowedArm = Math.max(this.minArmLength, tMin - 0.28);
+      }
+    }
+
+    // B. Kiểm tra va chạm raycast với các colliders lưới hình học
     const allColliders = this.worldManager ? this.worldManager.getColliders() : [];
     if (!this._nearColliders) this._nearColliders = [];
     this._nearColliders.length = 0;
-    const eX = eyePos.x;
-    const eZ = eyePos.z;
     for (let c = 0; c < allColliders.length; c++) {
       const col = allColliders[c];
       if (col.position) {
@@ -274,17 +337,22 @@ export class CameraController {
     const colliders = this._nearColliders.length > 0 ? this._nearColliders : allColliders;
 
     if (colliders.length > 0) {
-      const rayDir = this._rayDir.copy(desiredTpsPos).sub(eyePos).normalize();
       this.raycaster.set(eyePos, rayDir);
-      this.raycaster.far = this.targetArmLength + 0.3;
+      this.raycaster.far = maxRayDist;
 
       const hits = this.raycaster.intersectObjects(colliders, false);
       if (hits.length > 0) {
         const hitDistance = hits[0].distance - 0.25;
-        this.currentArmLength = Math.max(this.minArmLength, hitDistance);
-      } else {
-        this.currentArmLength = THREE.MathUtils.lerp(this.currentArmLength, this.targetArmLength, 0.1);
+        if (hitDistance < minAllowedArm) {
+          minAllowedArm = Math.max(this.minArmLength, hitDistance);
+        }
       }
+    }
+
+    if (minAllowedArm < this.targetArmLength) {
+      this.currentArmLength = Math.min(this.currentArmLength, minAllowedArm);
+    } else {
+      this.currentArmLength = THREE.MathUtils.lerp(this.currentArmLength, this.targetArmLength, 0.1);
     }
 
     const actualTpsPos = this._actualTpsPos.copy(eyePos).addScaledVector(camDir, this.currentArmLength);

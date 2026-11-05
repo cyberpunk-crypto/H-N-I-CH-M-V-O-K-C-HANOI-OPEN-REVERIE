@@ -59,6 +59,9 @@ export class WorldManager {
     const wp = new THREE.Vector3();
     const sz = new THREE.Vector3();
 
+    // Cập nhật ma trận toàn cục trước khi khóa matrixAutoUpdate
+    this.worldGroup.updateMatrixWorld(true);
+
     this.worldGroup.traverse((child) => {
       if (child.isMesh) {
         child.matrixAutoUpdate = false;
@@ -66,11 +69,13 @@ export class WorldManager {
 
         child.getWorldPosition(wp);
 
-        // Bỏ qua không bao giờ culling các mặt phẳng nền tảng cốt lõi
+        // Bỏ qua không bao giờ culling các mặt phẳng nền tảng cốt lõi và các colliders đi bộ
         const name = (child.name || '').toLowerCase();
         const isCoreGround = name.includes('ground') || name.includes('terrain') ||
           name.includes('water') || name.includes('lake') || name.includes('road') ||
-          name.includes('promenade') || child._isBaseGround;
+          name.includes('promenade') || name.includes('island') || name.includes('courtyard') ||
+          name.includes('plinth') || name.includes('floor') || child._isBaseGround ||
+          this.colliders.includes(child);
 
         if (isCoreGround) {
           child._isBaseGround = true;
@@ -1736,14 +1741,12 @@ export class WorldManager {
     interiorFloorMesh.receiveShadow = true;
     towerGroup.add(interiorFloorMesh);
 
-        // CHONG DI XUYEN THAP RUA: KHOI VAT CAN CUNG AABB BAO KIN TOAN BO THAN THAP RUA
-    // Ngan chan tuyet doi viec di xuyen thap, bao ve tinh trang nghiem cua di tich
-    this._addBoxObstacle(80, -80, 8.2, 6.2, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H + 4.0);
-
-    // Collider sàn đi bộ phẳng bên trong Tháp Rùa
+    // Collider sàn đi bộ vững chắc bên trong Tháp Rùa (cho phép người chơi bước tự do vào tham quan nội điện)
     const walkFloorCol = new THREE.Mesh(new THREE.BoxGeometry(t1W - 0.2, 0.25, t1D - 0.2), this.materials.thapRuaBpFloor);
+    walkFloorCol.name = 'thapRuaInteriorFloor';
     walkFloorCol.position.set(80, 1.55 + t1BaseY + 0.02, -80);
-    walkFloorCol.visible = false;
+    walkFloorCol.receiveShadow = true;
+    walkFloorCol._isBaseGround = true;
     zoneGroup.add(walkFloorCol);
     this.colliders.push(walkFloorCol);
 
@@ -1864,12 +1867,24 @@ export class WorldManager {
       sideLintel.castShadow = true;
       towerGroup.add(sideLintel);
 
-      // Ngoại thất mặt bên phủ hoa văn 2 vòm Gothic từ Blueprint
-      const sidePlaneGeom = new THREE.PlaneGeometry(t1D, t1H);
-      const sidePlane = new THREE.Mesh(sidePlaneGeom, this.materials.thapRuaT1Side);
-      sidePlane.position.set(sideX * (t1W / 2 + 0.02), t1BaseY + t1H / 2, 0);
-      sidePlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
-      towerGroup.add(sidePlane);
+      // Ngoại thất mặt bên: Mở cửa vòm thông suốt 1.8m, ở ngoài nhìn thấy rõ cửa và đi vào được!
+      const sidePlane1 = new THREE.Mesh(new THREE.PlaneGeometry(sidePierLen, t1H), this.materials.thapRuaT1Side);
+      setPlaneUVs(sidePlane1.geometry, 0.0, 0.35, 0.0, 1.0);
+      sidePlane1.position.set(sideX * (t1W / 2 + 0.02), t1BaseY + t1H / 2, -t1D / 2 + sidePierLen / 2);
+      sidePlane1.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
+      towerGroup.add(sidePlane1);
+
+      const sidePlane2 = new THREE.Mesh(new THREE.PlaneGeometry(sidePierLen, t1H), this.materials.thapRuaT1Side);
+      setPlaneUVs(sidePlane2.geometry, 0.65, 1.0, 0.0, 1.0);
+      sidePlane2.position.set(sideX * (t1W / 2 + 0.02), t1BaseY + t1H / 2, t1D / 2 - sidePierLen / 2);
+      sidePlane2.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
+      towerGroup.add(sidePlane2);
+
+      const sideLintelPlane = new THREE.Mesh(new THREE.PlaneGeometry(sideDoorClear, 0.7), this.materials.thapRuaT1Side);
+      setPlaneUVs(sideLintelPlane.geometry, 0.35, 0.65, 0.81, 1.0);
+      sideLintelPlane.position.set(sideX * (t1W / 2 + 0.02), t1BaseY + t1H - 0.35, 0);
+      sideLintelPlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
+      towerGroup.add(sideLintelPlane);
     }
 
     // =========================================================================
