@@ -40,6 +40,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (reqPath === '/favicon.ico') {
+    // Trả về SVG icon hoài niệm cho favicon, triệt tiêu 100% lỗi 404
+    const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#1c1714"/><circle cx="16" cy="16" r="10" fill="none" stroke="#d4af37" stroke-width="2.5"/><circle cx="16" cy="16" r="4" fill="#d4af37"/></svg>`;
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+    res.end(svgIcon);
+    return;
+  }
+
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

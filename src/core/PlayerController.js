@@ -280,14 +280,24 @@ export class PlayerController {
   /**
    * Tạo mô hình 3D Nón Lá bài thơ truyền thống Việt Nam cho SkinnedMesh
    */
-  _create3DNonLa(isMeters = true) {
+  _create3DNonLa(isMeters = false) {
     const s = isMeters ? 0.01 : 1.0;
     const nonLaGroup = new THREE.Group();
     nonLaGroup.name = '3D_NonLa';
 
-    const outerConeGeo = new THREE.ConeGeometry(20 * s, 11 * s, 32, 1, true);
+    const texLoader = this._textureLoader || new THREE.TextureLoader();
+    let nonLaTex = null;
+    try {
+      nonLaTex = texLoader.load('assets/textures/char_bamboo_non_la.jpg');
+      nonLaTex.wrapS = THREE.RepeatWrapping;
+      nonLaTex.wrapT = THREE.RepeatWrapping;
+      nonLaTex.repeat.set(4, 2);
+    } catch (_) {}
+
+    const outerConeGeo = new THREE.ConeGeometry(22 * s, 12 * s, 32, 1, true);
     const nonLaMat = new THREE.MeshStandardMaterial({
-      color: 0xf3e5ab,
+      map: nonLaTex,
+      color: 0xfbf1c7,
       roughness: 0.85,
       metalness: 0.05,
       side: THREE.DoubleSide
@@ -311,13 +321,23 @@ export class PlayerController {
   /**
    * Tạo mô hình 3D Khăn Rằn truyền thống Nam Bộ / Phố Thị
    */
-  _create3DKhanRan(isMeters = true) {
+  _create3DKhanRan(isMeters = false) {
     const s = isMeters ? 0.01 : 1.0;
     const khanGroup = new THREE.Group();
     khanGroup.name = '3D_KhanRan';
 
+    const texLoader = this._textureLoader || new THREE.TextureLoader();
+    let scarfTex = null;
+    try {
+      scarfTex = texLoader.load('assets/textures/char_krama_scarf.jpg');
+      scarfTex.wrapS = THREE.RepeatWrapping;
+      scarfTex.wrapT = THREE.RepeatWrapping;
+      scarfTex.repeat.set(2, 6);
+    } catch (_) {}
+
     const scarfMat = new THREE.MeshStandardMaterial({
-      color: 0xe0e0e0,
+      map: scarfTex,
+      color: 0xf2f2f2,
       roughness: 0.75,
       metalness: 0.05
     });
@@ -351,14 +371,24 @@ export class PlayerController {
   /**
    * Tạo mô hình 3D Khăn Xếp (Khăn Đóng) truyền thống Thăng Long 5 tầng nếp
    */
-  _create3DKhanXep(isMeters = true) {
+  _create3DKhanXep(isMeters = false) {
     const s = isMeters ? 0.01 : 1.0;
     const turbanGroup = new THREE.Group();
     turbanGroup.name = '3D_KhanXep';
 
+    const texLoader = this._textureLoader || new THREE.TextureLoader();
+    let turbanTex = null;
+    try {
+      turbanTex = texLoader.load('assets/textures/char_turban_brocade.jpg');
+      turbanTex.wrapS = THREE.RepeatWrapping;
+      turbanTex.wrapT = THREE.RepeatWrapping;
+      turbanTex.repeat.set(3, 1);
+    } catch (_) {}
+
     const turbanMat = new THREE.MeshStandardMaterial({
+      map: turbanTex,
       color: 0x16213e,
-      roughness: 0.7,
+      roughness: 0.65,
       metalness: 0.15
     });
     const goldTrim = new THREE.MeshStandardMaterial({
@@ -652,49 +682,50 @@ export class PlayerController {
             const hipsBone = findBone(['mixamorig:Hips', 'mixamorigHips', 'Hips']);
             const spineBone = findBone(['mixamorig:Spine2', 'mixamorigSpine2', 'Spine2', 'Spine1']);
 
-            const isMeters = true;
+            // Gắn phụ kiện theo thang đo xương Mixamo Armature (centimeter scale bên trong Armature 0.01)
+            const isMeters = false;
 
             if (charConfig.id === 'char_nu_sinh_ao_dai') {
               if (headBone) {
                 const nonLa = this._create3DNonLa(isMeters);
-                nonLa.position.set(0, 0.16, -0.02);
+                nonLa.position.set(0, 10.5, -0.5);
                 nonLa.rotation.x = -0.15;
                 headBone.add(nonLa);
               }
               if (hipsBone && outfitTex) {
                 const flaps = this._create3DFlaps(outfitTex, charConfig.outfitColor, false, isMeters);
-                flaps.position.set(0, -0.05, 0);
+                flaps.position.set(0, -6.0, 0);
                 hipsBone.add(flaps);
               }
             } else if (charConfig.id === 'char_co_gai_ao_ba_ba') {
               if (headBone) {
                 const khanRan = this._create3DKhanRan(isMeters);
-                khanRan.position.set(0, 0.04, 0.01);
+                khanRan.position.set(0, -2.0, 1.0);
                 headBone.add(khanRan);
               }
               if (spineBone) {
                 const nonLaBack = this._create3DNonLa(isMeters);
-                nonLaBack.position.set(0, 0.02, -0.18);
-                nonLaBack.rotation.x = -0.35;
+                nonLaBack.position.set(0, 4.0, -15.0);
+                nonLaBack.rotation.x = -0.45;
                 nonLaBack.scale.set(0.85, 0.85, 0.85);
                 spineBone.add(nonLaBack);
               }
             } else if (charConfig.id === 'char_nam_tri_thuc_suit') {
               if (headBone) {
                 const fedora = this._create3DFedoraHat(isMeters);
-                fedora.position.set(0, 0.14, -0.01);
+                fedora.position.set(0, 10.5, -0.5);
                 fedora.rotation.x = -0.06;
                 headBone.add(fedora);
               }
             } else if (charConfig.id === 'char_nam_ao_dai_gam') {
               if (headBone) {
                 const turban = this._create3DKhanXep(isMeters);
-                turban.position.set(0, 0.14, 0);
+                turban.position.set(0, 10.5, 0.5);
                 headBone.add(turban);
               }
               if (hipsBone && outfitTex) {
                 const flaps = this._create3DFlaps(outfitTex, charConfig.outfitColor, true, isMeters);
-                flaps.position.set(0, -0.05, 0);
+                flaps.position.set(0, -6.0, 0);
                 hipsBone.add(flaps);
               }
             }

@@ -91,15 +91,15 @@ export class WorldManager {
           }
         }
 
-        // Tier culling:
-        // Tier 1: Chi tiết nhỏ / đồ vật vỉa hè / lá cờ / đèn lồng / ghế đá (maxDim < 3.2m): hiện trong 42m (42*42 = 1764)
-        // Tier 2: Công trình vừa / cây cối / gian hàng phố cổ (3.2m <= maxDim < 12m): hiện trong 85m (85*85 = 7225)
-        // Tier 3: Tòa nhà lớn / Khối kiến trúc đồ sộ (maxDim >= 12m): hiện trong 150m (150*150 = 22500)
-        let cullDistSq = 22500;
+        // Tier culling (Đồng bộ chuẩn xác với dải sương mù hoàng hôn 65m - 155m):
+        // Tier 1: Chi tiết nhỏ / đồ vật vỉa hè / đèn lồng / ghế đá (maxDim < 3.2m): hiện trong 68m (triệt tiêu pop-in trước mắt)
+        // Tier 2: Công trình vừa / cây cối / gian hàng phố cổ (3.2m <= maxDim < 12m): hiện trong 125m (trong làn sương mù đậm)
+        // Tier 3: Tòa nhà lớn / Khối kiến trúc đồ sộ (maxDim >= 12m): hiện trọn vẹn trong 160m (tầm nhìn camera)
+        let cullDistSq = 25600; // 160m * 160m
         if (maxDim < 3.2) {
-          cullDistSq = 1764; // 42m
+          cullDistSq = 4624; // 68m * 68m
         } else if (maxDim < 12.0) {
-          cullDistSq = 7225; // 85m
+          cullDistSq = 15625; // 125m * 125m
         }
 
         this._cullableObjects.push({

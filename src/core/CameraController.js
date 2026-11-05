@@ -66,7 +66,7 @@ export class CameraController {
     window.addEventListener('keydown', (e) => {
       if (this.playerController && this.playerController.isLocked) return;
 
-      if (e.code === 'KeyV') {
+      if (e.code === 'KeyV' || e.code === 'KeyC') {
         this.toggleCameraMode();
       }
     });
