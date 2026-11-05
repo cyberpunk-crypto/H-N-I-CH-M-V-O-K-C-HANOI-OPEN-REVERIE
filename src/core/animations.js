@@ -414,8 +414,8 @@ export class HumanoidAnimator {
     const walkLeftElbow = 0.08 + Math.max(0, Math.sin(wp + Math.PI)) * 0.25;
     const walkRightElbow = 0.08 + Math.max(0, Math.sin(wp)) * 0.25;
 
-    // Hông nhún sinh học trục Y (Pelvis Bobbing) & lắc hông sang bên chịu lực
-    const walkPelvisY = this.baseTorsoY + Math.abs(Math.sin(wp)) * 0.038 - 0.019;
+    // Hông nhún sinh học trục Y (Pelvis Bobbing) & lắc hông sang bên chịu lực - Chỉ nhún lên trên, triệt tiêu lún chân
+    const walkPelvisY = this.baseTorsoY + Math.abs(Math.sin(wp)) * 0.024;
     const walkPelvisRotZ = Math.sin(wp) * 0.032;
     const walkTorsoRotY = -Math.sin(wp) * 0.045; // Cột sống xoay đối xứng đối trọng
     const walkTorsoRotX = 0.045; // Hơi dấn nhẹ về phía trước
@@ -457,8 +457,8 @@ export class HumanoidAnimator {
     const runTorsoRotY = -Math.sin(rp) * 0.10;
     const runPelvisRotZ = Math.sin(rp) * 0.06;
 
-    // Độ nhún trọng tâm bật nảy mạnh mẽ theo nhịp chạy
-    const runPelvisY = this.baseTorsoY + Math.abs(Math.sin(rp)) * 0.075 - 0.038;
+    // Độ nhún trọng tâm bật nảy mạnh mẽ theo nhịp chạy - Chỉ nhún lên trên, triệt tiêu lún chân
+    const runPelvisY = this.baseTorsoY + Math.abs(Math.sin(rp)) * 0.040;
 
     // Tà áo dài bay mạnh mẽ về phía sau do luồng gió cản tốc độ cao
     const runFrontFlap = (-0.32 + Math.sin(rp * 2.0) * 0.10) * clothScale;

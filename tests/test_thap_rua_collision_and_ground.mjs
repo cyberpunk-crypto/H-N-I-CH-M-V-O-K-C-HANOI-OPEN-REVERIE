@@ -124,6 +124,81 @@ for (const pt of groundTestPoints) {
 }
 assert.strictEqual(groundPass, groundTestPoints.length, 'Tất cả các điểm kiểm tra cao độ chân phải đạt');
 
+console.log('\n--- 3. KIỂM ĐỊNH CHỐNG XUYÊN HÀNG RÀO LAN CAN NGOÀI THÁP RÙA & MÁ GÀ TAM CẤP ---');
+
+const railingTestPoints = [
+  // Lan can ngoài phía Tây (X = 74.55)
+  { name: 'Lan can ngoài Tây - Cánh Bắc (X = 74.55, Z = -83.0)', x: 74.55, z: -83.0, shouldBlock: true },
+  { name: 'Lan can ngoài Tây - Cánh Nam (X = 74.55, Z = -77.0)', x: 74.55, z: -77.0, shouldBlock: true },
+  { name: 'Lối tam cấp Tây - Giữa cầu thang (X = 73.5, Z = -80.0)', x: 73.5, z: -80.0, shouldBlock: false },
+
+  // Lan can ngoài phía Đông (X = 85.45)
+  { name: 'Lan can ngoài Đông - Cánh Bắc (X = 85.45, Z = -83.0)', x: 85.45, z: -83.0, shouldBlock: true },
+  { name: 'Lan can ngoài Đông - Cánh Nam (X = 85.45, Z = -77.0)', x: 85.45, z: -77.0, shouldBlock: true },
+  { name: 'Lối tam cấp Đông - Giữa cầu thang (X = 86.5, Z = -80.0)', x: 86.5, z: -80.0, shouldBlock: false },
+
+  // Lan can ngoài phía Bắc (Z = -84.35)
+  { name: 'Lan can ngoài Bắc - Cánh Tây (X = 76.5, Z = -84.35)', x: 76.5, z: -84.35, shouldBlock: true },
+  { name: 'Lan can ngoài Bắc - Cánh Đông (X = 83.5, Z = -84.35)', x: 83.5, z: -84.35, shouldBlock: true },
+  { name: 'Lối tam cấp Bắc - Giữa cầu thang (X = 80.0, Z = -85.5)', x: 80.0, z: -85.5, shouldBlock: false },
+
+  // Lan can ngoài phía Nam (Z = -75.65)
+  { name: 'Lan can ngoài Nam - Cánh Tây (X = 76.5, Z = -75.65)', x: 76.5, z: -75.65, shouldBlock: true },
+  { name: 'Lan can ngoài Nam - Cánh Đông (X = 83.5, Z = -75.65)', x: 83.5, z: -75.65, shouldBlock: true },
+  { name: 'Lối tam cấp Nam - Giữa cầu thang (X = 80.0, Z = -74.5)', x: 80.0, z: -74.5, shouldBlock: false },
+
+  // 4 Trụ góc thềm đá Tháp Rùa
+  { name: 'Trụ góc thềm Tây Bắc (X = 74.55, Z = -84.35)', x: 74.55, z: -84.35, shouldBlock: true },
+  { name: 'Trụ góc thềm Tây Nam (X = 74.55, Z = -75.65)', x: 74.55, z: -75.65, shouldBlock: true },
+  { name: 'Trụ góc thềm Đông Bắc (X = 85.45, Z = -84.35)', x: 85.45, z: -84.35, shouldBlock: true },
+  { name: 'Trụ góc thềm Đông Nam (X = 85.45, Z = -75.65)', x: 85.45, z: -75.65, shouldBlock: true },
+
+  // 8 Má gà đá tam cấp 4 phía
+  { name: 'Má gà Tây Bắc (X = 73.5, Z = -81.55)', x: 73.5, z: -81.55, shouldBlock: true },
+  { name: 'Má gà Tây Nam (X = 73.5, Z = -78.45)', x: 73.5, z: -78.45, shouldBlock: true },
+  { name: 'Má gà Đông Bắc (X = 86.5, Z = -81.55)', x: 86.5, z: -81.55, shouldBlock: true },
+  { name: 'Má gà Đông Nam (X = 86.5, Z = -78.45)', x: 86.5, z: -78.45, shouldBlock: true },
+  { name: 'Má gà Bắc Tây (X = 78.65, Z = -85.5)', x: 78.65, z: -85.5, shouldBlock: true },
+  { name: 'Má gà Bắc Đông (X = 81.35, Z = -85.5)', x: 81.35, z: -85.5, shouldBlock: true },
+  { name: 'Má gà Nam Tây (X = 78.65, Z = -74.5)', x: 78.65, z: -74.5, shouldBlock: true },
+  { name: 'Má gà Nam Đông (X = 81.35, Z = -74.5)', x: 81.35, z: -74.5, shouldBlock: true },
+];
+
+let railingPass = 0;
+for (const pt of railingTestPoints) {
+  const testVec = new THREE.Vector3(pt.x, 2.05, pt.z);
+  const isBlocked = player._isCollidingAt(testVec);
+  if (isBlocked === pt.shouldBlock) {
+    console.log(`  [PASS] ${pt.name} -> ${isBlocked ? 'CHẶN ĐỨNG (BLOCKED)' : 'THÔNG SUỐT (OPEN)'}`);
+    railingPass++;
+  } else {
+    console.error(`  [FAIL] ${pt.name} -> Kỳ vọng ${pt.shouldBlock ? 'CHẶN' : 'MỞ'} nhưng thực tế ${isBlocked ? 'CHẶN' : 'MỞ'}`);
+  }
+}
+assert.strictEqual(railingPass, railingTestPoints.length, 'Tất cả các điểm kiểm tra lan can ngoài & má gà phải đạt');
+
+console.log('\n--- 4. KIỂM ĐỊNH HÀNG RÀO LAN CAN ĐÁ VEN ĐẢO RÙA ---');
+
+const islandRailingPoints = [
+  { name: 'Trụ lan can mép đảo phía Đông (X = 94.8, Z = -80.0)', x: 94.8, z: -80.0, shouldBlock: true },
+  { name: 'Trụ lan can mép đảo phía Bắc (X = 80.0, Z = -94.8)', x: 80.0, z: -94.8, shouldBlock: true },
+  { name: 'Dầm lan can mép đảo Tây Bắc (X = 69.5, Z = -90.5)', x: 69.5, z: -90.5, shouldBlock: true },
+  { name: 'Lối dẫn lên Cầu Kim Quy (X = 69.5, Z = -69.5)', x: 69.5, z: -69.5, shouldBlock: false },
+];
+
+let islandPass = 0;
+for (const pt of islandRailingPoints) {
+  const testVec = new THREE.Vector3(pt.x, 1.80, pt.z);
+  const isBlocked = player._isCollidingAt(testVec);
+  if (isBlocked === pt.shouldBlock) {
+    console.log(`  [PASS] ${pt.name} -> ${isBlocked ? 'CHẶN ĐỨNG (BLOCKED)' : 'THÔNG SUỐT (OPEN)'}`);
+    islandPass++;
+  } else {
+    console.error(`  [FAIL] ${pt.name} -> Kỳ vọng ${pt.shouldBlock ? 'CHẶN' : 'MỞ'} nhưng thực tế ${isBlocked ? 'CHẶN' : 'MỞ'}`);
+  }
+}
+assert.strictEqual(islandPass, islandRailingPoints.length, 'Tất cả các điểm kiểm tra lan can đảo phải đạt');
+
 console.log('\n================================================================');
-console.log(` KẾT QUẢ: ${wallPass + groundPass}/${wallTestPoints.length + groundTestPoints.length} TESTS PASSED 100%!`);
+console.log(` KẾT QUẢ: ${wallPass + groundPass + railingPass + islandPass}/${wallTestPoints.length + groundTestPoints.length + railingTestPoints.length + islandRailingPoints.length} TESTS PASSED 100%!`);
 console.log('================================================================\n');

@@ -1427,10 +1427,14 @@ export class WorldManager {
     zoneGroup.add(turtleIsland);
     this.colliders.push(turtleIsland);
 
-    // Thảm cỏ xanh trên gò Đảo Rùa
+    // Thảm cỏ xanh trên gò Đảo Rùa (Đăng ký va chạm sàn để đế giày luôn nằm trên mặt cỏ)
     const grassMesh = new THREE.Mesh(new THREE.CylinderGeometry(15.2, 15.2, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0x3d5a2d, roughness: 0.9 }));
-    grassMesh.position.set(80, 1.55, -80);
+    grassMesh.name = 'turtleIslandGrass';
+    grassMesh.position.set(80, 1.54, -80);
+    grassMesh.receiveShadow = true;
+    grassMesh._isBaseGround = true;
     zoneGroup.add(grassMesh);
+    this.colliders.push(grassMesh);
 
     // DỐC ĐÁ TAM CẤP CỔ NỐI LIỀN TỪ CẦU KIM QUY LÊN THẲNG SÂN THÁP RÙA (KHÔNG CÓ GỜ CAO)
     // 8 bậc đá rộng thênh thang 4.6m, mỗi bậc chỉ cao 0.09m (9cm) bước đi siêu êm ái!
@@ -1448,26 +1452,65 @@ export class WorldManager {
     }
 
     // Sân lát đá xanh cổ nguyên khối xung quanh chân Tháp Rùa
-    const islandCourtyard = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.25, 15.0), this.materials.mossStone);
-    islandCourtyard.position.set(80, 1.50, -80);
+    const islandCourtyard = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.28, 15.0), this.materials.mossStone);
+    islandCourtyard.name = 'islandCourtyard';
+    islandCourtyard.position.set(80, 1.54, -80);
     islandCourtyard.receiveShadow = true;
+    islandCourtyard._isBaseGround = true;
     zoneGroup.add(islandCourtyard);
     this.colliders.push(islandCourtyard);
 
     // Lan can đá hoa sen bảo vệ quanh mép đảo phía tiếp giáp hồ
+    const islandPosts = [];
     for (let a = 0; a < 14; a++) {
       const pAngle = (a / 14) * Math.PI * 2;
-      // Chừa lối dẫn lên cầu Kim Quy (hướng góc 225 độ / ~3.92 rad)
-      if (pAngle > 3.4 && pAngle < 4.4) continue;
+      // Chừa lối dẫn lên cầu Kim Quy (hướng góc 135 độ / ~2.36 rad, tọa độ X ~ 69.5, Z ~ -69.5)
+      const isBridgeOpening = pAngle > 2.05 && pAngle < 2.65;
       const px = 80 + Math.cos(pAngle) * 14.8;
       const pz = -80 + Math.sin(pAngle) * 14.8;
-      const balustrade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.85, 8), this.materials.mossStone);
+      islandPosts.push({ a, pAngle, px, pz, isBridgeOpening });
+
+      if (isBridgeOpening) continue;
+
+      const balustrade = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.85, 8), this.materials.mossStone);
       balustrade.position.set(px, 1.55 + 0.425, pz);
+      balustrade.castShadow = true;
       zoneGroup.add(balustrade);
-      const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), this.materials.mossStone);
+
+      const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), this.materials.mossStone);
       lotus.position.set(px, 1.55 + 0.95, pz);
+      lotus.castShadow = true;
       zoneGroup.add(lotus);
-      this._addBoxObstacle(px, pz, 0.7, 0.7, 1.55, 3.2);
+
+      this._addBoxObstacle(px, pz, 0.9, 0.9, 1.2, 3.2);
+    }
+
+    // Các đoạn dầm đá liên kết giữa các trụ lan can đảo tạo hàng rào kiên cố (khóa chặt 100% không đi xuyên ra hồ)
+    for (let i = 0; i < 14; i++) {
+      const cur = islandPosts[i];
+      const next = islandPosts[(i + 1) % 14];
+      if (cur.isBridgeOpening || next.isBridgeOpening) continue;
+
+      const dx = next.px - cur.px;
+      const dz = next.pz - cur.pz;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      const angle = Math.atan2(dz, dx);
+      const midX = (cur.px + next.px) / 2;
+      const midZ = (cur.pz + next.pz) / 2;
+
+      // Thanh dầm lan can đá ngang
+      const beamMesh = new THREE.Mesh(new THREE.BoxGeometry(dist, 0.18, 0.16), this.materials.mossStone);
+      beamMesh.position.set(midX, 1.55 + 0.55, midZ);
+      beamMesh.rotation.y = -angle;
+      beamMesh.castShadow = true;
+      zoneGroup.add(beamMesh);
+
+      // Vật cản ngăn xuyên rào viền đảo tại các phân đoạn
+      for (let t of [0.25, 0.50, 0.75]) {
+        const ox = cur.px + dx * t;
+        const oz = cur.pz + dz * t;
+        this._addBoxObstacle(ox, oz, 1.4, 1.4, 1.2, 3.2);
+      }
     }
 
     // =========================================================================
@@ -1699,6 +1742,51 @@ export class WorldManager {
         towerGroup.add(rail);
       }
     }
+
+    // =========================================================================
+    // VẬT CẢN LAN CAN ĐÁ THỀM THÁP RÙA, TRỤ GÓC & MÁ GÀ TAM CẤP 4 PHÍA
+    // Khóa chặt 100% không cho người chơi đi xuyên qua các hàng rào lan can đá bên ngoài!
+    // Tuyệt đối chỉ cho phép bước vào qua 4 lối tam cấp và 4 cửa vòm chính!
+    // =========================================================================
+
+    // 1. Lan can đá mặt Đông và Tây (X = 74.55 và X = 85.45)
+    for (let sideX of [-1, 1]) {
+      const rx = 80 + sideX * (plinthW / 2 - 0.25); // 74.55 hoặc 85.45
+      // Cánh Bắc: Z từ -84.6 đến -81.5 (tâm Z = -83.05, dài 3.1m, dày 0.6m)
+      this._addBoxObstacle(rx, -83.05, 0.60, 3.10, 1.2, 3.5);
+      // Cánh Nam: Z từ -78.5 đến -75.4 (tâm Z = -76.95, dài 3.1m, dày 0.6m)
+      this._addBoxObstacle(rx, -76.95, 0.60, 3.10, 1.2, 3.5);
+    }
+
+    // 2. Lan can đá mặt Bắc và Nam (Z = -84.35 và Z = -75.65)
+    for (let sideZ of [-1, 1]) {
+      const rz = -80 + sideZ * (plinthD / 2 - 0.25); // -84.35 hoặc -75.65
+      // Cánh Tây: X từ 74.25 đến 78.60 (tâm X = 76.425, rộng 4.35m, dày 0.6m)
+      this._addBoxObstacle(76.425, rz, 4.35, 0.60, 1.2, 3.5);
+      // Cánh Đông: X từ 81.40 đến 85.75 (tâm X = 83.575, rộng 4.35m, dày 0.6m)
+      this._addBoxObstacle(83.575, rz, 4.35, 0.60, 1.2, 3.5);
+    }
+
+    // 3. Bốn trụ góc đá hình kim tự tháp (Corner Posts)
+    for (let cx of [-plinthW / 2 + 0.25, plinthW / 2 - 0.25]) {
+      for (let cz of [-plinthD / 2 + 0.25, plinthD / 2 - 0.25]) {
+        this._addBoxObstacle(80 + cx, -80 + cz, 0.85, 0.85, 1.2, 3.6);
+      }
+    }
+
+    // 4. Tám má gà đá vát dốc hai bên cạnh tam cấp 4 phía (Stair Cheek Stringers)
+    // Cạnh má gà tam cấp Tây (hướng X = 73.5)
+    this._addBoxObstacle(73.5, -81.55, 1.70, 0.45, 1.2, 2.8);
+    this._addBoxObstacle(73.5, -78.45, 1.70, 0.45, 1.2, 2.8);
+    // Cạnh má gà tam cấp Đông (hướng X = 86.5)
+    this._addBoxObstacle(86.5, -81.55, 1.70, 0.45, 1.2, 2.8);
+    this._addBoxObstacle(86.5, -78.45, 1.70, 0.45, 1.2, 2.8);
+    // Cạnh má gà tam cấp Bắc (hướng Z = -85.5)
+    this._addBoxObstacle(78.65, -85.5, 0.45, 1.70, 1.2, 2.8);
+    this._addBoxObstacle(81.35, -85.5, 0.45, 1.70, 1.2, 2.8);
+    // Cạnh má gà tam cấp Nam (hướng Z = -74.5)
+    this._addBoxObstacle(78.65, -74.5, 0.45, 1.70, 1.2, 2.8);
+    this._addBoxObstacle(81.35, -74.5, 0.45, 1.70, 1.2, 2.8);
 
     // Cụm cỏ dại và cây bụi xanh mọc tự nhiên ôm lấy các góc chân móng
     for (let cx of [-plinthW / 2 - 0.4, plinthW / 2 + 0.4]) {

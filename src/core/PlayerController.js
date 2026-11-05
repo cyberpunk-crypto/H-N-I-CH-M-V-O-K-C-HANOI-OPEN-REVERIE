@@ -592,7 +592,7 @@ export class PlayerController {
             // CỐ ĐỊNH SCALE CHUẨN XÁC: Tuyệt đối không đo Box3 unskinned bind pose vì mesh Michelle nằm ngang gây phình to scale 5.6x
             const scaleFactor = charConfig.scale || (charConfig.isFemale ? 1.02 : 0.98);
             model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-            model.position.set(0, 0.035, 0); // Nâng đế chân 3.5cm đảm bảo giày luôn nằm trên mặt sàn, triệt tiêu lún chân gạch đá
+            model.position.set(0, 0.045, 0); // Nâng đế chân 4.5cm đảm bảo giày luôn nằm trên mặt sàn, triệt tiêu hoàn toàn lún chân gạch đá
 
             // Nạp texture tương ứng
             const texLoader = this._textureLoader || new THREE.TextureLoader();
@@ -847,6 +847,7 @@ export class PlayerController {
       // Nếu không nạp GLTF (hoặc chạy trong test Node.js), kích hoạt mô hình Procedural True 3D Humanoid Mesh từ CharacterFactory
       if (!modelLoaded && token === this._loadToken) {
         const charModel = createHanoiCharacter3D(characterId);
+        charModel.position.set(0, 0.045, 0); // Đồng bộ nâng đế chân 4.5cm cho mô hình Procedural, triệt tiêu lún chân
         this.characterMesh = charModel;
         this.characterGroup.add(charModel);
 
@@ -1536,20 +1537,20 @@ export class PlayerController {
 
     let minGroundProtected = 0.0;
     if (Math.abs(dxTR) <= 6.5 && Math.abs(dzTR) <= 5.5) {
-      minGroundProtected = 2.035; // Tháp Rùa: Thềm đá, 4 cửa vòm và toàn bộ sàn nội điện gạch Bát Tràng (cushion +3.5cm)
-    } else if (Math.abs(dxTR) <= 7.6 && Math.abs(dzTR) <= 6.6) {
-      minGroundProtected = 1.85; // Tam cấp 4 phía dẫn lên Tháp Rùa
+      minGroundProtected = 2.045; // Tháp Rùa: Thềm đá, 4 cửa vòm và toàn bộ sàn nội điện gạch Bát Tràng (cushion +4.5cm)
+    } else if (Math.abs(dxTR) <= 7.8 && Math.abs(dzTR) <= 6.8) {
+      minGroundProtected = 1.88; // Tam cấp 4 phía dẫn lên Tháp Rùa
     } else if (distSqTR <= 18.0 * 18.0) {
       // Sân Đảo Tháp Rùa & dốc nối từ Cầu Kim Quy
       if (charPos.x < 76.0 && charPos.z > -76.0) {
-        minGroundProtected = Math.max(1.10, bridgeGroundY || 1.10);
+        minGroundProtected = Math.max(1.15, bridgeGroundY || 1.15);
       } else {
-        minGroundProtected = 1.635; // Mặt sân đá xanh Đảo Tháp Rùa
+        minGroundProtected = 1.685; // Mặt sân đá xanh Đảo Tháp Rùa & thảm cỏ tự nhiên
       }
     } else if (distSqNS <= 22.0 * 22.0) {
-      minGroundProtected = 0.885; // Sân Đền Ngọc Sơn & Chùa Đỏ (sàn gạch Bát Tràng 0.88m)
+      minGroundProtected = 0.90; // Sân Đền Ngọc Sơn & Chùa Đỏ (sàn gạch Bát Tràng 0.88m)
     } else if (distSqTR <= 99 * 99) {
-      minGroundProtected = 0.38; // Vỉa hè dạo ven Hồ Gươm
+      minGroundProtected = 0.40; // Vỉa hè dạo ven Hồ Gươm
     }
 
     if (this._groundHits.length > 0 || bridgeGroundY !== null) {
@@ -1558,9 +1559,14 @@ export class PlayerController {
         // Khi bước lên thềm đảo/đền thờ thì luôn lấy độ cao lớn hơn, tuyệt đối không bị kéo sụt xuống gầm sàn
         groundY = (this._groundHits.length === 0) ? bridgeGroundY : Math.max(groundY, bridgeGroundY);
       }
-      // Nâng nhẹ chân khi đứng trên sàn Tháp Rùa để đế giày luôn hiển thị trọn vẹn trên mặt gạch
-      if (this._groundHits.length > 0 && this._groundHits[0].object && (this._groundHits[0].object.name === 'thapRuaInteriorFloor' || this._groundHits[0].object.name === 'thapRuaPlinth')) {
-        groundY = Math.max(groundY + 0.035, 2.035);
+      // Nâng nhẹ chân khi đứng trên sàn Tháp Rùa, tam cấp hoặc sân đảo để đế giày luôn hiển thị trọn vẹn trên mặt gạch đá
+      if (this._groundHits.length > 0 && this._groundHits[0].object) {
+        const hitName = this._groundHits[0].object.name || '';
+        if (hitName === 'thapRuaInteriorFloor' || hitName === 'thapRuaPlinth' || hitName === 'thapRuaStep') {
+          groundY = Math.max(groundY + 0.045, 2.045);
+        } else if (hitName.includes('island') || hitName.includes('courtyard') || hitName.includes('Grass') || hitName.includes('grass')) {
+          groundY = Math.max(groundY + 0.045, 1.685);
+        }
       }
       if (minGroundProtected > 0) {
         groundY = Math.max(groundY, minGroundProtected);
