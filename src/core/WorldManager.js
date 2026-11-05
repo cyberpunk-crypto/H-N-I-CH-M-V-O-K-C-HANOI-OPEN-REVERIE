@@ -1590,10 +1590,15 @@ export class WorldManager {
     plinthMesh.receiveShadow = true;
     towerGroup.add(plinthMesh);
 
-    // Đăng ký mặt sàn thềm tháp vào colliders để người chơi bước đi êm ái
-    const terraceFloor = new THREE.Mesh(new THREE.BoxGeometry(plinthW, 0.1, plinthD), this.materials.thapRuaPlinth);
+    // SÀN ĐI BỘ NGUYÊN KHỐI TOÀN DIỆN THÁP RÙA (TERRACE + 4 LỐI CỬA + NỘI ĐIỆN)
+    // Cao độ mặt sàn đỉnh: đúng chuẩn y = 2.00m (bằng mặt thềm đá và sàn gạch Bát Tràng)
+    // Chiều dày 0.40m (y: 1.60m -> 2.00m), bao phủ trọn vẹn 11.6m x 9.4m
+    const terraceFloor = new THREE.Mesh(new THREE.BoxGeometry(plinthW + 0.2, 0.40, plinthD + 0.2), this.materials.thapRuaPlinth);
     terraceFloor.name = 'thapRuaPlinth';
-    terraceFloor.position.set(80, 1.55 + plinthH, -80);
+    terraceFloor.position.set(80, 1.80, -80); // Tâm Y = 1.80, đỉnh Y = 2.00m
+    terraceFloor.receiveShadow = true;
+    terraceFloor._isBaseGround = true;
+    zoneGroup.add(terraceFloor); // THÊM VÀO zoneGroup ĐỂ MATRIXWORLD ĐỒNG BỘ 100%!
     this.colliders.push(terraceFloor);
 
     // 4 Dãy tam cấp dẫn lên thềm đá 4 phía (Mỗi tam cấp 4 bậc, cao 11cm mỗi bậc, có má gà đá vát chéo)
@@ -1631,12 +1636,16 @@ export class WorldManager {
         const stepCol = new THREE.Mesh(
           new THREE.BoxGeometry(
             st.dirX !== 0 ? (st.len / numSteps + 0.05) : st.w,
-            0.1,
+            0.15,
             st.dirZ !== 0 ? (st.len / numSteps + 0.05) : st.w
           ),
           this.materials.thapRuaPlinth
         );
+        stepCol.name = 'thapRuaStep';
         stepCol.position.set(80 + posX, 1.55 + stepY, -80 + posZ);
+        stepCol.receiveShadow = true;
+        stepCol._isBaseGround = true;
+        zoneGroup.add(stepCol);
         this.colliders.push(stepCol);
       }
 
@@ -1741,10 +1750,10 @@ export class WorldManager {
     interiorFloorMesh.receiveShadow = true;
     towerGroup.add(interiorFloorMesh);
 
-    // Collider sàn đi bộ vững chắc bên trong Tháp Rùa (cho phép người chơi bước tự do vào tham quan nội điện)
-    const walkFloorCol = new THREE.Mesh(new THREE.BoxGeometry(t1W - 0.2, 0.25, t1D - 0.2), this.materials.thapRuaBpFloor);
+    // Collider sàn đi bộ vững chắc bên trong Tháp Rùa (bao trọn lòng tháp và vươn qua các mép cửa, đỉnh y = 2.00m)
+    const walkFloorCol = new THREE.Mesh(new THREE.BoxGeometry(t1W + 0.8, 0.40, t1D + 0.8), this.materials.thapRuaBpFloor);
     walkFloorCol.name = 'thapRuaInteriorFloor';
-    walkFloorCol.position.set(80, 1.55 + t1BaseY + 0.02, -80);
+    walkFloorCol.position.set(80, 1.80, -80); // Tâm Y = 1.80, đỉnh Y = 2.00m
     walkFloorCol.receiveShadow = true;
     walkFloorCol._isBaseGround = true;
     zoneGroup.add(walkFloorCol);

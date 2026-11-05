@@ -1525,11 +1525,34 @@ export class PlayerController {
       }
     }
 
+    // BẢO VỆ CAO ĐỘ MẶT SÀN TỐI THIỂU THEO TỪNG VÙNG ĐỊA LÝ DI SẢN:
+    const dxTR = charPos.x - 80;
+    const dzTR = charPos.z - (-80);
+    const distSqTR = dxTR * dxTR + dzTR * dzTR;
+
+    const dxNS = charPos.x - 122;
+    const dzNS = charPos.z - (-73);
+    const distSqNS = dxNS * dxNS + dzNS * dzNS;
+
+    let minGroundProtected = 0.0;
+    if (Math.abs(dxTR) <= 6.2 && Math.abs(dzTR) <= 5.2) {
+      minGroundProtected = 2.00; // Tháp Rùa: Thềm đá, 4 cửa vòm và toàn bộ sàn nội điện gạch Bát Tràng
+    } else if (distSqTR <= 16.5 * 16.5 && (charPos.x >= 73.0 || charPos.z <= -73.0)) {
+      minGroundProtected = 1.625; // Sân đá Đảo Tháp Rùa (mặt sân gạch xanh rêu)
+    } else if (distSqNS <= 22.0 * 22.0) {
+      minGroundProtected = 0.80; // Sân Đền Ngọc Sơn & Chùa Đỏ
+    } else if (distSqTR <= 99 * 99) {
+      minGroundProtected = 0.38; // Vỉa hè dạo ven Hồ Gươm
+    }
+
     if (this._groundHits.length > 0 || bridgeGroundY !== null) {
       let groundY = (this._groundHits.length > 0) ? this._groundHits[0].point.y : 0;
       if (bridgeGroundY !== null) {
         // Khi bước lên thềm đảo/đền thờ thì luôn lấy độ cao lớn hơn, tuyệt đối không bị kéo sụt xuống gầm sàn
         groundY = (this._groundHits.length === 0) ? bridgeGroundY : Math.max(groundY, bridgeGroundY);
+      }
+      if (minGroundProtected > 0) {
+        groundY = Math.max(groundY, minGroundProtected);
       }
 
       // CHỐNG RƠI XUYÊN CẦU / XUYÊN ĐẤT:
@@ -1584,23 +1607,7 @@ export class PlayerController {
         this.isJumping = false;
       }
     } else {
-      // Bảo vệ mặt đất / đảo / mép bờ hồ (Triệt tiêu 100% lỗi chìm nửa thân dưới đất):
-      const dxTR = charPos.x - 80;
-      const dzTR = charPos.z - (-80);
-      const distSqTR = dxTR * dxTR + dzTR * dzTR;
-
-      const dxNS = charPos.x - 122;
-      const dzNS = charPos.z - (-73);
-      const distSqNS = dxNS * dxNS + dzNS * dzNS;
-
-      let minGround = 0.0;
-      if (distSqTR <= 19.5 * 19.5) {
-        minGround = 1.50; // Sân Đảo Tháp Rùa (tuyệt đối không chìm xuống 0.38m)
-      } else if (distSqNS <= 22.0 * 22.0) {
-        minGround = 0.80; // Sân Đền Ngọc Sơn (tuyệt đối không chìm xuống 0.38m)
-      } else if (distSqTR <= 99 * 99) {
-        minGround = 0.38; // Vỉa hè dạo ven Hồ Gươm
-      }
+      let minGround = minGroundProtected > 0 ? minGroundProtected : 0.0;
 
       if (charPos.y + this.velocity.y * delta <= minGround) {
         charPos.y = minGround;
