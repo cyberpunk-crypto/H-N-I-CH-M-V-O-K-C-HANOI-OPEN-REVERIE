@@ -1735,8 +1735,6 @@ export class WorldManager {
         const capMold = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.25, 1.15), this.materials.thapRuaPlinth);
         capMold.position.set(cx, t1BaseY + t1H - 0.125, cz);
         towerGroup.add(capMold);
-
-        this._addBoxObstacle(80 + cx, -80 + cz, 0.95, 0.95, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
       }
     }
 
@@ -1746,7 +1744,7 @@ export class WorldManager {
     const interiorFloorGeo = new THREE.PlaneGeometry(t1W - 0.2, t1D - 0.2);
     interiorFloorGeo.rotateX(-Math.PI / 2);
     const interiorFloorMesh = new THREE.Mesh(interiorFloorGeo, this.materials.thapRuaBpFloor);
-    interiorFloorMesh.position.set(0, t1BaseY + 0.02, 0);
+    interiorFloorMesh.position.set(0, t1BaseY + 0.002, 0);
     interiorFloorMesh.receiveShadow = true;
     towerGroup.add(interiorFloorMesh);
 
@@ -1768,13 +1766,12 @@ export class WorldManager {
 
     // Vách chịu lực hai cánh mặt Tây
     for (let sideX of [-1, 1]) {
-      const wingBox = new THREE.Mesh(new THREE.BoxGeometry(wingW, t1H, 0.35), this.materials.thapRuaPlinth);
+      const wingBox = new THREE.Mesh(new THREE.BoxGeometry(wingW, t1H, 0.45), this.materials.thapRuaPlinth);
       const wingPosX = sideX * (t1W / 2 - wingW / 2);
       wingBox.position.set(wingPosX, t1BaseY + t1H / 2, t1D / 2 - 0.175);
       wingBox.castShadow = true;
       wingBox.receiveShadow = true;
       towerGroup.add(wingBox);
-      this._addBoxObstacle(80 + wingPosX, -80 + (t1D / 2 - 0.175), wingW, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
 
       // Mặt trong bộc lộ gạch đỏ Bát Tràng rêu phong theo Blueprint
       const innerWing = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaBpBrick);
@@ -1809,13 +1806,12 @@ export class WorldManager {
     // Cửa vòm giữa rộng 2.0m THÔNG SUỐT ĐỂ NGƯỜI CHƠI BƯỚC XUYÊN TỪ TÂY SANG ĐÔNG!
     // =========================================================================
     for (let sideX of [-1, 1]) {
-      const eastWingBox = new THREE.Mesh(new THREE.BoxGeometry(wingW, t1H, 0.35), this.materials.thapRuaPlinth);
+      const eastWingBox = new THREE.Mesh(new THREE.BoxGeometry(wingW, t1H, 0.45), this.materials.thapRuaPlinth);
       const wingPosX = sideX * (t1W / 2 - wingW / 2);
       eastWingBox.position.set(wingPosX, t1BaseY + t1H / 2, -t1D / 2 + 0.175);
       eastWingBox.castShadow = true;
       eastWingBox.receiveShadow = true;
       towerGroup.add(eastWingBox);
-      this._addBoxObstacle(80 + wingPosX, -80 - (t1D / 2 - 0.175), wingW, 0.45, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
 
       // Mặt trong bộc lộ gạch đỏ Bát Tràng
       const innerEastWing = new THREE.Mesh(new THREE.PlaneGeometry(wingW, t1H), this.materials.thapRuaBpBrick);
@@ -1853,15 +1849,14 @@ export class WorldManager {
 
     for (let sideX of [-1, 1]) {
       const sidePosX = sideX * (t1W / 2 - 0.175);
-      // Hai trụ chịu lực hai bên cửa vòm bên
+      // Hai trụ chịu lực hai bên cửa vòm bên (độ dày 0.70m vững chãi)
       for (let sZ of [-1, 1]) {
         const pierPosZ = sZ * (t1D / 2 - sidePierLen / 2);
-        const pierBox = new THREE.Mesh(new THREE.BoxGeometry(0.35, t1H, sidePierLen), this.materials.thapRuaPlinth);
+        const pierBox = new THREE.Mesh(new THREE.BoxGeometry(0.70, t1H, sidePierLen), this.materials.thapRuaPlinth);
         pierBox.position.set(sidePosX, t1BaseY + t1H / 2, pierPosZ);
         pierBox.castShadow = true;
         pierBox.receiveShadow = true;
         towerGroup.add(pierBox);
-        this._addBoxObstacle(80 + sidePosX, -80 + pierPosZ, 0.45, sidePierLen, 1.55 + t1BaseY, 1.55 + t1BaseY + t1H);
 
         // Mặt trong bộc lộ gạch đỏ
         const innerSide = new THREE.Mesh(new THREE.PlaneGeometry(sidePierLen, t1H), this.materials.thapRuaBpBrick);
@@ -1895,6 +1890,27 @@ export class WorldManager {
       sideLintelPlane.rotation.y = sideX === 1 ? Math.PI / 2 : -Math.PI / 2;
       towerGroup.add(sideLintelPlane);
     }
+
+    // =========================================================================
+    // HỆ THỐNG VẬT CẢN TƯỜNG ĐÁ NGUYÊN KHỐI 4 PHÍA THÁP RÙA (THICK SOLID WALL OBSTACLES)
+    // Độ dày 0.90m, chiều cao từ 1.0m đến 8.0m, khóa kín 100% các góc và vách tường xung quanh.
+    // TUYỆT ĐỐI CHỈ MỞ 4 CỬA VÒM CHÍNH ĐỂ NGƯỜI CHƠI BƯỚC VÀO TRONG!
+    // =========================================================================
+    // 1. Vách tường Mặt Nam (Z = -77.0, cửa giữa X: 79.0 -> 81.0 mở rộng 2.0m)
+    this._addBoxObstacle(77.25, -77.0, 3.50, 0.90, 1.0, 8.0); // Cánh Tây: X [75.50, 79.00]
+    this._addBoxObstacle(82.75, -77.0, 3.50, 0.90, 1.0, 8.0); // Cánh Đông: X [81.00, 84.50]
+
+    // 2. Vách tường Mặt Bắc (Z = -83.0, cửa giữa X: 79.0 -> 81.0 mở rộng 2.0m)
+    this._addBoxObstacle(77.25, -83.0, 3.50, 0.90, 1.0, 8.0); // Cánh Tây: X [75.50, 79.00]
+    this._addBoxObstacle(82.75, -83.0, 3.50, 0.90, 1.0, 8.0); // Cánh Đông: X [81.00, 84.50]
+
+    // 3. Vách tường Mặt Tây (X = 76.0, cửa giữa Z: -80.9 -> -79.1 mở rộng 1.8m)
+    this._addBoxObstacle(76.0, -82.175, 0.90, 2.55, 1.0, 8.0); // Trụ Bắc: Z [-83.45, -80.90]
+    this._addBoxObstacle(76.0, -77.825, 0.90, 2.55, 1.0, 8.0); // Trụ Nam: Z [-79.10, -76.55]
+
+    // 4. Vách tường Mặt Đông (X = 84.0, cửa giữa Z: -80.9 -> -79.1 mở rộng 1.8m)
+    this._addBoxObstacle(84.0, -82.175, 0.90, 2.55, 1.0, 8.0); // Trụ Bắc: Z [-83.45, -80.90]
+    this._addBoxObstacle(84.0, -77.825, 0.90, 2.55, 1.0, 8.0); // Trụ Nam: Z [-79.10, -76.55]
 
     // =========================================================================
     // 4. KIẾN TRÚC GỖ NỘI ĐIỆN THEO BLUEPRINT: 4 CỘT GỖ LIM, XÀ NGANG & CẦU THANG GỖ CỔ
