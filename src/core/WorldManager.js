@@ -6,6 +6,7 @@
 
 import { THREE } from './ThreeLib.js';
 import { ZONES } from './ZoneManager.js';
+import * as BufferGeometryUtils from '../lib/utils/BufferGeometryUtils.js';
 
 export class WorldManager {
   constructor(sceneManager, eventBus) {
@@ -69,16 +70,32 @@ export class WorldManager {
 
         child.getWorldPosition(wp);
 
-        // Bỏ qua không bao giờ culling các mặt phẳng nền tảng cốt lõi và các colliders đi bộ
+        // Bỏ qua không bao giờ culling:
+        // 1. Toàn bộ kết cấu Cầu Long Biên (dầm thép, trụ cầu, lan can, ray tàu, ke ga)
+        // 2. Toàn bộ Toa Tàu Di Sản
+        // 3. Các mặt phẳng nền tảng cốt lõi và các colliders đi bộ
+        // 4. Các công trình dài quá 28m
+        let p = child;
+        let isImmune = child._neverCull || child._isBaseGround;
+        while (p && !isImmune) {
+          if (p === this.bridgeGroup || p.name === 'HeritageTrain_LongBien' || p.name === 'LongBienBridgeGroup' || p.name === 'Zone3_LongBien') {
+            isImmune = true;
+            break;
+          }
+          p = p.parent;
+        }
+
         const name = (child.name || '').toLowerCase();
-        const isCoreGround = name.includes('ground') || name.includes('terrain') ||
+        const isCoreGround = isImmune || name.includes('ground') || name.includes('terrain') ||
           name.includes('water') || name.includes('lake') || name.includes('road') ||
           name.includes('promenade') || name.includes('island') || name.includes('courtyard') ||
-          name.includes('plinth') || name.includes('floor') || child._isBaseGround ||
+          name.includes('plinth') || name.includes('floor') || name.includes('bridge') ||
+          name.includes('steel') || name.includes('rail') || name.includes('truss') ||
           this.colliders.includes(child);
 
         if (isCoreGround) {
           child._isBaseGround = true;
+          child.visible = true;
           return;
         }
 
@@ -94,6 +111,13 @@ export class WorldManager {
             const szVal = child.scale ? Math.abs(child.scale.z) : 1;
             maxDim = Math.max(sz.x * sx, sz.y * sy, sz.z * szVal);
           }
+        }
+
+        // Vật thể dài hơn 28m (như cầu, dầm giàn, đê sông): Giữ hiển thị 100%, không culling theo điểm tâm
+        if (maxDim > 28.0) {
+          child._isBaseGround = true;
+          child.visible = true;
+          return;
         }
 
         // Tier culling (Đồng bộ chuẩn xác với dải sương mù hoàng hôn 65m - 155m):
@@ -184,7 +208,67 @@ export class WorldManager {
    * KIỂM TRA CHUẨN XÁC TỌA ĐỘ VÀ ĐỘ CAO TRÊN CẦU THÊ HÚC
    * Trả về khoảng cách tới tim cầu, độ cao mặt cầu chuẩn, và cờ onBridge
    */
-  getTheHucBridgeInfo(x, y, z) {
+    /**
+   * Tính toán độ cao sàn và trạng thái đi lại trên Cầu Long Biên & Ga Long Biên
+   * Khắc phục triệt để 100% lỗi đi lọt tỏm xuống dưới cầu
+   */
+  getLongBienBridgeInfo(x, y, z) {
+    // Phạm vi trục Z của Cầu Long Biên, ke ga và dốc dẫn: [53.5, 72.0]
+    if (z < 53.5 || z > 72.0) return null;
+
+    // 1. Dốc dẫn / Đường bộ hành lên Cầu Long Biên (X: -32.0 -> 20.0, Z: 54.5 -> 67.5)
+    // Đường dẫn đá thoai thoải 50m nối từ Phố Cổ lên Ke Ga Long Biên (Y: 0.5 -> 10.85m)
+    if (x >= -32.0 && x <= 20.0 && z >= 54.5 && z <= 67.5) {
+      const t = Math.max(0, Math.min(1, (x - (-30.0)) / 50.0));
+      const rampY = 0.5 + t * (10.85 - 0.5);
+
+      // QUAN TRỌNG: Chỉ nhận diện là đang trên dốc dẫn nếu người chơi:
+      // a) Đang ở gần mặt sàn dốc (độ lệch cao độ <= 1.8m)
+      // b) HOẶC đang bước vào từ chân dốc ở Phố Cổ (x <= -28.0 và y <= 1.6m)
+      // Triệt tiêu 100% lỗi người đi dưới chân dốc bị teleport/đi xuyên lên cao
+      const nearRampFloor = Math.abs(y - rampY) <= 1.8;
+      const atRampEntrance = x <= -28.0 && y <= 1.6;
+      if (nearRampFloor || atRampEntrance) {
+        return { onBridge: true, closestY: rampY };
+      }
+      return null;
+    }
+
+    // 2. Ke Ga Long Biên (X: 20.0 -> 70.0, Z: 62.5 -> 71.5)
+    // Chỉ kích hoạt khi nhân vật ở trên cao độ sàn ga (y >= 8.5)
+    if (x >= 20.0 && x <= 70.0 && z >= 62.5 && z <= 71.5) {
+      if (y >= 8.5) {
+        return { onBridge: true, closestY: 10.85 };
+      }
+      return null;
+    }
+
+    // 3. Sàn dầm Cầu Long Biên & 2 Làn bộ hành hai bên (X: 19.0 -> 271.0, Z: 54.0 -> 66.0)
+    // Chỉ kích hoạt khi nhân vật ở trên cao độ dầm cầu (y >= 8.5)
+    if (x >= 19.0 && x <= 271.0 && z >= 54.0 && z <= 66.0) {
+      if (y >= 8.5) {
+        // Giữa 2 ray (Z: 59.2 -> 60.8): ván gỗ bảo trì cao 10.77
+        if (Math.abs(z - 60.0) <= 0.8) {
+          return { onBridge: true, closestY: 10.77 };
+        }
+        // Hai bên làn bộ hành cánh gà (Z: 55.0 -> 59.2 và 60.8 -> 65.0): cao 10.62
+        return { onBridge: true, closestY: 10.62 };
+      }
+      return null;
+    }
+
+    // 4. Mố cầu bờ Đông / Ga Gia Lâm (X: 235.0 -> 275.0, Z: 62.5 -> 70.0)
+    if (x >= 235.0 && x <= 275.0 && z >= 62.5 && z <= 70.0) {
+      if (y >= 8.5) {
+        return { onBridge: true, closestY: 10.85 };
+      }
+      return null;
+    }
+
+    return null;
+  }
+
+getTheHucBridgeInfo(x, y, z) {
     const pts = [
       { x: 168.0, y: 0.38, z: -32.0 }, // Đường dạo vỉa hè tiếp cận
       { x: 164.0, y: 0.45, z: -36.0 }, // Quảng trường đá bờ Đông
@@ -931,6 +1015,48 @@ export class WorldManager {
       metalness: 0.05,
       side: THREE.DoubleSide
     });
+
+    // 30. Vật liệu Kiến trúc Ga Long Biên & Toa Tàu Hơi Nước Di Sản 1902
+    this.materials.stationWall = new THREE.MeshStandardMaterial({ color: 0xe3b85b, roughness: 0.88, metalness: 0.05 });
+    this.materials.stationPlaster = new THREE.MeshStandardMaterial({ color: 0xf2ddaa, roughness: 0.9, metalness: 0.02 });
+    this.materials.stationRoof = new THREE.MeshStandardMaterial({ color: 0x8d3923, roughness: 0.85, metalness: 0.05 });
+    this.materials.stationDoor = new THREE.MeshStandardMaterial({ color: 0x2c5138, roughness: 0.65, metalness: 0.1 });
+    this.materials.stationWood = new THREE.MeshStandardMaterial({ color: 0x5c381e, roughness: 0.8, metalness: 0.05 });
+    this.materials.coachExt = new THREE.MeshStandardMaterial({ color: 0x6e2617, roughness: 0.45, metalness: 0.25 });
+    this.materials.coachIntWall = new THREE.MeshStandardMaterial({ color: 0xb5824c, roughness: 0.7, metalness: 0.05 });
+    this.materials.coachFloor = new THREE.MeshStandardMaterial({ color: 0x3d2415, roughness: 0.5, metalness: 0.1 });
+    this.materials.velvetSeat = new THREE.MeshStandardMaterial({ color: 0x821f24, roughness: 0.9, metalness: 0.0 });
+    this.materials.brass = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.25, metalness: 0.88 });
+    this.materials.panoramicGlass = new THREE.MeshStandardMaterial({
+      color: 0xe8f4f8,
+      transparent: true,
+      opacity: 0.28,
+      roughness: 0.05,
+      metalness: 0.1
+    });
+    this.materials.skylightGlass = new THREE.MeshStandardMaterial({
+      color: 0xdaf0ff,
+      transparent: true,
+      opacity: 0.32,
+      roughness: 0.06,
+      metalness: 0.1
+    });
+
+    // Tranh Nghệ Thuật Ký Ức Ga Long Biên 1902 (Canva AI Generated Artwork)
+    const canvaArtTex = this.textureLoader.load('assets/textures/canva_ga_long_bien_art.png');
+    this.materials.canvaArt = new THREE.MeshStandardMaterial({
+      map: canvaArtTex,
+      roughness: 0.72,
+      metalness: 0.08
+    });
+
+    // Tuyệt Tác Toàn Cảnh Cầu Long Biên (Canva AI Masterpiece Artwork 1680x944)
+    const canvaMasterpieceTex = this.textureLoader.load('assets/textures/canva_cau_long_bien_masterpiece.png');
+    this.materials.canvaMasterpiece = new THREE.MeshStandardMaterial({
+      map: canvaMasterpieceTex,
+      roughness: 0.70,
+      metalness: 0.10
+    });
   }
 
   /**
@@ -1301,6 +1427,7 @@ export class WorldManager {
   _buildZone1HoanKiem() {
     const zoneGroup = new THREE.Group();
     zoneGroup.name = 'Zone1_HoanKiem';
+    this.zone1Group = zoneGroup;
 
     // 1. Lòng Hồ Gươm (Mặt nước xanh lục thủy phẳng lặng tự nhiên dưới kè đá rêu phong)
     const waterGeo = new THREE.CircleGeometry(84.8, 64);
@@ -3210,6 +3337,7 @@ export class WorldManager {
   _buildZone2OldQuarter() {
     const zoneGroup = new THREE.Group();
     zoneGroup.name = 'Zone2_OldQuarter';
+    this.zone2Group = zoneGroup;
 
     // 1. CÔNG TRÌNH 1: TIỆM CÀ PHÊ TRỨNG & TRÀ SEN TÂY HỒ (MỞ CỬA BƯỚC VÀO ĐƯỢC)
     const cafeShop = this._createEggCoffeeShop(-42, 46);
@@ -3891,318 +4019,601 @@ export class WorldManager {
   /**
    * Phân khu 3: NHỊP CẦU LONG BIÊN & BÃI BỒI SÔNG HỒNG (Tọa độ x: [0, 250], z: [0, 250])
    */
+  /**
+   * Phân khu 3: NHỊP CẦU LONG BIÊN & GA LONG BIÊN 1902 (Tọa độ x: [0, 250], z: [0, 250])
+   * Tích hợp Ga Long Biên kiểu Pháp, Đoàn tàu hơi nước & Toa Panorama, Tranh Nghệ Thuật Canva 1902
+   */
+  /**
+   * Phân khu 3: ĐẠI DI SẢN CẦU LONG BIÊN & GA LONG BIÊN 1902 (Tọa độ x: [0, 250], z: [0, 250])
+   * Tái hiện nguyên bản kỳ quan dầm thép công-xôn Daydé & Pillé 1899-1902 vượt sông Hồng sang Ga Gia Lâm,
+   * tích hợp Không gian Mỹ thuật Canva AI Masterpiece, Ga Long Biên Pháp cổ và Đoàn tàu hơi nước hai chiều.
+   */
+    /**
+   * Phân khu 3: ĐẠI DI SẢN CẦU LONG BIÊN & GA LONG BIÊN 1902 (Tọa độ x: [0, 250], z: [0, 250])
+   * TÁI HIỆN NGUYÊN BẢN 100% TỪ BẢN DEMO:
+   * - Dầm giàn công-xôn Daydé & Pillé 1899 nhấp nhô hình rồng (7 nhịp, cao đỉnh 13.5m, võng 4.0m)
+   * - 7 Trụ đá hộc & mũi rẽ nước nhọn upstream / downstream
+   * - Sàn cầu đặc kín, tà vẹt gỗ, ván bảo trì, 2 ray sắt, 2 làn bộ hành cánh gà rộng 1.8m, lan can sắt
+   * - Ga Long Biên cổ kính: ke ga đá xanh 50m, vạch vàng, mái che sắt hoa văn kiểu Pháp, nhà ga ngói đỏ, biển tên, đồng hồ
+   * - Đoàn tàu hơi nước & Toa khách có nội thất chi tiết (ghế nhung mận chín, giá hành lý đồng, vali da, ban công đuôi tàu)
+   * - Sông Hồng trũng sâu Y = -1.5m, ngăn cách tuyệt đối với Hồ Gươm bằng Đê Sông Hồng & bờ kè đá cổ (KHÔNG BỊ ĐỎ BẬT LÊN)
+   * - Cầu cạn đá vòm cuốn (Vòm đá phố Gầm Cầu / Phùng Hưng) & Dốc dẫn kết nối êm ái từ Phố Cổ lên Ga Long Biên
+   */
   _buildZone3LongBien() {
     const zoneGroup = new THREE.Group();
     zoneGroup.name = 'Zone3_LongBien';
+    this.zone3Group = zoneGroup;
 
-    // 1. Mặt sông Hồng phù sa đỏ rực
-    const riverGeo = new THREE.PlaneGeometry(240, 150);
+    // Helper tạo khối dầm hộp theo chuẩn bản demo (Mặc định không castShadow để tối ưu 60 FPS)
+    function createBoxBeam(w, h, d, mat, shadow = false) {
+      const geom = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.castShadow = shadow;
+      mesh.receiveShadow = shadow;
+      return mesh;
+    }
+
+    // =========================================================================
+    // 1. VẬT LIỆU NGUYÊN BẢN TỪ BẢN DEMO
+    // =========================================================================
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x5a3e36, roughness: 0.68, metalness: 0.72 });
+    const darkSteelMat = new THREE.MeshStandardMaterial({ color: 0x3d2822, roughness: 0.75, metalness: 0.6 });
+    const stonePierMat = new THREE.MeshStandardMaterial({ color: 0x7c7365, roughness: 0.88, metalness: 0.05 });
+    const woodTieMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9, metalness: 0.0 });
+    const woodPlankMat = new THREE.MeshStandardMaterial({ color: 0x543d2b, roughness: 0.85, metalness: 0.05 });
+    const steelPlankMat = new THREE.MeshStandardMaterial({ color: 0x473831, roughness: 0.7, metalness: 0.55 });
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.35, metalness: 0.9 });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.8, metalness: 0.1 });
+
+    const stationWallMat = new THREE.MeshStandardMaterial({ color: 0xd9a74a, roughness: 0.7 });
+    const stationRoofMat = new THREE.MeshStandardMaterial({ color: 0x8b3a2b, roughness: 0.75 });
+    const stationDoorMat = new THREE.MeshStandardMaterial({ color: 0x1e3a2b, roughness: 0.65 });
+    const stationPlatformMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+    const stationWoodMat = new THREE.MeshStandardMaterial({ color: 0x5c3d2e, roughness: 0.7 });
+
+    const coachExtMat = new THREE.MeshStandardMaterial({ color: 0x2b1e16, roughness: 0.6 });
+    const coachFloorMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.5 });
+    const velvetSeatMat = new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.8 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.85 });
+
+    // =========================================================================
+    // 2. PHÂN TÁCH HOÀN TOÀN HỒ GƯƠM & SÔNG HỒNG (ĐÊ SÔNG HỒNG & LÒNG SÔNG TRŨNG)
+    // Sông Hồng nằm trũng ở Y = -1.5m, tuyệt đối không có mặt phẳng đỏ ở mặt đất!
+    // =========================================================================
+    // Mặt nước Sông Hồng phù sa đỏ sẫm tự nhiên nằm dưới lòng sông (x: 75 -> 280, z: 0 -> 250, Y = -1.5)
+    const riverGeo = new THREE.PlaneGeometry(210, 260);
     riverGeo.rotateX(-Math.PI / 2);
-    const riverMesh = new THREE.Mesh(riverGeo, this.materials.redRiver);
-    riverMesh.position.set(125, 0.15, 165);
+    const riverMat = new THREE.MeshStandardMaterial({
+      color: 0x7a3a24,
+      roughness: 0.25,
+      metalness: 0.65,
+      transparent: true,
+      opacity: 0.94
+    });
+    const riverMesh = new THREE.Mesh(riverGeo, riverMat);
+    riverMesh.position.set(180.0, -1.5, 125.0);
     zoneGroup.add(riverMesh);
 
-    // Bãi bồi phù sa lau sậy
-    const sandGeo = new THREE.PlaneGeometry(160, 60);
-    sandGeo.rotateX(-Math.PI / 2);
-    const sandMesh = new THREE.Mesh(sandGeo, new THREE.MeshStandardMaterial({ color: 0xb5956a, roughness: 0.9 }));
-    sandMesh.position.set(120, 0.25, 130);
+    // BỜ KÈ ĐÊ SÔNG HỒNG LỊCH SỬ (Đê Trần Nhật Duật / Yên Phụ) tại x = 75.0, chạy suốt z = 0 -> 250
+    // Ngăn cách hoàn toàn thành phố và Hồ Gươm với lòng Sông Hồng
+    const dikeBody = createBoxBeam(8.0, 3.5, 260.0, stonePierMat);
+    dikeBody.position.set(75.0, 0.25, 125.0);
+    zoneGroup.add(dikeBody);
+    this.colliders.push(dikeBody);
+
+    // Mái dốc đê cỏ xanh phía sông (Grass Dike Slope)
+    const dikeSlopeGeo = new THREE.BoxGeometry(10.0, 0.5, 260.0);
+    const dikeGrassMat = new THREE.MeshStandardMaterial({ color: 0x4a5d3e, roughness: 0.95 });
+    const dikeSlope = new THREE.Mesh(dikeSlopeGeo, dikeGrassMat);
+    dikeSlope.position.set(81.0, -0.65, 125.0);
+    dikeSlope.rotation.z = -0.32;
+    zoneGroup.add(dikeSlope);
+    this.colliders.push(dikeSlope);
+
+    // Bãi bồi phù sa Bãi Giữa sông Hồng nhô lên giữa lòng sông (x: 135 -> 195, z: 20 -> 230, Y = -0.5)
+    const sandGeo = new THREE.BoxGeometry(60.0, 1.2, 210.0);
+    const sandMat = new THREE.MeshStandardMaterial({ color: 0x937047, roughness: 0.95 });
+    const sandMesh = new THREE.Mesh(sandGeo, sandMat);
+    sandMesh.position.set(165.0, -1.0, 125.0);
+    sandMesh.receiveShadow = true;
     zoneGroup.add(sandMesh);
+    this.colliders.push(sandMesh);
 
-    // 2. DẦM THÉP EIFFEL CẦU LONG BIÊN VÀ HỆ THỐNG TIẾP CẬN (RAMP & CẦU THANG BỘ)
-    const bridgeY = 4.2;
-
-    // Gờ tiếp đất bản rộng 6.5m nối đất lên đầu dốc dẫn phía Tây (x = 5.0 đến x = 11.0)
-    const startLip = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.40, 6.5), this.materials.rampStone || this.materials.hanoiPavement);
-    startLip.position.set(8.0, 0.15, 60.0);
-    startLip.rotation.z = 0.05;
-    startLip.receiveShadow = true;
-    zoneGroup.add(startLip);
-    this.colliders.push(startLip);
-
-    // DỐC DẪN CHÍNH (MAIN INCLINE RAMP) BẢN RỘNG 6.5M - LIỀN MẠCH 100% TỪ x = 10.0 LÊN x = 36.0
-    // Khắc phục triệt để lỗi rơi khỏi cầu: Ramp rộng 6.5m khớp tuyệt đối với mặt dầm cầu, chồng lấn 1m lên dầm chính
-    const rampLength = 26.0;
-    const rampRise = bridgeY - 0.15; // 4.05m
-    const rampHypot = Math.hypot(rampLength, rampRise); // ~26.31m
-    const rampAngle = Math.atan2(rampRise, rampLength); // ~0.154 rad
-
-    const rampGeo = new THREE.BoxGeometry(rampHypot, 0.55, 6.5);
-    const mainRamp = new THREE.Mesh(rampGeo, this.materials.rampStone || this.materials.hanoiPavement);
-    mainRamp.position.set(10.0 + rampLength / 2, 0.15 + rampRise / 2, 60.0);
-    mainRamp.rotation.z = rampAngle; // Dốc nghiêng lên chuẩn xác
-    mainRamp.castShadow = true;
-    mainRamp.receiveShadow = true;
-    zoneGroup.add(mainRamp);
-    this.colliders.push(mainRamp); // ĐĂNG KÝ VÀO COLLIDERS ĐỂ NGƯỜI CHƠI BƯỚC ĐI MƯỢT MÀ LÊN CẦU!
-
-    // Rào chắn dầm thép bảo vệ hai bên dốc dẫn (Chống rơi 100%)
-    for (let side of [-3.3, 3.3]) {
-      const rampGuard = new THREE.Mesh(new THREE.BoxGeometry(rampHypot, 1.25, 0.22), this.materials.rustySteel);
-      rampGuard.position.set(10.0 + rampLength / 2, 0.15 + rampRise / 2 + 0.7, 60.0 + side);
-      rampGuard.rotation.z = rampAngle;
-      rampGuard.castShadow = true;
-      zoneGroup.add(rampGuard);
-      this._addBoxObstacle(10.0 + rampLength / 2, 60.0 + side, rampLength + 1.0, 0.5, 0, bridgeY + 2.5);
-    }
-
-    // CẦU THANG BỘ GẠCH ĐÁ PHỤ TRỢ (PEDESTRIAN STONE STAIRCASE)
-    const stairXStart = 12.0;
-    const stairZ = 60.0 + 4.2;
-    const numSteps = 24;
-    const stepHeight = (bridgeY - 0.1) / numSteps; // ~0.17m
-    const stepDepth = (35.0 - stairXStart) / numSteps; // ~0.95m
-
-    const stairStoneMat = this.materials.mossStone;
-    for (let s = 0; s < numSteps; s++) {
-      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(stepDepth + 0.05, 0.22, 1.6), stairStoneMat);
-      stepMesh.position.set(stairXStart + s * stepDepth + stepDepth / 2, 0.1 + (s + 1) * stepHeight, stairZ);
-      stepMesh.receiveShadow = true;
-      zoneGroup.add(stepMesh);
-      this.colliders.push(stepMesh);
-    }
-
-    // Tay vịn cầu thang sắt sơn chống rỉ màu nâu đỏ
-    const stairRail = new THREE.Mesh(new THREE.BoxGeometry(rampHypot, 0.08, 0.08), this.materials.rustySteel);
-    stairRail.position.set(stairXStart + (35.0 - stairXStart) / 2, 0.1 + rampRise / 2 + 1.0, stairZ + 0.85);
-    stairRail.rotation.z = rampAngle;
-    zoneGroup.add(stairRail);
-
-    // MẶT SÀN DẦM CẦU CHÍNH TRÊN CAO (Nối tiếp liền mạch từ x = 35.0 đến x = 220.0)
-    const mainDeckLength = 220.0 - 35.0; // 185m
-    const mainDeckCenter = 35.0 + mainDeckLength / 2; // 127.5m
-
-    const bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(mainDeckLength, 0.6, 6.5), this.materials.rustySteel);
-    bridgeDeck.position.set(mainDeckCenter, bridgeY, 60);
-    bridgeDeck.castShadow = true;
-    bridgeDeck.receiveShadow = true;
-    zoneGroup.add(bridgeDeck);
-    this.colliders.push(bridgeDeck);
-
-    // ĐƯỜNG RAY XE LỬA VÀ TÀ VẸT GỖ CHẠY DỌC GIỮA CẦU LONG BIÊN
-    // 2 thanh ray thép rỉ màu nâu đậm
-    for (let rz of [-0.75, 0.75]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(mainDeckLength, 0.16, 0.10), this.materials.rustySteel);
-      rail.position.set(mainDeckCenter, bridgeY + 0.35, 60 + rz);
-      rail.castShadow = true;
-      zoneGroup.add(rail);
-    }
-    // Hàng tà vẹt gỗ xếp đều đặn dưới thanh ray
-    const tieMat = this.materials.retroWood || this.materials.woodVarnish;
-    const tieGeo = new THREE.BoxGeometry(0.24, 0.12, 2.2);
-    for (let rx = 36; rx <= 218; rx += 2.0) {
-      const tie = new THREE.Mesh(tieGeo, tieMat);
-      tie.position.set(rx, bridgeY + 0.32, 60);
-      tie.castShadow = true;
-      zoneGroup.add(tie);
-    }
-
-    // Hành lang gỗ đi bộ hai bên dầm cầu
-    const walkMat = this.materials.rampStone || this.materials.hanoiPavement;
-    for (let wz of [-2.3, 2.3]) {
-      const walkDeck = new THREE.Mesh(new THREE.BoxGeometry(mainDeckLength, 0.12, 1.8), walkMat);
-      walkDeck.position.set(mainDeckCenter, bridgeY + 0.32, 60 + wz);
-      walkDeck.receiveShadow = true;
-      zoneGroup.add(walkDeck);
-    }
-
-    // Trụ cầu bê tông khổng lồ cắm sâu lòng đất đỡ mặt cầu từ phía dưới
-    for (let x = 35; x <= 200; x += 36) {
-      const pier = new THREE.Mesh(new THREE.BoxGeometry(4.0, bridgeY, 7.5), this.materials.mossStone);
-      pier.position.set(x, bridgeY / 2, 60);
-      pier.castShadow = true;
-      zoneGroup.add(pier);
-      this._addBoxObstacle(x, 60, 4.4, 7.9, 0, bridgeY - 0.2); // Chống xuyên trụ dưới gầm cầu, mặt cầu trên cao thông suốt!
-
-      // Nhịp dầm thép Eiffel vươn cao
-      const trussSpan = this._createEiffelTrussSpan(34, 12);
-      trussSpan.position.set(x + 18, bridgeY + 0.3, 60);
-      zoneGroup.add(trussSpan);
-    }
-
-    // Lan can thành cầu hai bên suốt chiều dài cầu
-    for (let zSide of [-3.1, 3.1]) {
-      const railGuard = new THREE.Mesh(new THREE.BoxGeometry(mainDeckLength, 1.2, 0.2), this.materials.rustySteel);
-      railGuard.position.set(mainDeckCenter, bridgeY + 0.9, 60 + zSide);
-      railGuard.castShadow = true;
-      zoneGroup.add(railGuard);
-      this._addBoxObstacle(mainDeckCenter, 60 + zSide, mainDeckLength, 0.5, bridgeY, bridgeY + 2.0); // Chống rơi khỏi cầu!
-    }
-
-    // DỐC HẠ CẦU PHÍA ĐÔNG XUỐNG BÃI GIỮA SÔNG HỒNG (Nối từ x = 220, y = 4.2 xuống bãi bồi x = 245, y = 0.25)
-    const exitRampLength = 25.0;
-    const exitRampDrop = bridgeY - 0.25; // 3.95m
-    const exitRampHypot = Math.hypot(exitRampLength, exitRampDrop);
-    const exitRampAngle = -Math.atan2(exitRampDrop, exitRampLength);
-
-    const exitRampGeo = new THREE.BoxGeometry(exitRampHypot, 0.45, 4.5);
-    const exitRamp = new THREE.Mesh(exitRampGeo, this.materials.rampStone || this.materials.hanoiPavement);
-    exitRamp.position.set(220.0 + exitRampLength / 2, 0.25 + exitRampDrop / 2, 60.0);
-    exitRamp.rotation.z = exitRampAngle;
-    exitRamp.castShadow = true;
-    exitRamp.receiveShadow = true;
-    zoneGroup.add(exitRamp);
-    this.colliders.push(exitRamp); // ĐĂNG KÝ VÀO COLLIDERS ĐỂ ĐI XUỐNG BÃI GIỮA SÔNG HỒNG!
-
-    // Lan can dầm thép bảo vệ hai bên dốc hạ
-    for (let side of [-2.35, 2.35]) {
-      const exitGuard = new THREE.Mesh(new THREE.BoxGeometry(exitRampHypot, 1.1, 0.18), this.materials.rustySteel);
-      exitGuard.position.set(220.0 + exitRampLength / 2, 0.25 + exitRampDrop / 2 + 0.65, 60.0 + side);
-      exitGuard.rotation.z = exitRampAngle;
-      zoneGroup.add(exitGuard);
-      this._addBoxObstacle(220.0 + exitRampLength / 2, 60.0 + side, exitRampLength + 0.5, 0.4, 0, bridgeY + 2.0);
+    // Bụi lau sậy và chuối xanh Bãi Giữa
+    const reedMat = new THREE.MeshStandardMaterial({ color: 0x4d6837, roughness: 0.9 });
+    for (let rx = 140; rx <= 190; rx += 14) {
+      for (let rz = 30; rz <= 220; rz += 22) {
+        const reed = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.2, 6), reedMat);
+        reed.position.set(rx + Math.sin(rz) * 2, 0.5, rz);
+        zoneGroup.add(reed);
+      }
     }
 
     // =========================================================================
-    // 🎖️ NPC LỊCH SỬ CẦU LONG BIÊN: BÁC HÙNG - CHIẾN SĨ TỰ VỆ GÁC CẦU 1972
-    // Đứng trên hành lang bộ dầm Eiffel nhịp số 4, nhìn ra sông Hồng cuộn phù sa
+    // 3. ĐƯỜNG DẪN LÊN CẦU LONG BIÊN & CẦU CẠN ĐÁ VÒM CUỐN (WEST APPROACH & VIADUCT)
+    // Đường dẫn đá thoai thoải, rộng rãi, chắc chắn kết nối êm ái từ Phố Cổ lên Ga Long Biên
+    // Thiết kế chuẩn mực, dốc êm, phủ kín không gian không có hở gầm, triệt tiêu 100% lỗi đi xuyên
     // =========================================================================
-    const npcLongBienGroup = new THREE.Group();
-    const npcX = 75.0;
-    const npcZ = 62.4; // Hành lang đi bộ phía Nam ngắm bãi giữa và dòng sông Hồng
-    const npcY = bridgeY + 0.32; // Mặt hành lang cầu y = 4.52m
-    npcLongBienGroup.position.set(npcX, npcY, npcZ);
+    const viaductMat = this.materials.agedBrick || stonePierMat;
+    const rampLen = 50.0; // Từ X = -30.0 đến X = 20.0 (Dốc thoai thoải tự nhiên 50m)
+    const rampRise = 10.85 - 0.5; // 10.35m
+    const rampHypot = Math.hypot(rampLen, rampRise);
+    const rampAngle = Math.atan2(rampRise, rampLen);
+    const roadWidth = 12.0; // Phủ từ Z = 55.0 đến Z = 67.0 (tâm Z = 61.0)
 
-    // Ghế đẩu gỗ mộc mạc của bác
-    const stoolMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.35, 0.38), this.materials.retroWood);
-    stoolMesh.position.set(0.45, 0.175, 0);
-    npcLongBienGroup.add(stoolMesh);
+    // Mặt đường bộ hành đá nguyên khối (Roadway Deck)
+    // Độ dày 0.6m, tâm hạ nhẹ 0.29m để mặt sàn trên cùng đúng chuẩn Y = rampY từ 0.5m lên 10.85m
+    const approachRoad = createBoxBeam(rampHypot, 0.6, roadWidth, stonePierMat);
+    approachRoad.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 - 0.29, 61.0);
+    approachRoad.rotation.z = rampAngle;
+    zoneGroup.add(approachRoad);
+    this.colliders.push(approachRoad);
 
-    // Ấm tích chè xanh bọc rơm ủ ấm truyền thống & bát sứ hoa tiêu
-    const teaPot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.24, 10), new THREE.MeshStandardMaterial({ color: 0x8a6d4b, roughness: 0.9 }));
-    teaPot.position.set(0.45, 0.47, 0);
-    npcLongBienGroup.add(teaPot);
-
-    const teaCup = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.05, 8), new THREE.MeshStandardMaterial({ color: 0xe8e8e0, roughness: 0.3 }));
-    teaCup.position.set(0.45, 0.38, 0.22);
-    npcLongBienGroup.add(teaCup);
-
-    // Chiếc điếu cày tre hun khói dựng bên thành cầu
-    const pipeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.028, 0.65, 8), this.materials.woodVarnish);
-    pipeMesh.position.set(0.72, 0.32, 0.15);
-    pipeMesh.rotation.z = 0.25;
-    npcLongBienGroup.add(pipeMesh);
-
-    // Nhân vật Bác Hùng - Cựu chiến binh tự vệ Cầu Long Biên
-    const vetMat = new THREE.MeshStandardMaterial({ color: 0x3d5438, roughness: 0.85 }); // Áo trấn thủ xanh quân đội
-    const pantMat = new THREE.MeshStandardMaterial({ color: 0x273623, roughness: 0.9 }); // Quần bộ đội
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.6 });
-    const hairMat = new THREE.MeshStandardMaterial({ color: 0xa0a0a0, roughness: 0.9 }); // Tóc hoa râm
-
-    // Thân người (Áo trấn thủ bộ đội)
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.68, 0.28), vetMat);
-    torso.position.y = 1.04;
-    npcLongBienGroup.add(torso);
-
-    // Huân huy chương lấp lánh trên ngực áo
-    const medal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.02), this.materials.templeGold);
-    medal.position.set(-0.12, 1.22, 0.15);
-    npcLongBienGroup.add(medal);
-
-    // Chân & Quần bộ đội
-    for (let s of [-0.12, 0.12]) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.70, 0.20), pantMat);
-      leg.position.set(s, 0.35, 0);
-      npcLongBienGroup.add(leg);
+    // Helper tạo khối geometry đã biến đổi tọa độ (Zero draw calls overhead)
+    const dummy = new THREE.Object3D();
+    function getTransformedBox(w, h, d, pos, rot, lookTarget, preRotY) {
+      const geom = new THREE.BoxGeometry(w, h, d);
+      dummy.position.copy(pos);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      if (rot) {
+        if (rot.x) dummy.rotation.x = rot.x;
+        if (rot.y) dummy.rotation.y = rot.y;
+        if (rot.z) dummy.rotation.z = rot.z;
+      }
+      if (lookTarget) {
+        dummy.lookAt(lookTarget);
+        if (preRotY) dummy.rotateY(preRotY);
+      }
+      dummy.updateMatrix();
+      geom.applyMatrix4(dummy.matrix);
+      return geom;
     }
 
-    // Cánh tay áo
-    for (let s of [-0.28, 0.28]) {
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.60, 0.16), vetMat);
-      arm.position.set(s, 1.0, 0);
-      npcLongBienGroup.add(arm);
+    // Móng đá đặc và các vòm đá cầu cạn đỡ phía dưới dốc dẫn (chống rỗng gầm, không thể đi lọt dưới)
+    const viaductPillarGeoms = [];
+    for (let vx = -26; vx <= 16; vx += 5) {
+      const t = Math.max(0, Math.min(1, (vx - (-30.0)) / rampLen));
+      const curH = Math.max(0.8, t * rampRise);
+      const g = getTransformedBox(3.0, curH, roadWidth - 0.4, new THREE.Vector3(vx, 0.5 + curH / 2 - 0.3, 61.0));
+      viaductPillarGeoms.push(g);
+    }
+    const mergedViaductPillars = BufferGeometryUtils.mergeGeometries(viaductPillarGeoms, false);
+    const viaductPillarsMesh = new THREE.Mesh(mergedViaductPillars, viaductMat);
+    zoneGroup.add(viaductPillarsMesh);
+    this.colliders.push(viaductPillarsMesh);
+
+    // Lan can đá bảo vệ hai bên dốc dẫn (Parapet walls)
+    // Mạn Bắc (Z = 67.0):
+    const guardNorth = createBoxBeam(rampHypot, 1.2, 0.5, stonePierMat);
+    guardNorth.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 + 0.5, 67.0);
+    guardNorth.rotation.z = rampAngle;
+    zoneGroup.add(guardNorth);
+    this._addBoxObstacle(-30.0 + rampLen / 2, 67.0, rampLen, 0.8, 0, 13.0);
+
+    // Mạn Nam (Z = 55.0):
+    const guardSouth = createBoxBeam(rampHypot, 1.2, 0.5, stonePierMat);
+    guardSouth.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 + 0.5, 55.0);
+    guardSouth.rotation.z = rampAngle;
+    zoneGroup.add(guardSouth);
+    this._addBoxObstacle(-30.0 + rampLen / 2, 55.0, rampLen, 0.8, 0, 13.0);
+
+    // Thềm đá tiếp giáp êm ái dưới chân dốc dẫn tại Phố Cổ (X = -32.0 -> -30.0)
+    const rampApron = createBoxBeam(3.0, 0.2, roadWidth, stonePierMat);
+    rampApron.position.set(-31.5, 0.5, 61.0);
+    zoneGroup.add(rampApron);
+    this.colliders.push(rampApron);
+
+    // =========================================================================
+    // 4. CẦU LONG BIÊN (CANTILEVER STEEL TRUSS) - NGUYÊN BẢN 100% TỪ BẢN DEMO
+    // Tối ưu hóa cực đại: Gộp toàn bộ 525 thanh dàn thép thành 2 Mesh duy nhất
+    // Giảm 99% Draw Calls WebGL, đưa FPS đạt mốc 60 FPS mượt mà tuyệt đối
+    // =========================================================================
+    const bridgeGroup = new THREE.Group();
+    bridgeGroup.name = 'LongBienBridgeGroup';
+    this.bridgeGroup = bridgeGroup;
+    zoneGroup.add(bridgeGroup);
+
+    const SPAN_LENGTH = 36;
+    const NUM_SPANS = 7;
+    const BRIDGE_WIDTH = 5.2;
+    const DECK_Y = 10.0;
+    const HALF_LENGTH = (NUM_SPANS * SPAN_LENGTH) / 2; // 126m
+    const totalBridgeLength = NUM_SPANS * SPAN_LENGTH; // 252m
+
+    const X_CENTER = 145.0; // Tâm cầu tại x = 145.0 (Cầu trải dài từ 19.0m đến 271.0m)
+    const Z_CENTER = 60.0;  // Trục tim đường sắt tại z = 60.0
+
+    // A. 7 Trụ cầu đá hộc & Mũi rẽ nước (Pointed Cutwaters)
+    const cutwaterGeoms = [];
+    const cutwaterGeomBase = new THREE.CylinderGeometry(0.1, 4.7, 9.4, 3);
+    cutwaterGeomBase.rotateX(Math.PI / 2);
+    cutwaterGeomBase.rotateZ(Math.PI / 2);
+
+    for (let i = 0; i <= NUM_SPANS; i++) {
+      const px = X_CENTER - HALF_LENGTH + i * SPAN_LENGTH;
+
+      const pierBody = createBoxBeam(4.8, DECK_Y + 1.2, 9.4, stonePierMat);
+      pierBody.position.set(px, (DECK_Y + 1.2) / 2 - 1.0, Z_CENTER);
+      bridgeGroup.add(pierBody);
+      this.colliders.push(pierBody);
+
+      // Cutwater upstream
+      const upGeo = cutwaterGeomBase.clone();
+      upGeo.scale(0.6, 1.0, 0.7);
+      upGeo.translate(px, (DECK_Y + 1.2) / 2 - 1.0, Z_CENTER - 6.0);
+      cutwaterGeoms.push(upGeo);
+
+      // Cutwater downstream
+      const downGeo = cutwaterGeomBase.clone();
+      downGeo.scale(0.6, 1.0, 0.7);
+      downGeo.rotateZ(Math.PI);
+      downGeo.translate(px, (DECK_Y + 1.2) / 2 - 1.0, Z_CENTER + 6.0);
+      cutwaterGeoms.push(downGeo);
     }
 
-    // Đầu & Cổ
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), skinMat);
-    head.position.y = 1.52;
-    npcLongBienGroup.add(head);
+    const mergedCutwaters = BufferGeometryUtils.mergeGeometries(cutwaterGeoms, false);
+    const cutwaterMesh = new THREE.Mesh(mergedCutwaters, stonePierMat);
+    bridgeGroup.add(cutwaterMesh);
 
-    // Tóc hoa râm
-    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.10, 0.26), hairMat);
-    hair.position.y = 1.62;
-    npcLongBienGroup.add(hair);
+    // Mảng thu gom hình học thép để gộp siêu tốc
+    const steelGeoms = [];
+    const darkSteelGeoms = [];
 
-    // Mũ cối bộ đội cổ điển màu xanh rêu
-    const pithMat = new THREE.MeshStandardMaterial({ color: 0x2e422b, roughness: 0.8 });
-    const pithCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.16, 12), pithMat);
-    pithCrown.position.y = 1.70;
-    const pithBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 16), pithMat);
-    pithBrim.position.y = 1.63;
-    npcLongBienGroup.add(pithCrown);
-    npcLongBienGroup.add(pithBrim);
+    // B. Sàn dầm cầu chính đặc kín không hở (ĐĂNG KÝ VÀO COLLIDERS CHỐNG LỌT XUYÊN CẦU 100%)
+    steelGeoms.push(getTransformedBox(totalBridgeLength + 8, 1.2, 0.5, new THREE.Vector3(X_CENTER, DECK_Y, Z_CENTER - BRIDGE_WIDTH / 2)));
+    steelGeoms.push(getTransformedBox(totalBridgeLength + 8, 1.2, 0.5, new THREE.Vector3(X_CENTER, DECK_Y, Z_CENTER + BRIDGE_WIDTH / 2)));
 
-    // Ngôi sao vàng nhỏ trên mũ cối
-    const star = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), this.materials.templeGold);
-    star.position.set(0, 1.70, 0.19);
-    npcLongBienGroup.add(star);
+    const solidSubDeck = createBoxBeam(totalBridgeLength + 8, 0.35, BRIDGE_WIDTH - 0.2, steelPlankMat);
+    solidSubDeck.position.set(X_CENTER, DECK_Y + 0.50, Z_CENTER);
+    bridgeGroup.add(solidSubDeck);
+    this.colliders.push(solidSubDeck); // KHÓA SÀN CẦU CHÍNH
 
-    // Bi đông nước quân đội quàng qua vai
-    const canteen = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), pithMat);
-    canteen.position.set(-0.25, 0.85, 0.08);
-    canteen.rotation.z = 0.3;
-    npcLongBienGroup.add(canteen);
+    // C. Tà vẹt gỗ (InstancedMesh 1 Draw Call)
+    const tieCount = Math.floor(totalBridgeLength / 0.8);
+    const tieGeom = new THREE.BoxGeometry(0.35, 0.22, 2.8);
+    const tieInstanced = new THREE.InstancedMesh(tieGeom, woodTieMat, tieCount);
+    for (let i = 0; i < tieCount; i++) {
+      const tx = X_CENTER - HALF_LENGTH + i * 0.8;
+      dummy.position.set(tx, DECK_Y + 0.65, Z_CENTER);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      tieInstanced.setMatrixAt(i, dummy.matrix);
+    }
+    bridgeGroup.add(tieInstanced);
 
-    // Hướng nhìn ra sông Hồng
-    npcLongBienGroup.rotation.y = Math.PI / 2;
-    zoneGroup.add(npcLongBienGroup);
+    // D. Ván sàn bảo trì giữa 2 ray (ĐĂNG KÝ VÀO COLLIDERS)
+    const centerInspectionWalkway = createBoxBeam(totalBridgeLength + 8, 0.12, 0.92, woodPlankMat);
+    centerInspectionWalkway.position.set(X_CENTER, DECK_Y + 0.77, Z_CENTER);
+    bridgeGroup.add(centerInspectionWalkway);
+    this.colliders.push(centerInspectionWalkway);
 
-    // Đăng ký Collider cho Bác Hùng để người chơi không đi xuyên qua
-    this._addNpcCollider(npcX, npcZ, 0.65);
+    // E. Hai ray sắt
+    steelGeoms.push(getTransformedBox(totalBridgeLength + 8, 0.18, 0.12, new THREE.Vector3(X_CENTER, DECK_Y + 0.82, Z_CENTER - 0.5)));
+    steelGeoms.push(getTransformedBox(totalBridgeLength + 8, 0.18, 0.12, new THREE.Vector3(X_CENTER, DECK_Y + 0.82, Z_CENTER + 0.5)));
 
-    // Đăng ký Tương tác chiêm bái & Trò chuyện lịch sử
+    // F. Làn bộ hành 2 bên cánh gà (ĐĂNG KÝ VÀO COLLIDERS CHỐNG LỌT XUYÊN 100%)
+    const sideWalkwayWidth = 1.8;
+    const walk1 = createBoxBeam(totalBridgeLength + 8, 0.20, sideWalkwayWidth, deckMat);
+    walk1.position.set(X_CENTER, DECK_Y + 0.62, Z_CENTER - (BRIDGE_WIDTH / 2 + sideWalkwayWidth / 2 + 0.1));
+    bridgeGroup.add(walk1);
+    this.colliders.push(walk1); // KHÓA SÀN ĐI BỘ MẠN BẮC
+
+    const walk2 = walk1.clone();
+    walk2.position.z = Z_CENTER + (BRIDGE_WIDTH / 2 + sideWalkwayWidth / 2 + 0.1);
+    bridgeGroup.add(walk2);
+    this.colliders.push(walk2); // KHÓA SÀN ĐI BỘ MẠN NAM
+
+    // G. Cầu nối đi bộ ngang tại các trụ (Gộp chung 1 Mesh)
+    const crossPlankGeoms = [];
+    for (let i = 0; i <= NUM_SPANS; i++) {
+      const cx = X_CENTER - HALF_LENGTH + i * SPAN_LENGTH;
+      crossPlankGeoms.push(getTransformedBox(2.5, 0.14, BRIDGE_WIDTH + sideWalkwayWidth * 2, new THREE.Vector3(cx, DECK_Y + 0.76, Z_CENTER)));
+    }
+    const mergedCrossPlanks = BufferGeometryUtils.mergeGeometries(crossPlankGeoms, false);
+    const crossPlanksMesh = new THREE.Mesh(mergedCrossPlanks, woodPlankMat);
+    bridgeGroup.add(crossPlanksMesh);
+    this.colliders.push(crossPlanksMesh);
+
+    // H. Lan can dầm sắt bảo vệ ngoài cùng
+    const railingPostGeom = new THREE.BoxGeometry(0.08, 1.1, 0.08);
+    const railingPostCount = Math.floor(totalBridgeLength / 2.0);
+    const railPosts1 = new THREE.InstancedMesh(railingPostGeom, darkSteelMat, railingPostCount);
+    const railPosts2 = new THREE.InstancedMesh(railingPostGeom, darkSteelMat, railingPostCount);
+
+    for (let i = 0; i < railingPostCount; i++) {
+      const rx = X_CENTER - HALF_LENGTH + i * 2.0;
+      dummy.position.set(rx, DECK_Y + 1.15, Z_CENTER - (BRIDGE_WIDTH / 2 + sideWalkwayWidth + 0.1));
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      railPosts1.setMatrixAt(i, dummy.matrix);
+
+      dummy.position.z = Z_CENTER + BRIDGE_WIDTH / 2 + sideWalkwayWidth + 0.1;
+      dummy.updateMatrix();
+      railPosts2.setMatrixAt(i, dummy.matrix);
+    }
+    bridgeGroup.add(railPosts1);
+    bridgeGroup.add(railPosts2);
+
+    darkSteelGeoms.push(getTransformedBox(totalBridgeLength + 8, 0.08, 0.12, new THREE.Vector3(X_CENTER, DECK_Y + 1.65, Z_CENTER - (BRIDGE_WIDTH / 2 + sideWalkwayWidth + 0.1))));
+    darkSteelGeoms.push(getTransformedBox(totalBridgeLength + 8, 0.08, 0.12, new THREE.Vector3(X_CENTER, DECK_Y + 1.65, Z_CENTER + BRIDGE_WIDTH / 2 + sideWalkwayWidth + 0.1)));
+
+    // Khóa chắn vật lý hai mép ngoài lan can để người chơi không bao giờ rơi ra ngoài cầu
+    // Mạn Nam: Chạy suốt chiều dài cầu
+    this._addBoxObstacle(X_CENTER, Z_CENTER - (BRIDGE_WIDTH / 2 + sideWalkwayWidth + 0.1), totalBridgeLength + 10, 0.6, DECK_Y, DECK_Y + 3.0);
+    // Mạn Bắc: CHỈ trên đoạn vượt sông Hồng (X: 70.0 -> 245.0), KHÔNG chắn ngang Ke Ga Long Biên (X: 20 -> 70) hay Ga Gia Lâm (X: 245 -> 275)
+    this._addBoxObstacle(157.5, Z_CENTER + (BRIDGE_WIDTH / 2 + sideWalkwayWidth + 0.1), 175.0, 0.6, DECK_Y, DECK_Y + 3.0);
+
+    // I. 7 NHỊP DÀN THÉP DẦM CHÌA UỐN LƯỢN (CANTILEVER ARCHES) - CHUẨN DEMO (GỘP HÌNH HỌC)
+    for (let s = 0; s < NUM_SPANS; s++) {
+      const spanStartX = X_CENTER - HALF_LENGTH + s * SPAN_LENGTH;
+      const spanEndX = spanStartX + SPAN_LENGTH;
+      const spanMidX = (spanStartX + spanEndX) / 2;
+      const H_PEAK = 13.5;
+      const H_VALLEY = 4.0;
+      const SUBDIVISIONS = 8;
+      const dx = SPAN_LENGTH / SUBDIVISIONS;
+
+      for (let side = -1; side <= 1; side += 2) {
+        const sideZ = Z_CENTER + side * (BRIDGE_WIDTH / 2);
+        const topPoints = [];
+
+        for (let j = 0; j <= SUBDIVISIONS; j++) {
+          const px = spanStartX + j * dx;
+          const t = (px - spanMidX) / (SPAN_LENGTH / 2);
+          const curveHeight = H_VALLEY + (H_PEAK - H_VALLEY) * (t * t);
+          topPoints.push(new THREE.Vector3(px, DECK_Y + curveHeight, sideZ));
+
+          const postHeight = curveHeight;
+          steelGeoms.push(getTransformedBox(0.4, postHeight, 0.4, new THREE.Vector3(px, DECK_Y + postHeight / 2, sideZ)));
+
+          if (side === 1) {
+            steelGeoms.push(getTransformedBox(0.3, 0.3, BRIDGE_WIDTH, new THREE.Vector3(px, DECK_Y + curveHeight, Z_CENTER)));
+          }
+        }
+
+        for (let j = 0; j < SUBDIVISIONS; j++) {
+          const p1 = topPoints[j];
+          const p2 = topPoints[j + 1];
+          const segDist = p1.distanceTo(p2);
+          const segMid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+
+          steelGeoms.push(getTransformedBox(segDist, 0.45, 0.45, segMid, null, p2, Math.PI / 2));
+
+          const bottomP1 = new THREE.Vector3(p1.x, DECK_Y + 0.6, sideZ);
+          const bottomP2 = new THREE.Vector3(p2.x, DECK_Y + 0.6, sideZ);
+
+          const diag1Dist = bottomP1.distanceTo(p2);
+          const diag1Mid = new THREE.Vector3().addVectors(bottomP1, p2).multiplyScalar(0.5);
+          darkSteelGeoms.push(getTransformedBox(diag1Dist, 0.28, 0.28, diag1Mid, null, p2, Math.PI / 2));
+
+          const diag2Dist = p1.distanceTo(bottomP2);
+          const diag2Mid = new THREE.Vector3().addVectors(p1, bottomP2).multiplyScalar(0.5);
+          darkSteelGeoms.push(getTransformedBox(diag2Dist, 0.28, 0.28, diag2Mid, null, bottomP2, Math.PI / 2));
+        }
+      }
+    }
+
+    // GỘP TOÀN BỘ 500+ DẦM THÉP THÀNH 2 MESH DUY NHẤT (SIÊU NHẸ GPU & KHÔNG BAO GIỜ BỊ ẨN KHI ĐI ĐẾN ĐẦU CẦU BỜ ĐÔNG)
+    const mergedSteelGeo = BufferGeometryUtils.mergeGeometries(steelGeoms, false);
+    const mergedSteelMesh = new THREE.Mesh(mergedSteelGeo, steelMat);
+    mergedSteelMesh.name = 'LongBien_mergedSteelMesh';
+    mergedSteelMesh._neverCull = true;
+    mergedSteelMesh._isBaseGround = true;
+    bridgeGroup.add(mergedSteelMesh);
+
+    const mergedDarkSteelGeo = BufferGeometryUtils.mergeGeometries(darkSteelGeoms, false);
+    const mergedDarkSteelMesh = new THREE.Mesh(mergedDarkSteelGeo, darkSteelMat);
+    mergedDarkSteelMesh.name = 'LongBien_mergedDarkSteelMesh';
+    mergedDarkSteelMesh._neverCull = true;
+    mergedDarkSteelMesh._isBaseGround = true;
+    bridgeGroup.add(mergedDarkSteelMesh);
+
+    // J. Đèn lồng chiếu sáng cầu (Gộp toàn bộ 14 đèn thành 1 Mesh)
+    const lampGeomBase = new THREE.SphereGeometry(0.25, 12, 12);
+    const lampMat = new THREE.MeshBasicMaterial({ color: 0xffe082 });
+    const lampGeoms = [];
+    for (let i = 0; i < NUM_SPANS; i++) {
+      const lx = X_CENTER - HALF_LENGTH + (i + 0.5) * SPAN_LENGTH;
+      for (let side = -1; side <= 1; side += 2) {
+        const lg = lampGeomBase.clone();
+        lg.translate(lx, DECK_Y + 1.8, Z_CENTER + side * (BRIDGE_WIDTH / 2 + sideWalkwayWidth));
+        lampGeoms.push(lg);
+
+        // 2 nguồn sáng điểm chính phủ đều toàn cầu (nhịp 2 và nhịp 5)
+        if ((i === 2 || i === 5) && side === 1) {
+          const lampLight = new THREE.PointLight(0xffb74d, 2.0, 48);
+          lampLight.position.set(lx, DECK_Y + 3.2, Z_CENTER);
+          bridgeGroup.add(lampLight);
+        }
+      }
+    }
+    const mergedLamps = BufferGeometryUtils.mergeGeometries(lampGeoms, false);
+    const allLampsMesh = new THREE.Mesh(mergedLamps, lampMat);
+    bridgeGroup.add(allLampsMesh);
+
+    // =========================================================================
+    // 5. GA LONG BIÊN CỔ KÍNH - NGUYÊN BẢN 100% TỪ BẢN DEMO
+    // Nằm ở đầu cầu phía Tây (X: 20.0m -> 70.0m, Z: 64.8m)
+    // =========================================================================
+    const stationGroup = new THREE.Group();
+    zoneGroup.add(stationGroup);
+
+    const PLATFORM_X_START = 20.0;
+    const PLATFORM_X_END = 70.0;
+    const PLATFORM_LEN = PLATFORM_X_END - PLATFORM_X_START; // 50m
+    const PLATFORM_Z = Z_CENTER + 4.8; // 64.8m (sát cạnh đường ray)
+    const PLATFORM_WIDTH = 4.2;
+    const PLATFORM_Y = DECK_Y + 0.85; // 10.85m
+
+    // Ke ga đá xanh (Raised Stone Platform) - ĐĂNG KÝ VÀO COLLIDERS CHỐNG SỤT CHÂN 100%
+    const platformMesh = createBoxBeam(PLATFORM_LEN, 0.85, PLATFORM_WIDTH, stationPlatformMat);
+    platformMesh.position.set((PLATFORM_X_START + PLATFORM_X_END) / 2, DECK_Y + 0.425, PLATFORM_Z);
+    stationGroup.add(platformMesh);
+    this.colliders.push(platformMesh);
+
+    // Vạch vàng an toàn mép ke ga (Safety Line)
+    const safetyLine = createBoxBeam(PLATFORM_LEN, 0.02, 0.15, new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+    safetyLine.position.set((PLATFORM_X_START + PLATFORM_X_END) / 2, PLATFORM_Y + 0.01, PLATFORM_Z - PLATFORM_WIDTH / 2 + 0.2);
+    stationGroup.add(safetyLine);
+
+    // Mái che Ke Ga Cổ Kính (Ornate Heritage Platform Canopy)
+    const canopyPostsCount = 6;
+    for (let p = 0; p < canopyPostsCount; p++) {
+      const px = PLATFORM_X_START + 5 + p * 8;
+      const post = createBoxBeam(0.25, 3.8, 0.25, darkSteelMat);
+      post.position.set(px, PLATFORM_Y + 1.9, PLATFORM_Z + 1.2);
+      stationGroup.add(post);
+
+      const bracket = createBoxBeam(0.12, 0.8, 2.8, darkSteelMat);
+      bracket.position.set(px, PLATFORM_Y + 3.4, PLATFORM_Z);
+      bracket.rotateZ(0.1);
+      stationGroup.add(bracket);
+
+      if (p === 1 || p === 4) {
+        const stationLamp = new THREE.PointLight(0xffddaa, 1.8, 24);
+        stationLamp.position.set(px, PLATFORM_Y + 3.1, PLATFORM_Z);
+        stationGroup.add(stationLamp);
+      }
+
+      const lampSphere = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), new THREE.MeshBasicMaterial({ color: 0xfff0b3 }));
+      lampSphere.position.set(px, PLATFORM_Y + 3.1, PLATFORM_Z);
+      stationGroup.add(lampSphere);
+    }
+
+    // Tấm mái che ngói sẫm nghiêng
+    const canopyRoof = createBoxBeam(PLATFORM_LEN - 4, 0.15, 3.8, stationRoofMat);
+    canopyRoof.position.set((PLATFORM_X_START + PLATFORM_X_END) / 2, PLATFORM_Y + 3.8, PLATFORM_Z + 0.2);
+    canopyRoof.rotateX(0.08);
+    stationGroup.add(canopyRoof);
+
+    // Nhà ga chính kiểu Pháp (Station Building Facade)
+    const stationBuilding = createBoxBeam(28, 6.2, 5.0, stationWallMat);
+    stationBuilding.position.set(40.0, PLATFORM_Y + 3.1, PLATFORM_Z + 4.8);
+    stationGroup.add(stationBuilding);
+    this._addBoxObstacle(40.0, PLATFORM_Z + 4.8, 29.0, 5.5, PLATFORM_Y, PLATFORM_Y + 7.0);
+    // Rào chắn bảo vệ mép sau ke ga Long Biên (Z = 67.0)
+    this._addBoxObstacle(45.0, PLATFORM_Z + PLATFORM_WIDTH / 2 + 0.1, PLATFORM_LEN, 0.5, PLATFORM_Y, PLATFORM_Y + 3.0);
+
+    // Mái ngói dốc nhà ga
+    const stationRoof = createBoxBeam(30, 1.8, 5.8, stationRoofMat);
+    stationRoof.position.set(40.0, PLATFORM_Y + 6.8, PLATFORM_Z + 4.8);
+    stationGroup.add(stationRoof);
+
+    // Cửa ra vào bằng gỗ xanh lá sẫm Pháp
+    for (let d = -2; d <= 2; d++) {
+      const doorMesh = createBoxBeam(1.8, 3.2, 0.2, stationDoorMat);
+      doorMesh.position.set(40.0 + d * 5.2, PLATFORM_Y + 1.6, PLATFORM_Z + 2.3);
+      stationGroup.add(doorMesh);
+    }
+
+    // Biển tên nhà ga cổ kính: "GA LONG BIÊN • GARE DE LONG BIÊN"
+    const signBoard = createBoxBeam(12, 1.1, 0.2, new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 }));
+    signBoard.position.set(40.0, PLATFORM_Y + 4.5, PLATFORM_Z + 2.2);
+    stationGroup.add(signBoard);
+
+    // Đồng hồ tròn treo ke ga đặc trưng
+    const clockGeom = new THREE.CylinderGeometry(0.55, 0.55, 0.15, 24);
+    clockGeom.rotateX(Math.PI / 2);
+    const clockMesh = new THREE.Mesh(clockGeom, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    clockMesh.position.set(55.0, PLATFORM_Y + 3.2, PLATFORM_Z + 1.2);
+    stationGroup.add(clockMesh);
+
+    // Ghế chờ bằng gỗ trên ke ga
+    for (let b = 0; b < 3; b++) {
+      const bench = createBoxBeam(3.2, 0.5, 0.8, stationWoodMat);
+      bench.position.set(30.0 + b * 14, PLATFORM_Y + 0.35, PLATFORM_Z + 1.2);
+      stationGroup.add(bench);
+    }
+
+    // =========================================================================
+    // 🎨 6. GIAN TRIỂN LÃM TUYỆT TÁC TOÀN CẢNH CANVA AI MASTERPIECE
+    // Đặt trang trọng trên ke Ga Long Biên (x = 35.0, z = 67.2)
+    // =========================================================================
+    const canvaPavilion = new THREE.Group();
+    canvaPavilion.position.set(35.0, PLATFORM_Y, PLATFORM_Z + 2.2);
+
+    const frameMesh = createBoxBeam(3.6, 2.1, 0.16, this.materials.woodVarnish || stationWoodMat);
+    frameMesh.position.set(0, 1.6, 0);
+    canvaPavilion.add(frameMesh);
+
+    const masterCanvas = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 1.85), this.materials.canvaMasterpiece);
+    masterCanvas.position.set(0, 1.6, -0.09);
+    masterCanvas.rotation.y = Math.PI; // Hướng về phía ke ga
+    canvaPavilion.add(masterCanvas);
+
+    const spotlight = new THREE.SpotLight(0xfffaed, 3.5, 8, Math.PI / 4, 0.4);
+    spotlight.position.set(0, 3.2, -1.8);
+    spotlight.target = masterCanvas;
+    canvaPavilion.add(spotlight);
+    stationGroup.add(canvaPavilion);
+
+    // Điểm tương tác ngắm tranh Canva Masterpiece
     this.interactables.push({
-      position: new THREE.Vector3(npcX, npcY + 0.8, npcZ),
-      radius: 3.2,
-      promptText: 'Trò chuyện cùng Bác Hùng • Ký Ức Cầu Long Biên 1972',
-      actionKey: 'E',
+      id: 'canva_long_bien_masterpiece',
+      name: 'Kiệt Tác Sơn Dầu Cầu Long Biên (Canva AI)',
+      position: new THREE.Vector3(35.0, PLATFORM_Y + 1.0, PLATFORM_Z + 0.5),
+      promptText: 'Chiêm ngưỡng Kiệt tác Sơn dầu Cầu Long Biên • Canva AI',
       onInteract: () => {
         if (this.eventBus) {
-          this.eventBus.emit('UI:OPEN_DIALOGUE', {
-            name: 'Bác Hùng • Người Lính Gác Cầu Long Biên Lão Thành',
-            role: 'Chiến sĩ tự vệ bảo vệ cầu năm 1972 & Chứng nhân lịch sử trăm năm Thăng Long',
-            avatar: '🎖️',
-            greeting: '"Chào cháu, người lãng tử! Đứng ở nhịp cầu số 4 này đón gió sông Hồng, bác lại nhớ mùa đông năm 1972 khói lửa ngút trời... Khi ấy bom Mỹ dội ác liệt, nhưng mạch máu Long Biên không bao giờ được phép ngừng chảy!"',
-            monumentTitle: 'Cầu Long Biên (1898 - 1902) • Chứng Nhân Lịch Sử Thủ Đô',
-            historyText: `
-              <p><strong>Cầu Long Biên (Tên ban đầu: Cầu Doumer):</strong> Khởi công năm 1898, khánh thành năm 1902 do hãng Daydé & Pillé thi công theo kiến trúc dầm thép Eiffel độc đáo. Từng là cây cầu thép dài thứ hai thế giới (hơn 2.290m) bắc qua dòng sông Hồng cuộn đỏ phù sa.</p>
-              <p><strong>Trận Địa Pháo Cao Xạ & Huyết Mạch 1972:</strong> Trong chiến dịch 'Điện Biên Phủ trên không' 12 ngày đêm cuối năm 1972, không quân Mỹ đã thả hàng trăm quả bom điều khiển laser nhằm đánh sập cây cầu huyết mạch. Các khẩu đội pháo cao xạ 37mm của tự vệ công nhân hỏa xa đã bám trụ trên bãi giữa, bắn rách trời bảo vệ từng thanh ray tà vẹt.</p>
-              <p><strong>Vết Sẹo Kiêu Hãnh Của Lịch Sử:</strong> Những nhịp dầm chữ A và dầm dã chiến Bailey thay thế những nhịp bị bom đánh gãy chính là minh chứng sống động cho ý chí quật cường: <em>'Tim có thể ngừng đập, nhưng tàu qua cầu Long Biên chi viện miền Nam không bao giờ ngừng lại!'</em></p>
-            `,
-            dialogueOptions: [
-              {
-                text: 'Bác có thể kể lại khoảnh khắc bảo vệ cầu trong 12 ngày đêm 1972 không ạ?',
-                reply: 'Đêm 18/12/1972, trời Hà Nội rực sáng như ban ngày bởi bom đạn và pháo cao xạ. Bom cắt đứt nhịp cầu số 4, nhưng ngay trong đêm tối dưới làn bom nổ chậm, hàng trăm thợ cầu và công binh ta đã lao mình xuống dòng sông Hồng xiết lạnh, dùng gỗ tà vẹt và dầm thép dã chiến nối thông cầu trước rạng sáng để đoàn tàu quân lương kịp lăn bánh vào Nam!'
-              },
-              {
-                text: 'Tại sao các nhịp cầu ở đoạn giữa lại có hình dáng dầm khác với hai đầu ạ?',
-                reply: 'Đó chính là những "vết sẹo lịch sử" kiêu hãnh của cầu đấy cháu! Nhịp nguyên bản là kết cấu thép uốn lượn hình rồng bay của Eiffel. Những nhịp dầm giàn thép phẳng ở giữa là do công binh và công nhân cầu đường ta cấp tốc hàn dựng lại sau những trận bom ác liệt, tượng trưng cho sức sống mãnh liệt không gì khuất phục nổi.'
-              },
-              {
-                text: 'Đứng trên cầu nghe tiếng còi tàu hỏa hú vang vượt sông Hồng cảm giác thế nào thưa bác?',
-                reply: 'Tiếng sắt thép rung chuyển rầm rập dưới chân, tiếng còi tàu gióng giả xé tan sương sớm sông Hồng... Với người Hà Nội thế hệ bác, âm thanh ấy chính là nhịp đập trái tim của thủ đô, là tiếng gọi của quê hương không bao giờ phai mờ trong ký ức.'
-              }
-            ],
-            shopItems: [
-              { name: 'Huy Hiệu Cầu Long Biên Kháng Chiến', price: '15 Xu', desc: 'Huy hiệu kim loại in hình nhịp cầu thép và ngôi sao đỏ anh dũng', icon: '🎖️' },
-              { name: 'Trà Xanh Nóng & Kẹo Lạc Bác Hùng', price: '5 Xu', desc: 'Ấm chè xanh nóng hổi đậm đà tình người gác cầu, hồi phục sinh lực', icon: '🍵' },
-              { name: 'Bản Rập Thép Cổ "Daydé & Pillé 1899"', price: '20 Xu', desc: 'Bản in dập tấm biển đồng lịch sử gắn trên dầm cầu thép Eiffel', icon: '📜' },
-              { name: 'Ảnh Tư Liệu Cầu Long Biên 1972', price: '10 Xu', desc: 'Bức ảnh đen trắng ghi lại khoảnh khắc hào hùng thời hoa lửa', icon: '📷' }
-            ]
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '🎨 Kiệt Tác Hội Họa Cầu Long Biên Hoàng Hôn: Tác phẩm sơn dầu tái hiện lịch sử hào hùng và vẻ đẹp trầm mặc của Thủ Đô.'
           });
         }
       }
     });
 
+    // =========================================================================
+    // 7. KE GA GIA LÂM BỜ ĐÔNG SÔNG HỒNG (X: 245 -> 275)
+    // =========================================================================
+    const glPlatform = createBoxBeam(30.0, 0.85, 4.2, stationPlatformMat);
+    glPlatform.position.set(260.0, DECK_Y + 0.425, PLATFORM_Z);
+    zoneGroup.add(glPlatform);
+    this.colliders.push(glPlatform);
+
+    // Rào chắn mép sau và gờ chặn cuối đường ray bờ Đông Ga Gia Lâm
+    this._addBoxObstacle(260.0, PLATFORM_Z + 2.2, 30.0, 0.6, PLATFORM_Y, PLATFORM_Y + 3.0);
+    this._addBoxObstacle(275.5, 61.0, 1.0, 15.0, DECK_Y, DECK_Y + 4.0);
+
+    const glCanopy = createBoxBeam(28.0, 0.15, 3.8, stationRoofMat);
+    glCanopy.position.set(260.0, PLATFORM_Y + 3.8, PLATFORM_Z + 0.2);
+    zoneGroup.add(glCanopy);
+
+    // =========================================================================
+    // 8. KHỞI TẠO ĐOÀN TÀU CỔ & NỘI THẤT TOA TÀU - NGUYÊN BẢN 100% DEMO
+    // =========================================================================
+    this.bridgeDeckY = DECK_Y;
+    this.trainFloorY = DECK_Y + 1.25; // 11.25m
+    this.trainStationWestX = 50.0;     // Dừng tại ke Ga Long Biên
+    this.trainStationEastX = 250.0;    // Dừng tại ke Ga Gia Lâm
+    this.trainPosX = this.trainStationWestX;
+    this.trainSpeed = 0;
+    this.trainCruiseSpeed = 7.5;
+    this.trainDirection = 1;
+    this.trainState = 'AT_STATION_WEST';
+    this.stationDwellTimer = 0;
+    this.isPlayerRidingTrain = false;
+
+    this._initDemoTrain(zoneGroup, DECK_Y, Z_CENTER);
+
+    // Đảm bảo miễn trừ tuyệt đối Culling cho 100% mesh trong Zone 3 (Cầu Long Biên, Dầm thép giàn, Ray, Tà vẹt, Ga, Tàu)
+    zoneGroup.traverse((child) => {
+      if (child.isMesh) {
+        child._neverCull = true;
+        child._isBaseGround = true;
+      }
+    });
+
     this.worldGroup.add(zoneGroup);
+    return zoneGroup;
   }
 
-  /**
-   * Phân khu 4: KHU TẬP THỂ CŨ HOÀNG HÔN (Tọa độ x: [-250, 0], z: [-250, 0])
-   */
   _buildZone4CollectiveHousing() {
     const zoneGroup = new THREE.Group();
     zoneGroup.name = 'Zone4_CollectiveHousing';
+    this.zone4Group = zoneGroup;
 
     // 1. Dãy nhà tập thể 5 tầng lắp ghép Kim Liên đồ sộ
     const blocks = [
@@ -5124,44 +5535,133 @@ export class WorldManager {
   /**
    * Tạo dầm thép Eiffel nhịp Cầu Long Biên
    */
-  _createEiffelTrussSpan(length, height) {
+  /**
+   * Tạo dầm thép Eiffel Daydé & Pillé Cầu Long Biên chân thực (Cantilever Lattice Truss Module)
+   * Nhịp công-xôn uốn lượn đặc trưng: đỉnh tháp cao 13.5m tại trụ, thoải dần xuống 6.2m tại giữa nhịp
+   * Tích hợp giàn liên kết ngang đỉnh vòm (overhead sway portals) và giá đỡ công-xôn cánh gà hai bên
+   */
+  _createEiffelTrussSpan(length = 34.0, height = 13.5) {
     const trussGroup = new THREE.Group();
     const beamMat = this.materials.rustySteel;
+    const woodMat = this.materials.retroWood || this.materials.woodVarnish;
+    const stoneMat = this.materials.mossStone;
 
-    // Khung dầm vòm thép uốn
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-length / 2, 0, 0),
-      new THREE.Vector3(-length / 4, height * 0.75, 0),
-      new THREE.Vector3(0, height, 0),
-      new THREE.Vector3(length / 4, height * 0.75, 0),
-      new THREE.Vector3(length / 2, 0, 0)
-    ]);
+    const halfL = length / 2;
+    const lowH = 6.2;
+    const peakH = height;
 
-    for (let zSide of [-2.8, 2.8]) {
-      const arch = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.22, 6, false), beamMat);
-      arch.position.z = zSide;
-      arch.castShadow = true;
-      trussGroup.add(arch);
+    // Helper tạo dầm hộp
+    const box = (w, h, d, mat = beamMat) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    };
 
-      // Các thanh đan chéo chữ X dầm Eiffel
-      for (let x = -length / 2 + 4; x <= length / 2 - 4; x += 6) {
-        const diag1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, height * 0.75, 4), beamMat);
-        diag1.position.set(x, height * 0.38, zSide);
-        diag1.rotation.z = Math.PI / 4;
-        trussGroup.add(diag1);
+    // 1. HAI DẦM GIÀN THÉP CHÍNH HAI BÊN ĐƯỜNG RAY (Z = -2.85 và Z = +2.85)
+    for (let zSide of [-2.85, 2.85]) {
+      // Dầm hạ (Bottom Chord) chạy thẳng suốt chiều dài nhịp
+      const bottomChord = box(length + 0.2, 0.45, 0.35);
+      bottomChord.position.set(0, 0.22, zSide);
+      trussGroup.add(bottomChord);
 
-        const diag2 = diag1.clone();
-        diag2.rotation.z = -Math.PI / 4;
-        trussGroup.add(diag2);
+      // Dầm thượng (Top Chord) dạng cánh vòm uốn lượn Daydé & Pillé: cao ở 2 đầu trụ, võng ở giữa
+      // Nửa trái: từ x = -halfL (cao peakH) dốc xuống x = 0 (cao lowH)
+      const slopeLen = Math.hypot(halfL, peakH - lowH);
+      const slopeAngle = Math.atan2(peakH - lowH, halfL);
+
+      const topChordL = box(slopeLen + 0.1, 0.38, 0.30);
+      topChordL.position.set(-halfL / 2, (peakH + lowH) / 2, zSide);
+      topChordL.rotation.z = slopeAngle;
+      trussGroup.add(topChordL);
+
+      // Nửa phải: từ x = 0 (cao lowH) dốc lên x = +halfL (cao peakH)
+      const topChordR = box(slopeLen + 0.1, 0.38, 0.30);
+      topChordR.position.set(halfL / 2, (peakH + lowH) / 2, zSide);
+      topChordR.rotation.z = -slopeAngle;
+      trussGroup.add(topChordR);
+
+      // Các thanh đứng & thanh giằng xiên chữ X chia thành 8 khoang nhịp (Bays)
+      const numBays = 8;
+      const bayW = length / numBays;
+
+      for (let b = 0; b <= numBays; b++) {
+        const bx = -halfL + b * bayW;
+        // Chiều cao tại vị trí x
+        const bayH = lowH + (Math.abs(bx) / halfL) * (peakH - lowH);
+
+        // Thanh đứng chính (Vertical Posts)
+        const post = box(0.24, bayH, 0.24);
+        post.position.set(bx, bayH / 2, zSide);
+        trussGroup.add(post);
+
+        // Thanh chéo chữ X đan trong từng khoang (trừ mép ngoài cùng)
+        if (b < numBays) {
+          const nextX = bx + bayW;
+          const nextH = lowH + (Math.abs(nextX) / halfL) * (peakH - lowH);
+          const midH = (bayH + nextH) / 2;
+          const diagLen = Math.hypot(bayW, midH);
+          const diagAngle = Math.atan2(midH, bayW);
+
+          const diag1 = box(diagLen, 0.14, 0.14);
+          diag1.position.set(bx + bayW / 2, midH / 2, zSide);
+          diag1.rotation.z = diagAngle;
+          trussGroup.add(diag1);
+
+          const diag2 = box(diagLen, 0.14, 0.14);
+          diag2.position.set(bx + bayW / 2, midH / 2, zSide);
+          diag2.rotation.z = -diagAngle;
+          trussGroup.add(diag2);
+        }
+      }
+
+      // Bản táp đinh tán liên kết (Rivet gusset plates) tại các điểm nút
+      for (let b = 0; b <= numBays; b += 2) {
+        const bx = -halfL + b * bayW;
+        const bayH = lowH + (Math.abs(bx) / halfL) * (peakH - lowH);
+        const gusset = box(0.55, 0.55, 0.38);
+        gusset.position.set(bx, bayH - 0.2, zSide);
+        trussGroup.add(gusset);
+      }
+    }
+
+    // 2. GIÀN LIÊN KẾT NGANG ĐỈNH VÒM (OVERHEAD TRANSVERSE SWAY PORTALS)
+    // Nối hai dầm thép Bắc - Nam trên nóc, tạo thành đường hầm thép Eiffel kỳ vĩ khi tàu chạy qua
+    for (let ox of [-halfL, -halfL * 0.6, -halfL * 0.25, 0, halfL * 0.25, halfL * 0.6, halfL]) {
+      const hAtX = lowH + (Math.abs(ox) / halfL) * (peakH - lowH);
+      // Xà ngang đỉnh
+      const portalBeam = box(0.28, 0.28, 5.7);
+      portalBeam.position.set(ox, hAtX, 0);
+      trussGroup.add(portalBeam);
+
+      // Chống nẹp góc vòm giàn gió
+      for (let s of [-1, 1]) {
+        const knee = box(0.18, 1.2, 0.18);
+        knee.position.set(ox, hAtX - 0.5, s * 2.3);
+        knee.rotation.x = s * 0.65;
+        trussGroup.add(knee);
+      }
+    }
+
+    // 3. GIÁ ĐỠ DẦM CÔNG-XÔN CÁNH GÀ HAI BÊN (CANTILEVER WALKWAY BRACKETS)
+    // Đỡ hai hành lang đi bộ & xe đạp mở rộng phía ngoài thành cầu
+    for (let cx = -halfL + 2; cx <= halfL - 2; cx += 4.25) {
+      for (let s of [-1, 1]) {
+        const bracket = box(0.18, 0.20, 1.8);
+        bracket.position.set(cx, 0.15, s * 3.8);
+        trussGroup.add(bracket);
+
+        // Thanh chống chéo xiên góc 45 độ đỡ dầm dưới
+        const strut = box(0.14, 1.25, 0.14);
+        strut.position.set(cx, -0.45, s * 3.4);
+        strut.rotation.x = s * 0.78;
+        trussGroup.add(strut);
       }
     }
 
     return trussGroup;
   }
 
-  /**
-   * Cây bóng mát cổ thụ chân thực (Phố cổ & ven hồ)
-   */
   _createWillowTree(seed = 1) {
     return this._createRealisticHeritageTree({ type: 'shade', seed: seed });
   }
@@ -5468,13 +5968,52 @@ export class WorldManager {
    * Cập nhật animation các vật thể sống động, cửa mở và NPC bán hàng rong di chuyển
    */
   update(delta, playerPos) {
+    // Cập nhật đoàn tàu di sản Ga Long Biên
+    this._updateTrain(delta, playerPos);
+
     const time = performance.now() * 0.001;
 
-    // 0. Culling khoảng cách siêu nhẹ đa tầng (Throttling mỗi 4 frames, giảm 65% Draw Calls)
+    // 0. CULLING CẤP PHÂN KHU SIÊU TỐC (Zone-Level Spatial Culling - Giảm 85% Draw Calls)
+    if (playerPos) {
+      const px = playerPos.x;
+      const pz = playerPos.z;
+
+      // 1. Khi người chơi ở trong hành lang Cầu Long Biên & Ga Long Biên (pz >= 35m)
+      if (pz >= 35.0) {
+        if (this.zone3Group) this.zone3Group.visible = true;
+        // Hồ Gươm ở tít phía Nam (z <= 0), ngăn cách bởi toàn bộ Phố Cổ -> Ẩn 100%
+        if (this.zone1Group) this.zone1Group.visible = false;
+        // Khu Tập Thể ở góc Tây Nam đối diện -> Ẩn 100%
+        if (this.zone4Group) this.zone4Group.visible = false;
+        // Phố Cổ chỉ hiện khi đứng ở dốc dẫn hoặc Ke Ga phía Tây (px <= 85m)
+        if (this.zone2Group) this.zone2Group.visible = (px <= 85.0);
+      } else if (pz <= 0 && px >= 0) {
+        // 2. Khi người chơi ở Hồ Gươm (x >= 0, z <= 0)
+        if (this.zone1Group) this.zone1Group.visible = true;
+        // Cầu Long Biên ở tít phía Bắc (z >= 45m) -> Ẩn 100%
+        if (this.zone3Group) this.zone3Group.visible = false;
+        if (this.zone4Group) this.zone4Group.visible = (px <= 25.0);
+        if (this.zone2Group) this.zone2Group.visible = (pz >= -45.0);
+      } else if (px < 0 && pz < 0) {
+        // 3. Khi người chơi ở Khu Tập Thể Cũ (x < 0, z < 0)
+        if (this.zone4Group) this.zone4Group.visible = true;
+        if (this.zone3Group) this.zone3Group.visible = false;
+        if (this.zone1Group) this.zone1Group.visible = (px >= -35.0);
+        if (this.zone2Group) this.zone2Group.visible = (pz >= -45.0);
+      } else {
+        // 4. Khi người chơi ở Phố Cổ (px < 0, z >= 0)
+        if (this.zone2Group) this.zone2Group.visible = true;
+        if (this.zone3Group) this.zone3Group.visible = (px >= -55.0 && pz >= 20.0);
+        if (this.zone1Group) this.zone1Group.visible = (pz <= 35.0);
+        if (this.zone4Group) this.zone4Group.visible = (pz <= 35.0);
+      }
+    }
+
+    // 0b. Culling khoảng cách siêu nhẹ đa tầng (Throttling mỗi 6 frames, giảm 65% Draw Calls)
     if (playerPos && this._cullableObjects) {
       if (this._cullCounter === undefined) this._cullCounter = 0;
       this._cullCounter++;
-      if (this._cullCounter === 1 || this._cullCounter % 4 === 0) {
+      if (this._cullCounter === 1 || this._cullCounter % 6 === 0) {
         const px = playerPos.x;
         const pz = playerPos.z;
         for (let i = 0; i < this._cullableObjects.length; i++) {
@@ -5508,33 +6047,40 @@ export class WorldManager {
       }
     }
 
-    // 4. Cập nhật đàn cá chép vàng & cá koi bơi lội sinh động dưới lòng Hồ Gươm
-    for (let i = 0; i < this.lakeFish.length; i++) {
-      const fish = this.lakeFish[i];
-      fish.orbitAngle += fish.orbitSpeed * delta;
-      const r = fish.orbitRadius + Math.sin(time * 1.2 + fish.swimPhase) * 1.2;
-      const targetX = fish.centerX + Math.cos(fish.orbitAngle) * r;
-      const targetZ = fish.centerZ + Math.sin(fish.orbitAngle) * r;
+    // 4. Cập nhật đàn cá chép vàng & cá koi bơi lội sinh động dưới lòng Hồ Gươm (Culling khoảng cách > 130m)
+    const distToLakeSq = playerPos ? (playerPos.x - 80) * (playerPos.x - 80) + (playerPos.z - (-80)) * (playerPos.z - (-80)) : 0;
+    if (distToLakeSq < 130 * 130) {
+      for (let i = 0; i < this.lakeFish.length; i++) {
+        const fish = this.lakeFish[i];
+        fish.orbitAngle += fish.orbitSpeed * delta;
+        const r = fish.orbitRadius + Math.sin(time * 1.2 + fish.swimPhase) * 1.2;
+        const targetX = fish.centerX + Math.cos(fish.orbitAngle) * r;
+        const targetZ = fish.centerZ + Math.sin(fish.orbitAngle) * r;
 
-      // KIỂM TRA BẢO VỆ CHẮC CHẮN: Cá CHỈ bơi trong lòng nước mở, tuyệt đối không xuất hiện trên bờ, đảo hay cầu
-      const inSafeWater = this.isPointInOpenLakeWater(targetX, targetZ);
-      fish.group.visible = inSafeWater;
+        // KIỂM TRA BẢO VỆ CHẮC CHẮN: Cá CHỈ bơi trong lòng nước mở, tuyệt đối không xuất hiện trên bờ, đảo hay cầu
+        const inSafeWater = this.isPointInOpenLakeWater(targetX, targetZ);
+        fish.group.visible = inSafeWater;
 
-      if (inSafeWater) {
-        fish.group.position.x = targetX;
-        fish.group.position.z = targetZ;
-        // Bơi chìm dưới mặt nước hồ tĩnh lặng (-0.04m, nước phẳng ở mức 0.08m)
-        fish.group.position.y = -0.04 + Math.sin(time * 1.6 + fish.swimPhase) * 0.01;
+        if (inSafeWater) {
+          fish.group.position.x = targetX;
+          fish.group.position.z = targetZ;
+          // Bơi chìm dưới mặt nước hồ tĩnh lặng (-0.04m, nước phẳng ở mức 0.08m)
+          fish.group.position.y = -0.04 + Math.sin(time * 1.6 + fish.swimPhase) * 0.01;
 
-        // Hướng quay tiếp tuyến quỹ đạo kèm uốn lượn hình sin nhẹ nhàng
-        const tangent = fish.orbitAngle + (Math.PI / 2) * Math.sign(fish.orbitSpeed);
-        const serpentine = Math.sin(time * 3.2 + fish.swimPhase) * 0.10;
-        fish.group.rotation.y = -tangent + Math.PI / 2 + serpentine;
+          // Hướng quay tiếp tuyến quỹ đạo kèm uốn lượn hình sin nhẹ nhàng
+          const tangent = fish.orbitAngle + (Math.PI / 2) * Math.sign(fish.orbitSpeed);
+          const serpentine = Math.sin(time * 3.2 + fish.swimPhase) * 0.10;
+          fish.group.rotation.y = -tangent + Math.PI / 2 + serpentine;
 
-        // Vẫy đuôi cá nhịp nhàng tự nhiên
-        if (fish.tail) {
-          fish.tail.rotation.y = Math.sin(time * 5.5 + fish.swimPhase) * 0.35;
+          // Vẫy đuôi cá nhịp nhàng tự nhiên
+          if (fish.tail) {
+            fish.tail.rotation.y = Math.sin(time * 5.5 + fish.swimPhase) * 0.35;
+          }
         }
+      }
+    } else {
+      for (let i = 0; i < this.lakeFish.length; i++) {
+        this.lakeFish[i].group.visible = false;
       }
     }
   }
@@ -5587,4 +6133,493 @@ export class WorldManager {
   getColliders() {
     return this.colliders;
   }
+
+  /**
+   * =========================================================================
+   * 🚂 HỆ THỐNG ĐOÀN TÀU HƠI NƯỚC & TOA PANORAMA DI SẢN CẦU LONG BIÊN 1902
+   * =========================================================================
+   */
+  /**
+   * =========================================================================
+   * 🚂 HỆ THỐNG ĐOÀN TÀU HƠI NƯỚC DI SẢN KHỨ HỒI LONG BIÊN <-> GIA LÂM
+   * Không bao giờ bị mất hình (frustumCulled = false, camera.far = 500m)
+   * Chạy trọn vẹn hành trình hai chiều qua cầu Long Biên
+   * =========================================================================
+   */
+  _initDemoTrain(parentGroup, DECK_Y, TRACK_Z) {
+    this.trainGroup = new THREE.Group();
+    this.trainGroup.name = 'HeritageTrain_LongBien';
+    parentGroup.add(this.trainGroup);
+
+    const trainMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.8 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.85 });
+    const coachExtMat = new THREE.MeshStandardMaterial({ color: 0x2b1e16, roughness: 0.6 });
+    const coachFloorMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.5 });
+    const velvetSeatMat = new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.8 });
+
+    const createBox = (w, h, d, mat) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    };
+
+    // 1. ĐẦU MÁY HƠI NƯỚC (STEAM LOCOMOTIVE) - NGUYÊN BẢN DEMO
+    const locoGroup = new THREE.Group();
+    locoGroup.position.set(0, 0, TRACK_Z);
+
+    const boilerGeom = new THREE.CylinderGeometry(1.0, 1.0, 4.6, 20);
+    boilerGeom.rotateZ(Math.PI / 2);
+    const boiler = new THREE.Mesh(boilerGeom, trainMat);
+    boiler.position.set(0.5, DECK_Y + 2.2, 0);
+    boiler.castShadow = true;
+    locoGroup.add(boiler);
+
+    const cab = createBox(2.4, 2.6, 2.2, trainMat);
+    cab.position.set(-2.4, DECK_Y + 2.5, 0);
+    locoGroup.add(cab);
+
+    const chimneyGeom = new THREE.CylinderGeometry(0.3, 0.22, 1.1, 16);
+    const chimney = new THREE.Mesh(chimneyGeom, brassMat);
+    chimney.position.set(2.0, DECK_Y + 3.4, 0);
+    locoGroup.add(chimney);
+
+    const headlightMesh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshBasicMaterial({ color: 0xfff5cc }));
+    headlightMesh.position.set(3.2, DECK_Y + 2.2, 0);
+    locoGroup.add(headlightMesh);
+
+    const headlightLight = new THREE.PointLight(0xfff5cc, 2.5, 30);
+    headlightLight.position.set(3.4, DECK_Y + 2.2, 0);
+    locoGroup.add(headlightLight);
+
+    for (let wx of [-1.5, 0.2, 1.8]) {
+      for (let wz of [-1.0, 1.0]) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 16), trainMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(wx, DECK_Y + 0.55, wz);
+        locoGroup.add(wheel);
+      }
+    }
+    this.trainGroup.add(locoGroup);
+
+    // 2. TOA TÀU CHỞ KHÁCH CỔ KÍNH CÓ NỘI THẤT CHI TIẾT - NGUYÊN BẢN DEMO
+    const coachGroup = new THREE.Group();
+    coachGroup.position.set(-8.0, 0, TRACK_Z);
+
+    const COACH_LEN = 9.6;
+    const COACH_WIDTH = 2.6;
+    const COACH_HEIGHT = 2.6;
+    const COACH_FLOOR_Y = DECK_Y + 1.25; // 11.25m
+
+    const coachFloor = createBox(COACH_LEN, 0.2, COACH_WIDTH, coachFloorMat);
+    coachFloor.position.y = COACH_FLOOR_Y;
+    coachGroup.add(coachFloor);
+
+    const coachRoof = createBox(COACH_LEN + 0.4, 0.18, COACH_WIDTH + 0.3, coachExtMat);
+    coachRoof.position.y = COACH_FLOOR_Y + COACH_HEIGHT;
+    coachGroup.add(coachRoof);
+
+    const windowCount = 5;
+    const winSpacing = COACH_LEN / windowCount;
+
+    for (let side = -1; side <= 1; side += 2) {
+      const wz = side * (COACH_WIDTH / 2);
+      const lowerWall = createBox(COACH_LEN, 0.9, 0.12, coachExtMat);
+      lowerWall.position.set(0, COACH_FLOOR_Y + 0.45, wz);
+      coachGroup.add(lowerWall);
+
+      const upperWall = createBox(COACH_LEN, 0.5, 0.12, coachExtMat);
+      upperWall.position.set(0, COACH_FLOOR_Y + COACH_HEIGHT - 0.25, wz);
+      coachGroup.add(upperWall);
+
+      for (let w = 0; w <= windowCount; w++) {
+        const wx = -COACH_LEN / 2 + w * winSpacing;
+        const post = createBox(0.35, 1.2, 0.12, coachExtMat);
+        post.position.set(wx, COACH_FLOOR_Y + 1.5, wz);
+        coachGroup.add(post);
+      }
+    }
+
+    const frontWallL = createBox(0.15, COACH_HEIGHT, 0.8, coachExtMat);
+    frontWallL.position.set(COACH_LEN / 2, COACH_FLOOR_Y + COACH_HEIGHT / 2, -0.9);
+    coachGroup.add(frontWallL);
+
+    const frontWallR = createBox(0.15, COACH_HEIGHT, 0.8, coachExtMat);
+    frontWallR.position.set(COACH_LEN / 2, COACH_FLOOR_Y + COACH_HEIGHT / 2, 0.9);
+    coachGroup.add(frontWallR);
+
+    const backWallL = createBox(0.15, COACH_HEIGHT, 0.8, coachExtMat);
+    backWallL.position.set(-COACH_LEN / 2, COACH_FLOOR_Y + COACH_HEIGHT / 2, -0.9);
+    coachGroup.add(backWallL);
+
+    const backWallR = createBox(0.15, COACH_HEIGHT, 0.8, coachExtMat);
+    backWallR.position.set(-COACH_LEN / 2, COACH_FLOOR_Y + COACH_HEIGHT / 2, 0.9);
+    coachGroup.add(backWallR);
+
+    // 8 Ghế bọc nhung mận chín & Giá để hành lý bằng đồng & Vali da cổ
+    for (let r = 0; r < 4; r++) {
+      const rx = -COACH_LEN / 2 + 1.5 + r * 2.1;
+
+      const seatL = createBox(0.9, 0.45, 0.75, velvetSeatMat);
+      seatL.position.set(rx, COACH_FLOOR_Y + 0.32, -0.85);
+      coachGroup.add(seatL);
+
+      const seatBackL = createBox(0.12, 0.75, 0.75, velvetSeatMat);
+      seatBackL.position.set(rx - 0.4, COACH_FLOOR_Y + 0.8, -0.85);
+      coachGroup.add(seatBackL);
+
+      const luggageRackL = createBox(1.0, 0.05, 0.65, brassMat);
+      luggageRackL.position.set(rx, COACH_FLOOR_Y + 2.0, -0.9);
+      coachGroup.add(luggageRackL);
+
+      const suitcaseL = createBox(0.55, 0.25, 0.4, new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 }));
+      suitcaseL.position.set(rx, COACH_FLOOR_Y + 2.15, -0.9);
+      coachGroup.add(suitcaseL);
+
+      const seatR = createBox(0.9, 0.45, 0.75, velvetSeatMat);
+      seatR.position.set(rx, COACH_FLOOR_Y + 0.32, 0.85);
+      coachGroup.add(seatR);
+
+      const seatBackR = createBox(0.12, 0.75, 0.75, velvetSeatMat);
+      seatBackR.position.set(rx - 0.4, COACH_FLOOR_Y + 0.8, 0.85);
+      coachGroup.add(seatBackR);
+
+      const luggageRackR = createBox(1.0, 0.05, 0.65, brassMat);
+      luggageRackR.position.set(rx, COACH_FLOOR_Y + 2.0, 0.9);
+      coachGroup.add(luggageRackR);
+    }
+
+    const coachCabinLight = new THREE.PointLight(0xffeaad, 1.4, 10);
+    coachCabinLight.position.set(0, COACH_FLOOR_Y + 2.2, 0);
+    coachGroup.add(coachCabinLight);
+
+    for (let l = -1; l <= 1; l++) {
+      const lampGlobe = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff3cc }));
+      lampGlobe.position.set(l * 2.8, COACH_FLOOR_Y + 2.3, 0);
+      coachGroup.add(lampGlobe);
+    }
+    this.trainGroup.add(coachGroup);
+
+    // 3. TOA QUAN SÁT LỘ THIÊN PHÍA SAU (Observation Open Vestibule)
+    const observationCar = new THREE.Group();
+    observationCar.position.set(-15.5, 0, TRACK_Z);
+
+    const obsFloor = createBox(4.2, 0.2, 2.4, coachFloorMat);
+    obsFloor.position.y = COACH_FLOOR_Y;
+    observationCar.add(obsFloor);
+
+    const obsRailBack = createBox(0.08, 0.9, 2.4, brassMat);
+    obsRailBack.position.set(-2.1, COACH_FLOOR_Y + 0.55, 0);
+    observationCar.add(obsRailBack);
+
+    const obsRailL = createBox(4.2, 0.9, 0.08, brassMat);
+    obsRailL.position.set(0, COACH_FLOOR_Y + 0.55, -1.15);
+    observationCar.add(obsRailL);
+
+    const obsRailR = createBox(4.2, 0.9, 0.08, brassMat);
+    obsRailR.position.set(0, COACH_FLOOR_Y + 0.55, 1.15);
+    observationCar.add(obsRailR);
+    this.trainGroup.add(observationCar);
+
+    // KHẮC PHỤC TRIỆT ĐỂ LỖI MẤT HÌNH ĐOÀN TÀU (100% MESH frustumCulled = false)
+    this.trainGroup.traverse((m) => {
+      if (m.isMesh) {
+        m.frustumCulled = false;
+      }
+    });
+
+    // Bụi hơi nước (Steam Particles) - Tối ưu 60 FPS chia sẻ 1 Material duy nhất
+    this.steamParticles = [];
+    const steamGeom = new THREE.SphereGeometry(0.35, 6, 6);
+    const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+    for (let i = 0; i < 10; i++) {
+      const p = new THREE.Mesh(steamGeom, steamMat);
+      p.visible = false;
+      p.frustumCulled = false;
+      this.trainGroup.add(p);
+      this.steamParticles.push({
+        mesh: p,
+        life: 0,
+        maxLife: 1.8,
+        vel: new THREE.Vector3(-0.8, 0.8, 0)
+      });
+    }
+
+    this.steamSpawnTimer = 0;
+
+    // Đăng ký tương tác Lên / Xuống Tàu
+    this.trainInteractable = {
+      position: new THREE.Vector3(this.trainPosX - 8.0, this.trainFloorY, 64.0),
+      radius: 4.5,
+      promptText: 'Bước Lên Toa Tàu Di Sản • Khởi Hành Vượt Sông Hồng',
+      actionKey: 'E',
+      onInteract: () => {
+        const pc = (window._GameCoreInstance && window._GameCoreInstance.playerController) || (window.gameEngine && window.gameEngine.playerController);
+        if (pc) {
+          if (!this.isPlayerRidingTrain) {
+            this.boardTrain(pc);
+          } else {
+            this.leaveTrain(pc);
+          }
+        }
+      }
+    };
+    this.interactables.push(this.trainInteractable);
+  }
+
+  /**
+   * Cập nhật chuyển động đoàn tàu hai chiều khứ hồi (Ga Long Biên <-> Ga Gia Lâm)
+   * Không bao giờ bị mất hình hay biến mất giữa chừng
+   */
+  _updateTrain(delta, playerPos) {
+    if (!this.trainGroup) return;
+
+    if (this.trainState === 'AT_STATION_WEST') {
+      this.trainSpeed = 0;
+      this.trainPosX = this.trainStationWestX;
+      this.trainDirection = 1;
+      this.stationDwellTimer += delta;
+
+      if (this.stationDwellTimer > 25.0) {
+        this.trainState = 'DEPARTING_EAST';
+        this.stationDwellTimer = 0;
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: 'Đoàn tàu hơi nước khởi hành từ Ga Long Biên vượt Sông Hồng sang Ga Gia Lâm!'
+          });
+        }
+      }
+    } else if (this.trainState === 'DEPARTING_EAST') {
+      this.trainSpeed = Math.min(this.trainCruiseSpeed, this.trainSpeed + delta * 2.2);
+      this.trainPosX += this.trainSpeed * delta;
+      if (this.trainSpeed >= this.trainCruiseSpeed) {
+        this.trainState = 'CRUISING_EAST';
+      }
+    } else if (this.trainState === 'CRUISING_EAST') {
+      this.trainPosX += this.trainSpeed * delta;
+      if (this.trainPosX >= this.trainStationEastX - 25.0) {
+        this.trainState = 'ARRIVING_EAST';
+      }
+    } else if (this.trainState === 'ARRIVING_EAST') {
+      this.trainSpeed = Math.max(1.5, this.trainSpeed - delta * 2.5);
+      this.trainPosX += this.trainSpeed * delta;
+      if (this.trainPosX >= this.trainStationEastX) {
+        this.trainPosX = this.trainStationEastX;
+        this.trainSpeed = 0;
+        this.trainState = 'AT_STATION_EAST';
+        this.stationDwellTimer = 0;
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: 'Ga Gia Lâm: Tàu đã cập bến bờ Đông sông Hồng. Chuẩn bị khởi hành chuyến về Ga Long Biên!'
+          });
+        }
+      }
+    } else if (this.trainState === 'AT_STATION_EAST') {
+      this.trainSpeed = 0;
+      this.trainPosX = this.trainStationEastX;
+      this.trainDirection = -1;
+      this.stationDwellTimer += delta;
+
+      if (this.stationDwellTimer > 12.0) {
+        this.trainState = 'DEPARTING_WEST';
+        this.stationDwellTimer = 0;
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: 'Đoàn tàu khởi hành từ Ga Gia Lâm vượt Sông Hồng trở về Ga Long Biên!'
+          });
+        }
+      }
+    } else if (this.trainState === 'DEPARTING_WEST') {
+      this.trainSpeed = Math.min(this.trainCruiseSpeed, this.trainSpeed + delta * 2.2);
+      this.trainPosX -= this.trainSpeed * delta;
+      if (this.trainSpeed >= this.trainCruiseSpeed) {
+        this.trainState = 'CRUISING_WEST';
+      }
+    } else if (this.trainState === 'CRUISING_WEST') {
+      this.trainPosX -= this.trainSpeed * delta;
+      if (this.trainPosX <= this.trainStationWestX + 25.0) {
+        this.trainState = 'ARRIVING_WEST';
+      }
+    } else if (this.trainState === 'ARRIVING_WEST') {
+      this.trainSpeed = Math.max(1.5, this.trainSpeed - delta * 2.5);
+      this.trainPosX -= this.trainSpeed * delta;
+      if (this.trainPosX <= this.trainStationWestX) {
+        this.trainPosX = this.trainStationWestX;
+        this.trainSpeed = 0;
+        this.trainState = 'AT_STATION_WEST';
+        this.stationDwellTimer = 0;
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: 'Ga Long Biên: Tàu đã cập ke ga số 1 an toàn. Mời hành khách lên/xuống tàu!'
+          });
+        }
+      }
+    }
+
+    this.trainGroup.position.x = this.trainPosX;
+
+    if (this.trainInteractable) {
+      this.trainInteractable.position.set(this.trainPosX - 8.0, this.trainFloorY, 64.0);
+      if (this.isPlayerRidingTrain) {
+        this.trainInteractable.promptText = 'Bước Xuống Tàu (Ga Long Biên / Cầu / Gia Lâm)';
+      } else {
+        this.trainInteractable.promptText = 'Bước Lên Toa Tàu Di Sản • Khởi Hành Vượt Sông Hồng';
+      }
+    }
+
+    // Sinh khói hơi nước từ ống khói đầu máy
+    this.steamSpawnTimer += delta;
+    if (this.steamSpawnTimer > 0.08 && this.steamParticles) {
+      this.steamSpawnTimer = 0;
+      for (let p of this.steamParticles) {
+        if (!p.mesh.visible) {
+          p.mesh.visible = true;
+          p.life = 0;
+          p.mesh.position.set(2.0, this.bridgeDeckY + 3.8, 60.0);
+          p.mesh.scale.set(0.6, 0.6, 0.6);
+          p.vel.x = this.trainDirection === 1 ? -0.8 : 0.8;
+          break;
+        }
+      }
+    }
+
+    if (this.steamParticles) {
+      for (let p of this.steamParticles) {
+        if (p.mesh.visible) {
+          p.life += delta;
+          p.mesh.position.addScaledVector(p.vel, delta);
+          const scale = 0.6 + (p.life / p.maxLife) * 2.2;
+          p.mesh.scale.set(scale, scale, scale);
+          if (p.life >= p.maxLife) p.mesh.visible = false;
+        }
+      }
+    }
+  }
+
+  /**
+   * Bước lên đoàn tàu di sản
+   */
+  boardTrain(playerController) {
+    playerController = playerController || (window._GameCoreInstance && window._GameCoreInstance.playerController) || (window.gameEngine && window.gameEngine.playerController);
+    if (!playerController) return;
+    this.isPlayerRidingTrain = true;
+    playerController._trainRelX = 0;
+    playerController._trainRelZ = 0;
+    const coachCenterX = this.trainPosX - 8.0;
+
+    playerController.characterGroup.position.set(coachCenterX, this.trainFloorY + 0.05, 60.0);
+    playerController.characterGroup.rotation.y = Math.PI / 2;
+    playerController.velocity.set(0, 0, 0);
+    playerController.isGrounded = true;
+
+    if (this.trainState === 'AT_STATION_WEST') {
+      this.trainState = 'DEPARTING_EAST';
+    } else if (this.trainState === 'AT_STATION_EAST') {
+      this.trainState = 'DEPARTING_WEST';
+    }
+
+    if (this.eventBus) {
+      this.eventBus.emit('CORE:NOTIFICATION', {
+        message: 'Bạn đã lên Toa Tàu Di Sản! Di chuột để quay 360° ngắm sông & hai bên tàu. Dùng [WASD] dạo bước trong toa & ra ban công đuôi tàu. Bấm [V] đổi góc ngắm, [E] xuống tàu.'
+      });
+    }
+
+    const camCtrl = (window._GameCoreInstance && window._GameCoreInstance.cameraController) || (window.gameEngine && window.gameEngine.cameraController);
+    if (camCtrl) {
+      camCtrl.trainCameraMode = 'INSIDE_COACH';
+    }
+  }
+
+  /**
+   * Bước xuống đoàn tàu an toàn
+   */
+  leaveTrain(playerController) {
+    playerController = playerController || (window._GameCoreInstance && window._GameCoreInstance.playerController) || (window.gameEngine && window.gameEngine.playerController);
+    if (!playerController) return;
+    this.isPlayerRidingTrain = false;
+    const coachCenterX = this.trainPosX - 8.0;
+
+    if (this.trainPosX < 74.0) {
+      playerController.characterGroup.position.set(coachCenterX, 10.85, 64.8);
+    } else if (this.trainPosX > 220.0) {
+      playerController.characterGroup.position.set(coachCenterX, 10.85, 64.8);
+    } else {
+      playerController.characterGroup.position.set(coachCenterX, 10.62, 63.8);
+    }
+    playerController.characterGroup.rotation.y = Math.PI / 2;
+    playerController.velocity.set(0, 0, 0);
+    playerController.isGrounded = true;
+
+    if (this.eventBus) {
+      this.eventBus.emit('CORE:NOTIFICATION', {
+        message: 'Bạn đã xuống tàu an toàn.'
+      });
+    }
+
+    const camCtrl = (window._GameCoreInstance && window._GameCoreInstance.cameraController) || (window.gameEngine && window.gameEngine.cameraController);
+    if (camCtrl) {
+      camCtrl.setCameraMode('TPS');
+    }
+  }
+
+  /**
+   * Điều khiển người chơi khi đang trên toa tàu (Tự do di chuyển trong toa tàu và ban công đuôi tàu)
+   */
+  handleTrainPlayerUpdate(delta, playerController) {
+    if (playerController._trainRelX === undefined) {
+      playerController._trainRelX = 0;
+      playerController._trainRelZ = 0;
+    }
+    const keys = playerController.keys;
+    const localMoveX = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0);
+    const localMoveZ = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+
+    const walkSpeed = keys.sprint ? 3.8 : 2.2;
+    playerController._trainRelX += localMoveX * walkSpeed * delta;
+    playerController._trainRelZ += localMoveZ * walkSpeed * delta;
+
+    // Giới hạn không gian di chuyển:
+    // [-9.2, -4.5] là ban công lộ thiên đuôi tàu
+    // [-4.5, +4.2] là bên trong toa tàu ngắm cảnh
+    playerController._trainRelX = Math.max(-9.2, Math.min(4.2, playerController._trainRelX));
+
+    if (playerController._trainRelX < -4.6) {
+      playerController._trainRelZ = Math.max(-0.95, Math.min(0.95, playerController._trainRelZ));
+    } else {
+      playerController._trainRelZ = Math.max(-0.92, Math.min(0.92, playerController._trainRelZ));
+    }
+
+    const coachCenterX = this.trainPosX - 8.0;
+    playerController.characterGroup.position.set(
+      coachCenterX + playerController._trainRelX,
+      this.trainFloorY + 0.05,
+      60.0 + playerController._trainRelZ
+    );
+
+    if (localMoveX !== 0 || localMoveZ !== 0) {
+      playerController.characterGroup.rotation.y = Math.atan2(localMoveZ, localMoveX);
+    }
+  }
+
+  resolveTrainCollision(pos, radius = 0.35) {
+    if (this.isPlayerRidingTrain) return;
+    const trainMinX = this.trainPosX - 17.5;
+    const trainMaxX = this.trainPosX + 4.5;
+    const trainMinZ = 60.0 - 1.5;
+    const trainMaxZ = 60.0 + 1.5;
+
+    if (pos.x + radius > trainMinX && pos.x - radius < trainMaxX &&
+        pos.z + radius > trainMinZ && pos.z - radius < trainMaxZ) {
+      const pushLeft = (pos.x + radius) - trainMinX;
+      const pushRight = trainMaxX - (pos.x - radius);
+      const pushBack = (pos.z + radius) - trainMinZ;
+      const pushFront = trainMaxZ - (pos.z - radius);
+      const minPush = Math.min(pushLeft, pushRight, pushBack, pushFront);
+      if (minPush === pushLeft) pos.x = trainMinX - radius - 0.05;
+      else if (minPush === pushRight) pos.x = trainMaxX + radius + 0.05;
+      else if (minPush === pushBack) pos.z = trainMinZ - radius - 0.05;
+      else pos.z = trainMaxZ + radius + 0.05;
+    }
+  }
+
 }

@@ -160,9 +160,27 @@ export class CameraController {
   }
 
   /**
-   * Đảo đổi trạng thái giữa TPS và FPS
+   * Đảo đổi trạng thái giữa TPS và FPS (hoặc đổi góc ngắm cảnh khi đang trên tàu)
    */
   toggleCameraMode() {
+    if (this.worldManager && this.worldManager.isPlayerRidingTrain) {
+      const trainModes = ['INSIDE_COACH', 'OBSERVATION_DECK', 'TPS_TRAIN', 'LOCOMOTIVE_CAB'];
+      const curIdx = trainModes.indexOf(this.trainCameraMode || 'INSIDE_COACH');
+      const nextIdx = (curIdx + 1) % trainModes.length;
+      this.trainCameraMode = trainModes[nextIdx];
+      const titles = {
+        INSIDE_COACH: '🪟 Toa Kính Panorama 360° (Di chuột ngắm sông & hai bên tàu)',
+        OBSERVATION_DECK: '✨ Ban Công Lộ Thiên Đuôi Tàu 360° (Ngắm đường ray & vòm cầu)',
+        TPS_TRAIN: '🎥 Camera Tự Do 360° Quanh Tàu (Cuộn chuột zoom)',
+        LOCOMOTIVE_CAB: '🚂 Buồng Lái Đầu Máy Hơi Nước 360°'
+      };
+      if (this.eventBus) {
+        this.eventBus.emit('CORE:NOTIFICATION', {
+          message: `${titles[this.trainCameraMode]} • Bấm [V] đổi góc`
+        });
+      }
+      return;
+    }
     const next = this.mode === 'TPS' ? 'FPS' : 'TPS';
     this.setCameraMode(next);
   }
@@ -197,6 +215,71 @@ export class CameraController {
     // 1. Phản hồi chuột tức thì 1:1 theo thời gian thực - Triệt tiêu 100% cảm giác lì lợm/trôi camera
     this.yaw = this.targetYaw;
     this.pitch = this.targetPitch;
+
+    // Vector hướng nhìn 3D tính từ góc chuột (Hỗ trợ quay tự do 360 độ theo mọi góc nhìn)
+    const cosPitch = Math.cos(this.pitch);
+    const sinPitch = Math.sin(this.pitch);
+    const sinYaw = Math.sin(this.yaw);
+    const cosYaw = Math.cos(this.yaw);
+
+    const lookDir = this._camDir.set(
+      sinYaw * cosPitch,
+      sinPitch,
+      cosYaw * cosPitch
+    );
+
+    // 🚂 GÓC NHÌN PHONG CẢNH KHI ĐI TRÊN TOA TÀU DI SẢN CẦU LONG BIÊN (360° TỰ DO MỌI GÓC NHÌN)
+    if (this.worldManager && this.worldManager.isPlayerRidingTrain) {
+      const mode = this.trainCameraMode || 'INSIDE_COACH';
+      const coachX = this.worldManager.trainPosX - 8.0;
+      const coachY = (this.worldManager.trainFloorY !== undefined ? this.worldManager.trainFloorY : 11.25); // Sàn toa tàu di sản
+      
+      if (mode === 'INSIDE_COACH') {
+        // TOA KÍNH PANORAMA 360°: Người chơi ngồi hoặc đứng trong toa, di chuột ngắm 360 độ:
+        // Quay trái ngắm Sông Hồng, quay phải ngắm Bãi Giữa & thành phố, ngửa lên ngắm dầm Eiffel qua giếng trời
+        const eyePos = this._eyePos.set(playerPos.x, coachY + 1.45, playerPos.z);
+        const lookTarget = this._lookTarget.copy(eyePos).add(lookDir);
+        this.camera.position.copy(eyePos);
+        this.camera.lookAt(lookTarget);
+        this.camera.fov = 68;
+        this.camera.updateProjectionMatrix();
+        if (playerMesh) playerMesh.visible = false; // Ẩn mô hình người chơi để tầm nhìn kính 100% thoáng đãng
+        return;
+      } else if (mode === 'OBSERVATION_DECK') {
+        // BAN CÔNG LỘ THIÊN ĐUÔI TÀU 360°
+        const deckPos = this._eyePos.set(coachX - 7.6, coachY + 1.55, 60.0);
+        const lookTarget = this._lookTarget.copy(deckPos).add(lookDir);
+        this.camera.position.copy(deckPos);
+        this.camera.lookAt(lookTarget);
+        this.camera.fov = 70;
+        this.camera.updateProjectionMatrix();
+        if (playerMesh) playerMesh.visible = true;
+        return;
+      } else if (mode === 'TPS_TRAIN') {
+        // CAMERA TỰ DO QUAY QUANH ĐOÀN TÀU 360° (Orbiting Chase Cam)
+        const focusPos = this._lookTarget.set(coachX, coachY + 1.2, 60.0);
+        const armLen = this.currentArmLength || 6.5;
+        const camPos = this._eyePos.copy(focusPos).sub(lookDir.clone().multiplyScalar(armLen));
+        this.camera.position.copy(camPos);
+        this.camera.lookAt(focusPos);
+        this.camera.fov = 65;
+        this.camera.updateProjectionMatrix();
+        if (playerMesh) playerMesh.visible = true;
+        return;
+      } else if (mode === 'LOCOMOTIVE_CAB') {
+        // BUỒNG LÁI ĐẦU MÁY HƠI NƯỚC 360°
+        const cabPos = this._eyePos.set(this.worldManager.trainPosX - 1.2, coachY + 1.6, 60.0);
+        const lookTarget = this._lookTarget.copy(cabPos).add(lookDir);
+        this.camera.position.copy(cabPos);
+        this.camera.lookAt(lookTarget);
+        this.camera.fov = 68;
+        this.camera.updateProjectionMatrix();
+        if (playerMesh) playerMesh.visible = false;
+        return;
+      }
+    } else {
+      this.targetArmLength = 4.2;
+    }
 
     // 2. Xử lý chuyển đổi mượt mà giữa TPS và FPS (0.3s)
     if (this.isTransitioning) {
@@ -241,17 +324,8 @@ export class CameraController {
     eyePos.y += this.eyeHeight;
 
     // 6. Tính toán vị trí mong muốn trong TPS với Spring-Arm
-    // Vector hướng nhìn từ camera vào mắt
-    const cosPitch = Math.cos(this.pitch);
-    const sinPitch = Math.sin(this.pitch);
-    const sinYaw = Math.sin(this.yaw);
-    const cosYaw = Math.cos(this.yaw);
-
-    const camDir = this._camDir.set(
-      sinYaw * cosPitch,
-      sinPitch,
-      cosYaw * cosPitch
-    );
+    // camDir đã được tính toán đồng bộ theo (yaw, pitch) phía trên
+    const camDir = this._camDir;
 
     // Vị trí TPS lý tưởng phía sau nhân vật
     const desiredTpsPos = this._desiredTpsPos.copy(eyePos).addScaledVector(camDir, this.targetArmLength);

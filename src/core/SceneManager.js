@@ -27,7 +27,7 @@ export class SceneManager {
   _initFog() {
     const fogColor = new THREE.Color(0xf5e6d3); // Sắc thu vàng nhạt tự nhiên, không ám cam đục
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.Fog(fogColor.getHex(), 65, 155); // Tối ưu 60 FPS: Che mờ viền chân trời ở 65m - 155m
+    this.scene.fog = new THREE.Fog(fogColor.getHex(), 85, 280); // Tối ưu 60 FPS: Hòa quyện sương thu chân trời ở 85m - 280m bao quát toàn bộ cầu Long Biên
   }
 
   /**

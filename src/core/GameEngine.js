@@ -207,8 +207,8 @@ export class GameEngine {
       this.sceneManager = new SceneManager();
       const scene = this.sceneManager.getScene();
 
-      // Tối ưu culling 60 FPS: Tầm nhìn 160m bao trọn phân khu hiện tại và lân cận, cắt giảm 60% Draw Calls
-      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 160);
+      // Tầm nhìn 280m bao quát trọn vẹn toàn bộ 252m nhịp cầu Long Biên vượt sông Hồng sang Ga Gia Lâm & 60 FPS
+      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 280);
       this.camera.position.set(45, 2.5, -40);
 
       this._reportProgress(55, 'Dựng 4 phân khu Thế Giới Mở 500m x 500m liền mạch...');

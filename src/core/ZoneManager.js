@@ -28,7 +28,7 @@ export const ZONES = {
     description: 'Dầm thép Eiffel rỉ sét màu cánh gián vươn dài, gió lồng lộng thổi qua bạt ngàn lau sậy phù sa.',
     ambientTrack: 'assets/audio/ambient_train.mp3',
     bounds: { minX: 0, maxX: 250, minZ: 0, maxZ: 250 },
-    spawnPoint: { x: 55, y: 4.2, z: 55 },
+    spawnPoint: { x: 35.0, y: 10.85, z: 64.8 },
     themeColor: '#d35400'
   },
   tap_the: {

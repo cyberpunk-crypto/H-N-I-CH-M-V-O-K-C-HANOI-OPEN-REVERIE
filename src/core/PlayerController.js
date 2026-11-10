@@ -1042,6 +1042,10 @@ export class PlayerController {
   }
 
   _handleInteract() {
+    if (this.worldManager && this.worldManager.isPlayerRidingTrain) {
+      this.worldManager.leaveTrain(this);
+      return;
+    }
     if (this.activeInteractable && this.activeInteractable.onInteract) {
       this.activeInteractable.onInteract();
     }
@@ -1074,6 +1078,21 @@ export class PlayerController {
    * Chống đâm xuyên lan can Cầu Kim Quy (giữ khoảng cách tim cầu <= 1.6m).
    */
   _resolvePenetrations(pos) {
+    // 0. CHỐNG XUYÊN ĐOÀN TÀU DI SẢN CẦU LONG BIÊN KHI ĐI BỘ NGOÀI TÀU
+    if (this.worldManager && typeof this.worldManager.resolveTrainCollision === 'function') {
+      this.worldManager.resolveTrainCollision(pos, this.playerRadius);
+    }
+
+    // 0.1. CHỐNG RƠI / LỌT DƯỚI MẶT SÀN CẦU VÀ DỐC DẪN LONG BIÊN
+    if (this.worldManager && typeof this.worldManager.getLongBienBridgeInfo === 'function') {
+      const lbInfo = this.worldManager.getLongBienBridgeInfo(pos.x, pos.y, pos.z);
+      if (lbInfo && lbInfo.onBridge) {
+        if (pos.y < lbInfo.closestY) {
+          pos.y = lbInfo.closestY;
+        }
+      }
+    }
+
     const r = this.playerRadius;
     const pY = pos.y;
     const obstacles = (this.worldManager && typeof this.worldManager.getObstacles === 'function') ? this.worldManager.getObstacles() : [];
@@ -1372,6 +1391,17 @@ export class PlayerController {
   update(delta, camera) {
     if (this.isParkouring) return;
 
+    // 🚂 KHI NGƯỜI CHƠI ĐANG TRÊN TOA TÀU PANORAMA CẦU LONG BIÊN:
+    // Chuyển toàn bộ điều khiển WASD sang hệ tọa độ toa tàu (Locomotion inside moving coach & observation balcony)
+    if (this.worldManager && this.worldManager.isPlayerRidingTrain) {
+      this.worldManager.handleTrainPlayerUpdate(delta, this);
+      if (this.humanoidAnimator) {
+        const isMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+        this.humanoidAnimator.update(delta, isMoving ? (this.keys.sprint ? 5.0 : 2.5) : 0, true, 0);
+      }
+      return;
+    }
+
     // Căn góc Camera ban đầu theo trục Cầu Kim Quy (yaw = 0.785 rad / 45 độ)
     if (!this._initialCameraYawSet) {
       this._initialCameraYawSet = true;
@@ -1498,20 +1528,7 @@ export class PlayerController {
     const charPos = this.characterGroup.position;
 
     if (!this._nearbyColliders) this._nearbyColliders = [];
-    // Quét toàn diện tất cả các colliders sàn/đảo/cầu cốt lõi (không bỏ sót bất kỳ mặt phẳng nào)
-    const colliders = allColliders;
-
-    this._rayOrigin.copy(charPos);
-    // Luôn bắn tia từ cao xuống (tối thiểu 2.8m) để không bao giờ bị kẹt dưới sàn thềm Tháp Rùa hay Đền Ngọc Sơn
-    this._rayOrigin.y = Math.max(charPos.y + 1.8, 2.8);
-    this.raycaster.set(this._rayOrigin, this.downVector);
-    this.raycaster.far = 6.0;
-
-    // Zero Heap Allocation: Tái sử dụng mảng _groundHits
-    this._groundHits.length = 0;
-    this.raycaster.intersectObjects(colliders, false, this._groundHits);
-
-    // Kiểm tra thông tin độ cong chính xác trên Cầu Kim Quy / Thê Húc
+    // Kiểm tra thông tin độ cong chính xác trên Cầu Kim Quy / Thê Húc / Long Biên
     let bridgeGroundY = null;
     if (this.worldManager.getTheHucBridgeInfo) {
       const bridgeInfo = this.worldManager.getTheHucBridgeInfo(charPos.x, charPos.y, charPos.z);
@@ -1525,6 +1542,25 @@ export class PlayerController {
         bridgeGroundY = kqInfo.closestY;
       }
     }
+    if (this.worldManager.getLongBienBridgeInfo) {
+      const lbInfo = this.worldManager.getLongBienBridgeInfo(charPos.x, charPos.y, charPos.z);
+      if (lbInfo && lbInfo.onBridge) {
+        bridgeGroundY = lbInfo.closestY;
+      }
+    }
+
+    // Quét toàn diện tất cả các colliders sàn/đảo/cầu cốt lõi (không bỏ sót bất kỳ mặt phẳng nào)
+    const colliders = allColliders;
+    this._rayOrigin.copy(charPos);
+    // Luôn bắn tia từ cao xuống (tối thiểu 2.2m trên sàn dự kiến) để không bao giờ bị kẹt dưới dốc dẫn hay sàn cầu
+    const expectedFloorY = bridgeGroundY !== null ? bridgeGroundY : charPos.y;
+    this._rayOrigin.y = Math.max(charPos.y + 2.2, expectedFloorY + 2.2, 2.8);
+    this.raycaster.set(this._rayOrigin, this.downVector);
+    this.raycaster.far = Math.max(this._rayOrigin.y + 1.5, 8.0);
+
+    // Zero Heap Allocation: Tái sử dụng mảng _groundHits
+    this._groundHits.length = 0;
+    this.raycaster.intersectObjects(colliders, false, this._groundHits);
 
     // BẢO VỆ CAO ĐỘ MẶT SÀN TỐI THIỂU THEO TỪNG VÙNG ĐỊA LÝ DI SẢN:
     const dxTR = charPos.x - 80;
@@ -1551,6 +1587,10 @@ export class PlayerController {
       minGroundProtected = 0.90; // Sân Đền Ngọc Sơn & Chùa Đỏ (sàn gạch Bát Tràng 0.88m)
     } else if (distSqTR <= 99 * 99) {
       minGroundProtected = 0.40; // Vỉa hè dạo ven Hồ Gươm
+    }
+
+    if (bridgeGroundY !== null) {
+      minGroundProtected = Math.max(minGroundProtected, bridgeGroundY);
     }
 
     if (this._groundHits.length > 0 || bridgeGroundY !== null) {
@@ -1591,7 +1631,7 @@ export class PlayerController {
         this.isGrounded = false;
       } else {
         // Foot Ground Snapping (Cầu Thê Húc, dốc Cầu Long Biên, Tháp Rùa & Đền Ngọc Sơn):
-        if (verticalDiff >= -this.maxStepDown && verticalDiff <= 1.25) { // Cho phép bước lên dốc thềm tam cấp tới 1.25m
+        if (verticalDiff >= -this.maxStepDown && verticalDiff <= 1.6) { // Cho phép bước lên dốc thềm tam cấp tới 1.6m
           if (Math.abs(verticalDiff) < 0.02) {
             charPos.y = groundY;
           } else if (verticalDiff > 0) {
