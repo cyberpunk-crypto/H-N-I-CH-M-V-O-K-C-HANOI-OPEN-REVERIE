@@ -342,6 +342,9 @@ export class CameraController {
     const obstacles = (this.worldManager && typeof this.worldManager.getObstacles === 'function') ? this.worldManager.getObstacles() : [];
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
+      // Bỏ qua các vật thể nằm hoàn toàn dưới thắt lưng nhân vật (không phải tường chắn tầm nhìn)
+      if (obs.maxY <= eyePos.y - 0.45) continue;
+
       const cX = obs._centerX !== undefined ? obs._centerX : (obs.minX + obs.maxX) * 0.5;
       const cZ = obs._centerZ !== undefined ? obs._centerZ : (obs.minZ + obs.maxZ) * 0.5;
       const maxR = Math.max(obs.maxX - obs.minX, obs.maxZ - obs.minZ) * 0.5 + maxRayDist;
@@ -395,12 +398,22 @@ export class CameraController {
       }
     }
 
-    // B. Kiểm tra va chạm raycast với các colliders lưới hình học
+    // B. Kiểm tra va chạm raycast với các colliders lưới hình học đứng (tường/vách)
+    // Bỏ qua tuyệt đối toàn bộ mặt phẳng sàn, đường dạo, dốc dẫn, sàn cầu để không làm giật camera/khựng hình khi di chuyển
     const allColliders = this.worldManager ? this.worldManager.getColliders() : [];
     if (!this._nearColliders) this._nearColliders = [];
     this._nearColliders.length = 0;
     for (let c = 0; c < allColliders.length; c++) {
       const col = allColliders[c];
+      if (col._isBaseGround || col._isGroundFloor || col._neverCull) continue;
+      const cName = (col.name || '').toLowerCase();
+      if (cName.includes('ground') || cName.includes('terrain') || cName.includes('road') ||
+          cName.includes('deck') || cName.includes('floor') || cName.includes('plinth') ||
+          cName.includes('step') || cName.includes('plank') || cName.includes('slope') ||
+          cName.includes('dike') || cName.includes('sand') || cName.includes('apron') ||
+          cName.includes('plaza') || cName.includes('promenade') || cName.includes('island') ||
+          cName.includes('bridge') || cName.includes('viaduct') || cName.includes('pillar') ||
+          cName.includes('cutwater') || cName.includes('rail') || cName.includes('tie')) continue;
       if (col.position) {
         const dx = col.position.x - eX;
         const dz = col.position.z - eZ;
@@ -408,7 +421,7 @@ export class CameraController {
       }
       this._nearColliders.push(col);
     }
-    const colliders = this._nearColliders.length > 0 ? this._nearColliders : allColliders;
+    const colliders = this._nearColliders;
 
     if (colliders.length > 0) {
       this.raycaster.set(eyePos, rayDir);
@@ -423,8 +436,8 @@ export class CameraController {
       }
     }
 
-    if (minAllowedArm < this.targetArmLength) {
-      this.currentArmLength = Math.min(this.currentArmLength, minAllowedArm);
+    if (minAllowedArm < this.currentArmLength) {
+      this.currentArmLength = Math.max(minAllowedArm, THREE.MathUtils.lerp(this.currentArmLength, minAllowedArm, 0.4));
     } else {
       this.currentArmLength = THREE.MathUtils.lerp(this.currentArmLength, this.targetArmLength, 0.1);
     }

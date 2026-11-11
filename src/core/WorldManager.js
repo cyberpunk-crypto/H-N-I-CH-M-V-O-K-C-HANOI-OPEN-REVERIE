@@ -172,7 +172,11 @@ export class WorldManager {
       minZ: z - depth / 2,
       maxZ: z + depth / 2,
       minY: minY,
-      maxY: maxY
+      maxY: maxY,
+      _centerX: x,
+      _centerZ: z,
+      _maxRadiusX: width * 0.5 + 16,
+      _maxRadiusZ: depth * 0.5 + 16
     });
   }
 
@@ -4097,6 +4101,8 @@ getTheHucBridgeInfo(x, y, z) {
     // BỜ KÈ ĐÊ SÔNG HỒNG LỊCH SỬ (Đê Trần Nhật Duật / Yên Phụ) tại x = 75.0, chạy suốt z = 0 -> 250
     // Ngăn cách hoàn toàn thành phố và Hồ Gươm với lòng Sông Hồng
     const dikeBody = createBoxBeam(8.0, 3.5, 260.0, stonePierMat);
+    dikeBody.name = 'dikeBody';
+    dikeBody._isBaseGround = true;
     dikeBody.position.set(75.0, 0.25, 125.0);
     zoneGroup.add(dikeBody);
     this.colliders.push(dikeBody);
@@ -4105,6 +4111,8 @@ getTheHucBridgeInfo(x, y, z) {
     const dikeSlopeGeo = new THREE.BoxGeometry(10.0, 0.5, 260.0);
     const dikeGrassMat = new THREE.MeshStandardMaterial({ color: 0x4a5d3e, roughness: 0.95 });
     const dikeSlope = new THREE.Mesh(dikeSlopeGeo, dikeGrassMat);
+    dikeSlope.name = 'dikeSlope';
+    dikeSlope._isBaseGround = true;
     dikeSlope.position.set(81.0, -0.65, 125.0);
     dikeSlope.rotation.z = -0.32;
     zoneGroup.add(dikeSlope);
@@ -4114,6 +4122,8 @@ getTheHucBridgeInfo(x, y, z) {
     const sandGeo = new THREE.BoxGeometry(60.0, 1.2, 210.0);
     const sandMat = new THREE.MeshStandardMaterial({ color: 0x937047, roughness: 0.95 });
     const sandMesh = new THREE.Mesh(sandGeo, sandMat);
+    sandMesh.name = 'sandMesh';
+    sandMesh._isBaseGround = true;
     sandMesh.position.set(165.0, -1.0, 125.0);
     sandMesh.receiveShadow = true;
     zoneGroup.add(sandMesh);
@@ -4144,6 +4154,8 @@ getTheHucBridgeInfo(x, y, z) {
     // Mặt đường bộ hành đá nguyên khối (Roadway Deck)
     // Độ dày 0.6m, tâm hạ nhẹ 0.29m để mặt sàn trên cùng đúng chuẩn Y = rampY từ 0.5m lên 10.85m
     const approachRoad = createBoxBeam(rampHypot, 0.6, roadWidth, stonePierMat);
+    approachRoad.name = 'approachRoad';
+    approachRoad._isBaseGround = true;
     approachRoad.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 - 0.29, 61.0);
     approachRoad.rotation.z = rampAngle;
     zoneGroup.add(approachRoad);
@@ -4180,6 +4192,8 @@ getTheHucBridgeInfo(x, y, z) {
     }
     const mergedViaductPillars = BufferGeometryUtils.mergeGeometries(viaductPillarGeoms, false);
     const viaductPillarsMesh = new THREE.Mesh(mergedViaductPillars, viaductMat);
+    viaductPillarsMesh.name = 'viaductPillarsMesh';
+    viaductPillarsMesh._isBaseGround = true;
     zoneGroup.add(viaductPillarsMesh);
     this.colliders.push(viaductPillarsMesh);
 
@@ -4189,17 +4203,30 @@ getTheHucBridgeInfo(x, y, z) {
     guardNorth.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 + 0.5, 67.0);
     guardNorth.rotation.z = rampAngle;
     zoneGroup.add(guardNorth);
-    this._addBoxObstacle(-30.0 + rampLen / 2, 67.0, rampLen, 0.8, 0, 13.0);
 
     // Mạn Nam (Z = 55.0):
     const guardSouth = createBoxBeam(rampHypot, 1.2, 0.5, stonePierMat);
     guardSouth.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 + 0.5, 55.0);
     guardSouth.rotation.z = rampAngle;
     zoneGroup.add(guardSouth);
-    this._addBoxObstacle(-30.0 + rampLen / 2, 55.0, rampLen, 0.8, 0, 13.0);
+
+    // Phân đoạn vật cản lan can theo độ dốc thực tế (5 đoạn x 10m):
+    // Triệt tiêu hoàn toàn khối hộp ảo 13m che tầm nhìn và làm giật camera/khựng bước chân
+    const segCount = 5;
+    const segLen = rampLen / segCount;
+    for (let k = 0; k < segCount; k++) {
+      const segMidX = -30.0 + (k + 0.5) * segLen;
+      const t = (segMidX - (-30.0)) / rampLen;
+      const segFloorY = 0.5 + t * rampRise;
+      // Lan can mạn Bắc & Nam cao 1.2m theo mặt sàn thực tế tại từng đoạn
+      this._addBoxObstacle(segMidX, 67.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
+      this._addBoxObstacle(segMidX, 55.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
+    }
 
     // Thềm đá tiếp giáp êm ái dưới chân dốc dẫn tại Phố Cổ (X = -32.0 -> -30.0)
     const rampApron = createBoxBeam(3.0, 0.2, roadWidth, stonePierMat);
+    rampApron.name = 'rampApron';
+    rampApron._isBaseGround = true;
     rampApron.position.set(-31.5, 0.5, 61.0);
     zoneGroup.add(rampApron);
     this.colliders.push(rampApron);
@@ -4234,6 +4261,9 @@ getTheHucBridgeInfo(x, y, z) {
       const px = X_CENTER - HALF_LENGTH + i * SPAN_LENGTH;
 
       const pierBody = createBoxBeam(4.8, DECK_Y + 1.2, 9.4, stonePierMat);
+      pierBody.name = 'LongBien_pier_' + i;
+      pierBody._isBaseGround = true;
+      pierBody.frustumCulled = false;
       pierBody.position.set(px, (DECK_Y + 1.2) / 2 - 1.0, Z_CENTER);
       bridgeGroup.add(pierBody);
       this.colliders.push(pierBody);
@@ -4254,6 +4284,9 @@ getTheHucBridgeInfo(x, y, z) {
 
     const mergedCutwaters = BufferGeometryUtils.mergeGeometries(cutwaterGeoms, false);
     const cutwaterMesh = new THREE.Mesh(mergedCutwaters, stonePierMat);
+    cutwaterMesh.name = 'LongBien_cutwaters';
+    cutwaterMesh.frustumCulled = false;
+    cutwaterMesh._neverCull = true;
     bridgeGroup.add(cutwaterMesh);
 
     // Mảng thu gom hình học thép để gộp siêu tốc
@@ -4265,6 +4298,9 @@ getTheHucBridgeInfo(x, y, z) {
     steelGeoms.push(getTransformedBox(totalBridgeLength + 8, 1.2, 0.5, new THREE.Vector3(X_CENTER, DECK_Y, Z_CENTER + BRIDGE_WIDTH / 2)));
 
     const solidSubDeck = createBoxBeam(totalBridgeLength + 8, 0.35, BRIDGE_WIDTH - 0.2, steelPlankMat);
+    solidSubDeck.name = 'bridgeSolidSubDeck';
+    solidSubDeck._isBaseGround = true;
+    solidSubDeck.frustumCulled = false;
     solidSubDeck.position.set(X_CENTER, DECK_Y + 0.50, Z_CENTER);
     bridgeGroup.add(solidSubDeck);
     this.colliders.push(solidSubDeck); // KHÓA SÀN CẦU CHÍNH
@@ -4273,6 +4309,8 @@ getTheHucBridgeInfo(x, y, z) {
     const tieCount = Math.floor(totalBridgeLength / 0.8);
     const tieGeom = new THREE.BoxGeometry(0.35, 0.22, 2.8);
     const tieInstanced = new THREE.InstancedMesh(tieGeom, woodTieMat, tieCount);
+    tieInstanced.name = 'LongBien_tieInstanced';
+    tieInstanced.frustumCulled = false;
     for (let i = 0; i < tieCount; i++) {
       const tx = X_CENTER - HALF_LENGTH + i * 0.8;
       dummy.position.set(tx, DECK_Y + 0.65, Z_CENTER);
@@ -4285,6 +4323,9 @@ getTheHucBridgeInfo(x, y, z) {
 
     // D. Ván sàn bảo trì giữa 2 ray (ĐĂNG KÝ VÀO COLLIDERS)
     const centerInspectionWalkway = createBoxBeam(totalBridgeLength + 8, 0.12, 0.92, woodPlankMat);
+    centerInspectionWalkway.name = 'bridgeCenterWalkway';
+    centerInspectionWalkway._isBaseGround = true;
+    centerInspectionWalkway.frustumCulled = false;
     centerInspectionWalkway.position.set(X_CENTER, DECK_Y + 0.77, Z_CENTER);
     bridgeGroup.add(centerInspectionWalkway);
     this.colliders.push(centerInspectionWalkway);
@@ -4296,11 +4337,17 @@ getTheHucBridgeInfo(x, y, z) {
     // F. Làn bộ hành 2 bên cánh gà (ĐĂNG KÝ VÀO COLLIDERS CHỐNG LỌT XUYÊN 100%)
     const sideWalkwayWidth = 1.8;
     const walk1 = createBoxBeam(totalBridgeLength + 8, 0.20, sideWalkwayWidth, deckMat);
+    walk1.name = 'bridgeWalkwayNorth';
+    walk1._isBaseGround = true;
+    walk1.frustumCulled = false;
     walk1.position.set(X_CENTER, DECK_Y + 0.62, Z_CENTER - (BRIDGE_WIDTH / 2 + sideWalkwayWidth / 2 + 0.1));
     bridgeGroup.add(walk1);
     this.colliders.push(walk1); // KHÓA SÀN ĐI BỘ MẠN BẮC
 
     const walk2 = walk1.clone();
+    walk2.name = 'bridgeWalkwaySouth';
+    walk2._isBaseGround = true;
+    walk2.frustumCulled = false;
     walk2.position.z = Z_CENTER + (BRIDGE_WIDTH / 2 + sideWalkwayWidth / 2 + 0.1);
     bridgeGroup.add(walk2);
     this.colliders.push(walk2); // KHÓA SÀN ĐI BỘ MẠN NAM
@@ -4313,6 +4360,9 @@ getTheHucBridgeInfo(x, y, z) {
     }
     const mergedCrossPlanks = BufferGeometryUtils.mergeGeometries(crossPlankGeoms, false);
     const crossPlanksMesh = new THREE.Mesh(mergedCrossPlanks, woodPlankMat);
+    crossPlanksMesh.name = 'bridgeCrossPlanks';
+    crossPlanksMesh._isBaseGround = true;
+    crossPlanksMesh.frustumCulled = false;
     bridgeGroup.add(crossPlanksMesh);
     this.colliders.push(crossPlanksMesh);
 
@@ -4320,7 +4370,11 @@ getTheHucBridgeInfo(x, y, z) {
     const railingPostGeom = new THREE.BoxGeometry(0.08, 1.1, 0.08);
     const railingPostCount = Math.floor(totalBridgeLength / 2.0);
     const railPosts1 = new THREE.InstancedMesh(railingPostGeom, darkSteelMat, railingPostCount);
+    railPosts1.name = 'LongBien_railPosts1';
+    railPosts1.frustumCulled = false;
     const railPosts2 = new THREE.InstancedMesh(railingPostGeom, darkSteelMat, railingPostCount);
+    railPosts2.name = 'LongBien_railPosts2';
+    railPosts2.frustumCulled = false;
 
     for (let i = 0; i < railingPostCount; i++) {
       const rx = X_CENTER - HALF_LENGTH + i * 2.0;
@@ -4400,6 +4454,7 @@ getTheHucBridgeInfo(x, y, z) {
     const mergedSteelGeo = BufferGeometryUtils.mergeGeometries(steelGeoms, false);
     const mergedSteelMesh = new THREE.Mesh(mergedSteelGeo, steelMat);
     mergedSteelMesh.name = 'LongBien_mergedSteelMesh';
+    mergedSteelMesh.frustumCulled = false;
     mergedSteelMesh._neverCull = true;
     mergedSteelMesh._isBaseGround = true;
     bridgeGroup.add(mergedSteelMesh);
@@ -4407,6 +4462,7 @@ getTheHucBridgeInfo(x, y, z) {
     const mergedDarkSteelGeo = BufferGeometryUtils.mergeGeometries(darkSteelGeoms, false);
     const mergedDarkSteelMesh = new THREE.Mesh(mergedDarkSteelGeo, darkSteelMat);
     mergedDarkSteelMesh.name = 'LongBien_mergedDarkSteelMesh';
+    mergedDarkSteelMesh.frustumCulled = false;
     mergedDarkSteelMesh._neverCull = true;
     mergedDarkSteelMesh._isBaseGround = true;
     bridgeGroup.add(mergedDarkSteelMesh);
@@ -4432,7 +4488,19 @@ getTheHucBridgeInfo(x, y, z) {
     }
     const mergedLamps = BufferGeometryUtils.mergeGeometries(lampGeoms, false);
     const allLampsMesh = new THREE.Mesh(mergedLamps, lampMat);
+    allLampsMesh.name = 'LongBien_allLampsMesh';
+    allLampsMesh.frustumCulled = false;
     bridgeGroup.add(allLampsMesh);
+
+    // KHÓA FRUSTUM CULLING TOÀN BỘ CẦU LONG BIÊN:
+    // Triệt tiêu 100% hiện tượng mất hình dầm thép, ray tàu, tà vẹt khi đi về cuối cầu
+    bridgeGroup.traverse(child => {
+      if (child.isMesh || child.isInstancedMesh) {
+        child.frustumCulled = false;
+        child._neverCull = true;
+        child._isBaseGround = true;
+      }
+    });
 
     // =========================================================================
     // 5. GA LONG BIÊN CỔ KÍNH - NGUYÊN BẢN 100% TỪ BẢN DEMO
@@ -5973,39 +6041,32 @@ getTheHucBridgeInfo(x, y, z) {
 
     const time = performance.now() * 0.001;
 
-    // 0. CULLING CẤP PHÂN KHU SIÊU TỐC (Zone-Level Spatial Culling - Giảm 85% Draw Calls)
+    // 0. CULLING CẤP PHÂN KHU TỐI ƯU 60 FPS (Không bao giờ ẩn Cầu Long Biên)
     if (playerPos) {
       const px = playerPos.x;
       const pz = playerPos.z;
 
-      // 1. Khi người chơi ở trong hành lang Cầu Long Biên & Ga Long Biên (pz >= 35m)
-      if (pz >= 35.0) {
-        if (this.zone3Group) this.zone3Group.visible = true;
-        // Hồ Gươm ở tít phía Nam (z <= 0), ngăn cách bởi toàn bộ Phố Cổ -> Ẩn 100%
-        if (this.zone1Group) this.zone1Group.visible = false;
-        // Khu Tập Thể ở góc Tây Nam đối diện -> Ẩn 100%
-        if (this.zone4Group) this.zone4Group.visible = false;
-        // Phố Cổ chỉ hiện khi đứng ở dốc dẫn hoặc Ke Ga phía Tây (px <= 85m)
-        if (this.zone2Group) this.zone2Group.visible = (px <= 85.0);
-      } else if (pz <= 0 && px >= 0) {
-        // 2. Khi người chơi ở Hồ Gươm (x >= 0, z <= 0)
-        if (this.zone1Group) this.zone1Group.visible = true;
-        // Cầu Long Biên ở tít phía Bắc (z >= 45m) -> Ẩn 100%
-        if (this.zone3Group) this.zone3Group.visible = false;
-        if (this.zone4Group) this.zone4Group.visible = (px <= 25.0);
-        if (this.zone2Group) this.zone2Group.visible = (pz >= -45.0);
-      } else if (px < 0 && pz < 0) {
-        // 3. Khi người chơi ở Khu Tập Thể Cũ (x < 0, z < 0)
-        if (this.zone4Group) this.zone4Group.visible = true;
-        if (this.zone3Group) this.zone3Group.visible = false;
-        if (this.zone1Group) this.zone1Group.visible = (px >= -35.0);
-        if (this.zone2Group) this.zone2Group.visible = (pz >= -45.0);
-      } else {
-        // 4. Khi người chơi ở Phố Cổ (px < 0, z >= 0)
-        if (this.zone2Group) this.zone2Group.visible = true;
-        if (this.zone3Group) this.zone3Group.visible = (px >= -55.0 && pz >= 20.0);
-        if (this.zone1Group) this.zone1Group.visible = (pz <= 35.0);
-        if (this.zone4Group) this.zone4Group.visible = (pz <= 35.0);
+      // CẦU LONG BIÊN (Zone 3) là kỳ quan chân trời của Thủ Đô Hà Nội:
+      // Toàn bộ 252m dầm thép đã được gộp tối ưu chỉ ~35 draw calls -> LUÔN HIỆN 100%
+      // Giúp người chơi đứng từ xa khắp Phố Cổ, Hồ Gươm đều thấy nhịp cầu hùng vĩ
+      // và triệt tiêu 100% hiện tượng giật lag / khựng hình khi lại gần hay chạy trên cầu
+      if (this.zone3Group) this.zone3Group.visible = true;
+
+      // Phố Cổ (Zone 2) - Trung tâm kết nối, luôn hiện trừ khi đi rất xa ra giữa sông Hồng (px > 120m)
+      if (this.zone2Group) {
+        this.zone2Group.visible = (px <= 120.0);
+      }
+
+      // Hồ Gươm (Zone 1 - 766 mesh):
+      // Chỉ ẩn khi người chơi đã lên cầu Long Biên đi sâu ra ngoài sông Hồng (pz >= 50m && px >= 50m)
+      // Giúp dạo chơi ở Phố Cổ và dốc dẫn không bao giờ bị khựng hình do bật/tắt Hồ Gươm
+      if (this.zone1Group) {
+        this.zone1Group.visible = !(pz >= 50.0 && px >= 50.0);
+      }
+
+      // Khu Tập Thể (Zone 4): Chỉ ẩn khi người chơi ở trên cầu Long Biên hoặc bờ đông Gia Lâm (pz >= 50m)
+      if (this.zone4Group) {
+        this.zone4Group.visible = (pz < 50.0);
       }
     }
 
@@ -6603,6 +6664,8 @@ getTheHucBridgeInfo(x, y, z) {
 
   resolveTrainCollision(pos, radius = 0.35) {
     if (this.isPlayerRidingTrain) return;
+    // Bỏ qua tuyệt đối nếu người chơi đang đi bộ dưới mặt đất / gầm cầu (Y < 8.5m)
+    if (pos.y < 8.5 || pos.y > 15.0) return;
     const trainMinX = this.trainPosX - 17.5;
     const trainMaxX = this.trainPosX + 4.5;
     const trainMinZ = 60.0 - 1.5;

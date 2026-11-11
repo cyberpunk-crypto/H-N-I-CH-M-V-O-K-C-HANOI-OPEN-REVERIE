@@ -207,8 +207,8 @@ export class GameEngine {
       this.sceneManager = new SceneManager();
       const scene = this.sceneManager.getScene();
 
-      // Tầm nhìn 280m bao quát trọn vẹn toàn bộ 252m nhịp cầu Long Biên vượt sông Hồng sang Ga Gia Lâm & 60 FPS
-      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 280);
+      // Tầm nhìn 550m bao quát trọn vẹn toàn bộ 252m nhịp cầu Long Biên vượt sông Hồng từ khắp Hồ Gươm và Phố Cổ & 60 FPS
+      this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 550);
       this.camera.position.set(45, 2.5, -40);
 
       this._reportProgress(55, 'Dựng 4 phân khu Thế Giới Mở 500m x 500m liền mạch...');
