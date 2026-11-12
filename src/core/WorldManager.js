@@ -1235,7 +1235,7 @@ getTheHucBridgeInfo(x, y, z) {
    * - Ban công gỗ kiểu Pháp tầng 2 với cửa chớp xanh rêu và lan can hoa sắt hướng ra đường tàu
    * - Mái hiên gập lượn sóng kẻ sọc cổ điển che mưa nắng và đèn lồng đỏ hoài niệm
    */
-  _createTraditionalHanoiRoof(w, d, h) {
+  _createTraditionalHanoiRoof(w, d, h, facing = -1) {
     const roofGroup = new THREE.Group();
 
     // 1. MÁI DỐC 2 CHÁI NGÓI ÂM DƯƠNG RÊU PHONG (Traditional Terracotta Double-pitch Gable Roof)
@@ -1292,47 +1292,49 @@ getTheHucBridgeInfo(x, y, z) {
     const balW = Math.min(w * 0.65, 5.8);
     const balD = 1.35;
     const balH = 0.95;
+    const fZ = facing >= 0 ? 1 : -1;
 
     // Sàn ban công
     const balFloor = new THREE.Mesh(
       new THREE.BoxGeometry(balW, 0.14, balD),
       this.materials.retroWood
     );
-    balFloor.position.set(0, h * 0.72, -d * 0.5 - balD * 0.5);
+    balFloor.position.set(0, h * 0.72, fZ * (d * 0.5 + balD * 0.5));
     roofGroup.add(balFloor);
 
     // Lan can sắt hoa văn ban công
     const railMat = new THREE.MeshStandardMaterial({ color: 0x1c2b22, roughness: 0.5, metalness: 0.5 });
     const balFrontRail = new THREE.Mesh(new THREE.BoxGeometry(balW, balH, 0.05), railMat);
-    balFrontRail.position.set(0, h * 0.72 + balH * 0.5, -d * 0.5 - balD);
+    balFrontRail.position.set(0, h * 0.72 + balH * 0.5, fZ * (d * 0.5 + balD));
     roofGroup.add(balFrontRail);
 
     for (let side of [-1, 1]) {
       const sideRail = new THREE.Mesh(new THREE.BoxGeometry(0.05, balH, balD), railMat);
-      sideRail.position.set(side * (balW * 0.5), h * 0.72 + balH * 0.5, -d * 0.5 - balD * 0.5);
+      sideRail.position.set(side * (balW * 0.5), h * 0.72 + balH * 0.5, fZ * (d * 0.5 + balD * 0.5));
       roofGroup.add(sideRail);
     }
 
     // Cửa chớp xanh rêu kiểu Pháp mở ra ban công
     const shutterMat = new THREE.MeshStandardMaterial({ color: 0x244a35, roughness: 0.7 });
     const shutterL = new THREE.Mesh(new THREE.BoxGeometry(0.60, 1.55, 0.06), shutterMat);
-    shutterL.position.set(-0.70, h * 0.72 + 0.85, -d * 0.5 - 0.03);
+    shutterL.position.set(-0.70, h * 0.72 + 0.85, fZ * (d * 0.5 + 0.03));
     roofGroup.add(shutterL);
     const shutterR = new THREE.Mesh(new THREE.BoxGeometry(0.60, 1.55, 0.06), shutterMat);
-    shutterR.position.set(0.70, h * 0.72 + 0.85, -d * 0.5 - 0.03);
+    shutterR.position.set(0.70, h * 0.72 + 0.85, fZ * (d * 0.5 + 0.03));
     roofGroup.add(shutterR);
 
     // Mái hiên gập lượn sóng kẻ sọc cổ điển (Vintage Striped Awning)
+    // Đặt ở cao độ chuẩn Y = 3.05m ngay trên cửa đi, che nắng mưa cho lối vào
     const awningMat = new THREE.MeshStandardMaterial({ color: 0xa8322d, roughness: 0.8 });
     const awning = new THREE.Mesh(new THREE.BoxGeometry(balW + 0.6, 0.05, 1.4), awningMat);
-    awning.position.set(0, 3.2, -d * 0.5 - 0.7);
-    awning.rotation.x = -0.18;
+    awning.position.set(0, 3.05, fZ * (d * 0.5 + 0.7));
+    awning.rotation.x = fZ * (-0.18);
     roofGroup.add(awning);
 
     // Đèn lồng đỏ treo góc ban công
     const lanternMat = new THREE.MeshStandardMaterial({ color: 0xd62828, emissive: 0x550a0a });
     const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.10, 0.28, 8), lanternMat);
-    lantern.position.set(-balW * 0.5 + 0.2, h * 0.72 + 0.7, -d * 0.5 - balD + 0.2);
+    lantern.position.set(-balW * 0.5 + 0.2, h * 0.72 + 0.7, fZ * (d * 0.5 + balD - 0.2));
     roofGroup.add(lantern);
 
     return roofGroup;
@@ -1444,6 +1446,17 @@ getTheHucBridgeInfo(x, y, z) {
     frame.castShadow = true;
     group.add(frame);
 
+    // Xích sắt / tai móc treo biển cổ điển hai góc trên
+    const ironMat = this.materials.darkIron || new THREE.MeshStandardMaterial({ color: 0x1f2428, metalness: 0.85, roughness: 0.35 });
+    for (let s of [-1, 1]) {
+      const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.38, 8), ironMat);
+      hook.position.set(s * (w * 0.42), h * 0.5 + 0.19, 0);
+      group.add(hook);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 8, 12), ironMat);
+      ring.position.set(s * (w * 0.42), h * 0.5 + 0.38, 0);
+      group.add(ring);
+    }
+
     // Mặt biển vẽ tay có chữ (CanvasTexture)
     const tex = this._createShopSignboardTexture(title, subtitle, bgCol, textCol, borderCol);
     if (tex) {
@@ -1542,8 +1555,16 @@ getTheHucBridgeInfo(x, y, z) {
 
     const wallThick = 0.35;
     const doorW = 3.2; // Cửa rộng 3.2m thênh thang
-    const doorH = 3.2;
+    const doorH = 3.0; // Cao 3.0m
     const frontSideW = (w - doorW - wallThick * 2) / 2;
+
+    // Hướng mặt tiền: Dãy phía Nam đường tàu (z < 60) hướng ra +Z (phía đường ray);
+    // Dãy phía Bắc đường tàu (z > 60) hướng ra -Z (phía đường ray).
+    const facesPositiveZ = (z < 60);
+    const facingSign = facesPositiveZ ? 1 : -1;
+    const frontZ = facingSign * (d / 2);
+    const frontWallZ = facingSign * (d / 2 - wallThick / 2);
+    const backWallZ = -facingSign * (d / 2 - wallThick / 2);
 
     // 1. TƯỜNG BAO VÔI VÀNG CỔ KÍNH
     // Tường trái
@@ -1560,38 +1581,37 @@ getTheHucBridgeInfo(x, y, z) {
     shopGroup.add(rightWall);
     this._addBoxObstacle(x + w / 2 - wallThick / 2, z, wallThick + 0.05, d, 0, h + 2);
 
-    // Tường sau
+    // Tường sau (bức tường đặc kiên cố quay lưng lại đường phố)
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(w - wallThick * 2, h, wallThick), this.materials.yellowWall);
-    backWall.position.set(0, h / 2, d / 2 - wallThick / 2);
+    backWall.position.set(0, h / 2, backWallZ);
     backWall.castShadow = true;
     shopGroup.add(backWall);
-    this._addBoxObstacle(x, z + d / 2 - wallThick / 2, w - wallThick * 2, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x, z + backWallZ, w - wallThick * 2, wallThick + 0.05, 0, h + 2);
 
-    // Tường trước (hai cánh gà hai bên, chừa lối cửa 3.2m ở giữa)
+    // Tường trước (hai cánh gà hai bên, chừa lối cửa 3.2m ở giữa mặt tiền đón khách)
     const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, h, wallThick), this.materials.yellowWall);
-    frontLeft.position.set(-doorW / 2 - frontSideW / 2, h / 2, -d / 2 + wallThick / 2);
+    frontLeft.position.set(-doorW / 2 - frontSideW / 2, h / 2, frontWallZ);
     frontLeft.castShadow = true;
     shopGroup.add(frontLeft);
-    this._addBoxObstacle(x - doorW / 2 - frontSideW / 2, z - d / 2 + wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x - doorW / 2 - frontSideW / 2, z + frontWallZ, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
 
     const frontRight = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, h, wallThick), this.materials.yellowWall);
-    frontRight.position.set(doorW / 2 + frontSideW / 2, h / 2, -d / 2 + wallThick / 2);
+    frontRight.position.set(doorW / 2 + frontSideW / 2, h / 2, frontWallZ);
     frontRight.castShadow = true;
     shopGroup.add(frontRight);
-    this._addBoxObstacle(x + doorW / 2 + frontSideW / 2, z - d / 2 + wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x + doorW / 2 + frontSideW / 2, z + frontWallZ, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
 
     // Lanh-tô trên cửa
     const lintel = new THREE.Mesh(new THREE.BoxGeometry(doorW, h - doorH, wallThick), this.materials.yellowWall);
-    lintel.position.set(0, doorH + (h - doorH) / 2, -d / 2 + wallThick / 2);
+    lintel.position.set(0, doorH + (h - doorH) / 2, frontWallZ);
     shopGroup.add(lintel);
 
     // MÁI NHÀ TRUYỀN THỐNG HÀ NỘI KẾT HỢP CANVA AI VINTAGE:
-    // Mái ngói âm dương 2 chái, đầu hồi bít đốc, ban công gỗ Pháp cổ và mái hiên sọc đỏ
-    const traditionalRoof = this._createTraditionalHanoiRoof(w, d, h);
+    const traditionalRoof = this._createTraditionalHanoiRoof(w, d, h, facingSign);
     shopGroup.add(traditionalRoof);
 
-    // Cánh cửa gỗ mở tương tác phím E
-    this._createOpenableDoor(x, z - d / 2, 2.8, 3.0, signText, 0x3d271d);
+    // Cánh cửa gỗ mở tương tác phím E ngay trước lối vào mặt tiền
+    this._createOpenableDoor(x, z + frontZ, 2.8, 2.9, signText, 0x3d271d);
 
     // Sàn gạch bông bên trong
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w - wallThick * 2, d - wallThick * 2), this.materials.hanoiPavement);
@@ -1601,57 +1621,48 @@ getTheHucBridgeInfo(x, y, z) {
     shopGroup.add(floor);
     this.colliders.push(floor);
 
-    // Biển hiệu di sản phố cổ sơn son thiếp vàng (Hiển thị rõ ràng tên hiệu & ngành nghề kinh doanh)
+    // Biển hiệu di sản phố cổ sơn son thiếp vàng:
+    // Đặt ở mặt tiền ngay TRƯỚC CỬA, nâng cao lên Y = 4.05m trên lanh-tô cửa và trên mái hiên để người đi đường ngước nhìn thấy rõ
     const signMeta = this._getShopSignMeta(shopType, signText);
     const signBoard = this._createSignboard3D(
       w * 0.68, 1.05,
       signMeta.title, signMeta.subtitle,
       signMeta.bgCol, signMeta.textCol, signMeta.borderCol
     );
-    signBoard.position.set(0, 3.45, -d / 2 - 0.12);
+    signBoard.position.set(0, 4.05, frontZ + facingSign * 0.16);
     shopGroup.add(signBoard);
 
-    // Đối với các căn nhà dọc mặt Nam đường tàu (Hiệu Thuốc Bắc, May Đo), bổ sung biển hiệu mặt tường sau hướng ra đường tàu
-    if (shopType === 'thuoc_bac' || shopType === 'may_do') {
-      const railFacingSign = this._createSignboard3D(
-        w * 0.68, 1.05,
-        signMeta.title, signMeta.subtitle,
-        signMeta.bgCol, signMeta.textCol, signMeta.borderCol
-      );
-      railFacingSign.position.set(0, 3.45, d / 2 + 0.12);
-      shopGroup.add(railFacingSign);
-    }
-
     // 2. NỘI THẤT NGHỆ THUẬT TỪNG NGÀNH NGHỀ
-    this._populateShopInterior(shopGroup, x, z, w, d, shopType);
+    this._populateShopInterior(shopGroup, x, z, w, d, shopType, facingSign);
 
     return shopGroup;
   }
 
-  _populateShopInterior(shopGroup, x, z, w, d, shopType) {
+  _populateShopInterior(shopGroup, x, z, w, d, shopType, facingSign = -1) {
     const woodMat = this.materials.woodVarnish || this.materials.retroWood;
+    const backSign = facingSign >= 0 ? -1 : 1; // Hướng bức tường sau ngược với mặt tiền đón khách
 
     if (shopType === 'thuoc_bac') {
       // Tủ thuốc bắc 100 ngăn gỗ mun cao 2.5m dọc tường sau
       const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x24160e, roughness: 0.7 });
       const cabinet = new THREE.Mesh(new THREE.BoxGeometry(w - 2.4, 2.6, 0.8), cabinetMat);
-      cabinet.position.set(0, 1.3, d / 2 - 0.7);
+      cabinet.position.set(0, 1.3, backSign * (d / 2 - 0.7));
       cabinet.castShadow = true;
       shopGroup.add(cabinet);
-      this._addBoxObstacle(x, z + d / 2 - 0.7, w - 2.0, 0.9, 0, 2.8);
+      this._addBoxObstacle(x, z + backSign * (d / 2 - 0.7), w - 2.0, 0.9, 0, 2.8);
 
       // Bàn quầy bốc thuốc và cân tiểu ly
       const desk = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.05, 1.1), woodMat);
-      desk.position.set(0, 0.525, 0.8);
+      desk.position.set(0, 0.525, backSign * 0.8);
       desk.castShadow = true;
       shopGroup.add(desk);
-      this._addBoxObstacle(x, z + 0.8, 3.8, 1.2, 0, 1.2);
+      this._addBoxObstacle(x, z + backSign * 0.8, 3.8, 1.2, 0, 1.2);
 
       // Thúng thuốc bắc phơi khô bên trái
       const basketMat = new THREE.MeshStandardMaterial({ color: 0x8f734b, roughness: 0.9 });
       for (let i = 0; i < 3; i++) {
         const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.30, 0.25, 12), basketMat);
-        basket.position.set(-w / 2 + 1.2, 0.15, -1.5 + i * 1.2);
+        basket.position.set(-w / 2 + 1.2, 0.15, backSign * (-1.5 + i * 1.2));
         shopGroup.add(basket);
       }
     } else if (shopType === 'may_do') {
@@ -1676,42 +1687,42 @@ getTheHucBridgeInfo(x, y, z) {
 
       // Kệ súc vải gấm tơ tằm dọc tường sau
       const fabricRack = new THREE.Mesh(new THREE.BoxGeometry(w - 3.0, 2.2, 0.7), woodMat);
-      fabricRack.position.set(0, 1.1, d / 2 - 0.6);
+      fabricRack.position.set(0, 1.1, backSign * (d / 2 - 0.6));
       shopGroup.add(fabricRack);
-      this._addBoxObstacle(x, z + d / 2 - 0.6, w - 2.6, 0.8, 0, 2.4);
+      this._addBoxObstacle(x, z + backSign * (d / 2 - 0.6), w - 2.6, 0.8, 0, 2.4);
     } else if (shopType === 'pho_gia_truyen') {
       // Quầy nấu phở và nồi gang ninh xương bốc khói dọc tường sau
       const phoCounter = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.1, 1.2), woodMat);
-      phoCounter.position.set(0, 0.55, d / 2 - 1.0);
+      phoCounter.position.set(0, 0.55, backSign * (d / 2 - 1.0));
       phoCounter.castShadow = true;
       shopGroup.add(phoCounter);
-      this._addBoxObstacle(x, z + d / 2 - 1.0, 4.8, 1.3, 0, 1.3);
+      this._addBoxObstacle(x, z + backSign * (d / 2 - 1.0), 4.8, 1.3, 0, 1.3);
 
       // Nồi gang ninh xương to
       const potMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8 });
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.38, 0.65, 16), potMat);
-      pot.position.set(-1.0, 1.45, d / 2 - 1.0);
+      pot.position.set(-1.0, 1.45, backSign * (d / 2 - 1.0));
       shopGroup.add(pot);
 
       // 2 bộ bàn ăn gỗ mộc thấp bên trái và bên phải
       for (let s of [-1, 1]) {
         const table = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.75, 1.0), woodMat);
-        table.position.set(s * (w / 2 - 2.2), 0.375, -0.5);
+        table.position.set(s * (w / 2 - 2.2), 0.375, backSign * 0.5);
         shopGroup.add(table);
-        this._addBoxObstacle(x + s * (w / 2 - 2.2), z - 0.5, 2.0, 1.2, 0, 0.9);
+        this._addBoxObstacle(x + s * (w / 2 - 2.2), z + backSign * 0.5, 2.0, 1.2, 0, 0.9);
       }
     } else if (shopType === 'bia_hoi') {
       // Quầy rót bia hơi và 2 bom bia nhôm vòi đồng dọc tường sau
       const bar = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.05, 1.2), woodMat);
-      bar.position.set(0, 0.525, d / 2 - 1.0);
+      bar.position.set(0, 0.525, backSign * (d / 2 - 1.0));
       shopGroup.add(bar);
-      this._addBoxObstacle(x, z + d / 2 - 1.0, 4.5, 1.3, 0, 1.3);
+      this._addBoxObstacle(x, z + backSign * (d / 2 - 1.0), 4.5, 1.3, 0, 1.3);
 
       // 2 Bom bia hơi Hà Nội bằng nhôm
       const kegMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
       for (let k of [-0.8, 0.8]) {
         const keg = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.75, 14), kegMat);
-        keg.position.set(k, 1.45, d / 2 - 1.0);
+        keg.position.set(k, 1.45, backSign * (d / 2 - 1.0));
         shopGroup.add(keg);
       }
 
@@ -1729,32 +1740,33 @@ getTheHucBridgeInfo(x, y, z) {
     } else if (shopType === 'sua_dong_ho') {
       // Bàn kỹ thuật sửa đồng hồ với đèn bàn kính lúp
       const bench = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.95, 1.2), woodMat);
-      bench.position.set(-w / 2 + 2.0, 0.475, 0.5);
+      bench.position.set(-w / 2 + 2.0, 0.475, backSign * 0.5);
       shopGroup.add(bench);
-      this._addBoxObstacle(x - w / 2 + 2.0, z + 0.5, 2.8, 1.4, 0, 1.2);
+      this._addBoxObstacle(x - w / 2 + 2.0, z + backSign * 0.5, 2.8, 1.4, 0, 1.2);
 
       // Tủ kính trưng bày đồng hồ Poljot Liên Xô dọc tường sau
       const showcaseMat = new THREE.MeshStandardMaterial({ color: 0x1f2428, metalness: 0.6 });
       const showcase = new THREE.Mesh(new THREE.BoxGeometry(w - 3.2, 1.8, 0.7), showcaseMat);
-      showcase.position.set(0, 0.9, d / 2 - 0.6);
+      showcase.position.set(0, 0.9, backSign * (d / 2 - 0.6));
       shopGroup.add(showcase);
-      this._addBoxObstacle(x, z + d / 2 - 0.6, w - 2.8, 0.8, 0, 2.0);
+      this._addBoxObstacle(x, z + backSign * (d / 2 - 0.6), w - 2.8, 0.8, 0, 2.0);
     } else if (shopType === 'cat_toc') {
       // Ghế xoay cắt tóc da simili đỏ ở giữa phòng
       const chairMat = new THREE.MeshStandardMaterial({ color: 0x9e2424, roughness: 0.5 });
       const chairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8 }));
-      chairBase.position.set(0, 0.06, 0.4);
+      chairBase.position.set(0, 0.06, 0);
       const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.15, 0.6), chairMat);
-      chairSeat.position.set(0, 0.55, 0.4);
+      chairSeat.position.set(0, 0.55, 0);
       const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.12), chairMat);
-      chairBack.position.set(0, 0.95, 0.65);
+      chairBack.position.set(0, 0.95, backSign * 0.25);
       shopGroup.add(chairBase, chairSeat, chairBack);
-      this._addBoxObstacle(x, z + 0.4, 1.2, 1.2, 0, 1.4);
+      this._addBoxObstacle(x, z, 1.2, 1.2, 0, 1.4);
 
       // Gương soi lớn gắn tường sau
       const mirrorMat = new THREE.MeshStandardMaterial({ color: 0xd8e8f0, roughness: 0.1, metalness: 0.9 });
       const mirror = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.8, 0.08), mirrorMat);
-      mirror.position.set(0, 1.6, d / 2 - 0.2);
+      mirror.position.set(0, 1.6, backSign * (d / 2 - 0.2));
+      shopGroup.add(mirror);
       shopGroup.add(mirror);
 
       // Bàn để đồ cắt tóc (kéo, dao cạo, bình xịt)
@@ -3926,61 +3938,53 @@ getTheHucBridgeInfo(x, y, z) {
     shopGroup.add(rightWall);
     this._addBoxObstacle(x + w / 2 - wallThick / 2, z, wallThick + 0.05, d, 0, h + 2);
 
-    // Tường sau (z = d/2 - wallThick/2 = 7.825)
+    // Tường sau (bức tường đặc kiên cố quay vào trong ngõ ở z = -d/2 + wallThick/2 = -7.825)
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(w - wallThick * 2, h, wallThick), this.materials.yellowWall);
-    backWall.position.set(0, h / 2, d / 2 - wallThick / 2);
+    backWall.position.set(0, h / 2, -d / 2 + wallThick / 2);
     backWall.castShadow = true;
     shopGroup.add(backWall);
-    this._addBoxObstacle(x, z + d / 2 - wallThick / 2, w - wallThick * 2, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x, z - d / 2 + wallThick / 2, w - wallThick * 2, wallThick + 0.05, 0, h + 2);
 
-    // Tường trước (z = -d/2 + wallThick/2 = -7.825) - Chừa khoảng cửa vào ở giữa rộng 2.8m, cao 3.0m
+    // Tường trước (mặt tiền đón khách hướng ra đường tàu z = d/2 - wallThick/2 = +7.825)
+    // Chừa khoảng cửa vào ở giữa rộng 2.8m, cao 3.0m
     const doorW = 2.8;
     const doorH = 3.0;
     const frontSideW = (w - doorW - wallThick * 2) / 2; // ~4.25m mỗi bên
 
     const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, h, wallThick), this.materials.yellowWall);
-    frontLeft.position.set(-doorW / 2 - frontSideW / 2, h / 2, -d / 2 + wallThick / 2);
+    frontLeft.position.set(-doorW / 2 - frontSideW / 2, h / 2, d / 2 - wallThick / 2);
     frontLeft.castShadow = true;
     shopGroup.add(frontLeft);
-    this._addBoxObstacle(x - doorW / 2 - frontSideW / 2, z - d / 2 + wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x - doorW / 2 - frontSideW / 2, z + d / 2 - wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
 
     const frontRight = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, h, wallThick), this.materials.yellowWall);
-    frontRight.position.set(doorW / 2 + frontSideW / 2, h / 2, -d / 2 + wallThick / 2);
+    frontRight.position.set(doorW / 2 + frontSideW / 2, h / 2, d / 2 - wallThick / 2);
     frontRight.castShadow = true;
     shopGroup.add(frontRight);
-    this._addBoxObstacle(x + doorW / 2 + frontSideW / 2, z - d / 2 + wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x + doorW / 2 + frontSideW / 2, z + d / 2 - wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
 
     // Lanh-tô trên cửa vào
     const lintel = new THREE.Mesh(new THREE.BoxGeometry(doorW, h - doorH, wallThick), this.materials.yellowWall);
-    lintel.position.set(0, doorH + (h - doorH) / 2, -d / 2 + wallThick / 2);
+    lintel.position.set(0, doorH + (h - doorH) / 2, d / 2 - wallThick / 2);
     shopGroup.add(lintel);
 
-    // MÁI NHÀ TRUYỀN THỐNG HÀ NỘI KẾT HỢP CANVA AI VINTAGE:
-    const roof = this._createTraditionalHanoiRoof(w, d, h);
+    // MÁI NHÀ TRUYỀN THỐNG HÀ NỘI KẾT HỢP CANVA AI VINTAGE (Mặt tiền hướng ra đường tàu facing = 1):
+    const roof = this._createTraditionalHanoiRoof(w, d, h, 1);
     shopGroup.add(roof);
 
-    // Biển hiệu tiệm cà phê chữ thư pháp vintage (Ghi rõ bán cà phê trứng, trà sen, hạt hướng dương)
+    // Biển hiệu tiệm cà phê chữ thư pháp vintage (Ghi rõ bán cà phê trứng, trà sen, hạt hướng dương):
+    // Đặt ở mặt tiền ngay TRƯỚC CỬA CHÍNH, nâng cao lên Y = 4.05m trên lanh-tô cửa và trên mái hiên đón khách
     const signBoard = this._createSignboard3D(
       4.2, 1.05,
       'CÀ PHÊ TRỨNG & TRÀ SEN TÂY HỒ',
       'Cà Phê Trứng Nóng • Trà Sen Ướp Gạo • Hướng Dương Rang Tay',
       '#3b2014', '#fce292', '#d4af37'
     );
-    signBoard.position.set(0, 3.45, -d / 2 - 0.12);
+    signBoard.position.set(0, 4.05, d / 2 + 0.16);
     shopGroup.add(signBoard);
 
-    // Biển hiệu mặt sau hướng ra phố đường tàu Z = 60
-    const railSign = this._createSignboard3D(
-      4.2, 1.05,
-      'CÀ PHÊ TRỨNG & TRÀ SEN TÂY HỒ',
-      'Cà Phê Trứng Nóng • Trà Sen Ướp Gạo • Hướng Dương Rang Tay',
-      '#3b2014', '#fce292', '#d4af37'
-    );
-    railSign.position.set(0, 3.45, d / 2 + 0.12);
-    shopGroup.add(railSign);
-
-    // Cánh cửa mở tương tác tại lối vào
-    this._createOpenableDoor(x, z - d / 2, 2.6, 2.8, 'Tiệm Cà Phê Trứng & Trà Sen Tây Hồ', 0x3d2316);
+    // Cánh cửa mở tương tác tại lối vào mặt tiền đường tàu
+    this._createOpenableDoor(x, z + d / 2, 2.6, 2.8, 'Tiệm Cà Phê Trứng & Trà Sen Tây Hồ', 0x3d2316);
 
     // 2. NỘI THẤT RỘNG RÃI & PHONG PHÚ ĐẲNG CẤP
     // Sàn gạch bông hoa chanh cổ điển bên trong (Rộng 11.3m x 15.3m)
@@ -3996,9 +4000,9 @@ getTheHucBridgeInfo(x, y, z) {
     indochineCarpet.position.set(0, 0.05, -0.5);
     shopGroup.add(indochineCarpet);
 
-    // QUẦY BAR TRUNG TÂM GỖ LIM DÀI 5.2M VIỀN ĐỒNG THAU (Texture AI Wood Varnish 140KB)
+    // QUẦY BAR TRUNG TÂM GỖ LIM DÀI 5.2M VIỀN ĐỒNG THAU (Tại z = -4.2 phía tường sau)
     const barGroup = new THREE.Group();
-    barGroup.position.set(0, 0, 3.2);
+    barGroup.position.set(0, 0, -4.2);
 
     const barCounter = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.05, 1.1), this.materials.woodVarnish || this.materials.retroWood);
     barCounter.position.y = 0.525;
@@ -4032,11 +4036,11 @@ getTheHucBridgeInfo(x, y, z) {
     });
 
     shopGroup.add(barGroup);
-    this._addBoxObstacle(x, z + 3.2, 5.4, 1.3, 0, 1.5); // AABB Obstacle quầy bar
+    this._addBoxObstacle(x, z - 4.2, 5.4, 1.3, 0, 1.5); // AABB Obstacle quầy bar
 
-    // KỆ TỦ TRƯNG BÀY TRÀ & CÀ PHÊ KỊCH TRẦN (Sau lưng quầy bar, cao 3.8m, dài 5.4m)
+    // KỆ TỦ TRƯNG BÀY TRÀ & CÀ PHÊ KỊCH TRẦN (Sau lưng quầy bar tại tường sau, cao 3.8m, dài 5.4m)
     const shelfGroup = new THREE.Group();
-    shelfGroup.position.set(0, 0, d / 2 - wallThick - 0.25);
+    shelfGroup.position.set(0, 0, -d / 2 + wallThick + 0.25);
 
     const shelfFrame = new THREE.Mesh(new THREE.BoxGeometry(5.4, 3.8, 0.45), this.materials.retroWood);
     shelfFrame.position.y = 1.9;
@@ -4052,11 +4056,11 @@ getTheHucBridgeInfo(x, y, z) {
       }
     }
     shopGroup.add(shelfGroup);
-    this._addBoxObstacle(x, z + d / 2 - wallThick - 0.25, 5.5, 0.6, 0, 4.2);
+    this._addBoxObstacle(x, z - d / 2 + wallThick + 0.25, 5.5, 0.6, 0, 4.2);
 
-    // MÁY HÁT ĐĨA THAN LOA KÈN ĐỒNG CỔ (GRAMOPHONE) ĐẶT TRÊN ĐÔN GỖ
+    // MÁY HÁT ĐĨA THAN LOA KÈN ĐỒNG CỔ (GRAMOPHONE) ĐẶT TRÊN ĐÔN GỖ (Dọc tường trái)
     const gramoGroup = new THREE.Group();
-    gramoGroup.position.set(-w / 2 + wallThick + 1.2, 0, 5.2);
+    gramoGroup.position.set(-w / 2 + wallThick + 1.2, 0, 0.8);
 
     const standPedestal = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.7), this.materials.retroWood);
     standPedestal.position.y = 0.4;
@@ -4077,11 +4081,11 @@ getTheHucBridgeInfo(x, y, z) {
     gramoGroup.add(horn);
 
     shopGroup.add(gramoGroup);
-    this._addBoxObstacle(x - w / 2 + wallThick + 1.2, z + 5.2, 1.0, 1.0, 0, 2.0);
+    this._addBoxObstacle(x - w / 2 + wallThick + 1.2, z + 0.8, 1.0, 1.0, 0, 2.0);
 
     // Điểm tương tác bật máy hát đĩa than cổ (Audio Gramophone)
     this.interactables.push({
-      position: new THREE.Vector3(x - w / 2 + wallThick + 1.2, 0.5, z + 5.2),
+      position: new THREE.Vector3(x - w / 2 + wallThick + 1.2, 0.5, z + 0.8),
       radius: 2.2,
       promptText: 'Bật Máy Hát Đĩa Than Cổ (Nhạc Hoài Niệm)',
       actionKey: 'E',
@@ -4100,9 +4104,9 @@ getTheHucBridgeInfo(x, y, z) {
       }
     });
 
-    // ĐỒNG HỒ QUẢ LẮC ĐỨNG BẰNG GỖ SỒI
+    // ĐỒNG HỒ QUẢ LẮC ĐỨNG BẰNG GỖ SỒI (Dọc tường phải)
     const clockGroup = new THREE.Group();
-    clockGroup.position.set(w / 2 - wallThick - 0.8, 0, 6.2);
+    clockGroup.position.set(w / 2 - wallThick - 0.8, 0, 0.8);
 
     const clockBody = new THREE.Mesh(new THREE.BoxGeometry(0.65, 2.4, 0.45), this.materials.woodVarnish || this.materials.retroWood);
     clockBody.position.y = 1.2;
@@ -4113,11 +4117,11 @@ getTheHucBridgeInfo(x, y, z) {
     clockGroup.add(pendulum);
 
     shopGroup.add(clockGroup);
-    this._addBoxObstacle(x + w / 2 - wallThick - 0.8, z + 6.2, 0.8, 0.6, 0, 2.6);
+    this._addBoxObstacle(x + w / 2 - wallThick - 0.8, z + 0.8, 0.8, 0.6, 0, 2.6);
 
     // Điểm tương tác lắng nghe nhịp đồng hồ quả lắc
     this.interactables.push({
-      position: new THREE.Vector3(x + w / 2 - wallThick - 0.8, 0.5, z + 6.2),
+      position: new THREE.Vector3(x + w / 2 - wallThick - 0.8, 0.5, z + 0.8),
       radius: 2.2,
       promptText: 'Lắng Nghe Nhịp Đập Thời Gian Quả Lắc Gỗ Sồi',
       actionKey: 'E',
@@ -4134,28 +4138,28 @@ getTheHucBridgeInfo(x, y, z) {
     // Bộ sofa 1 (Nỉ nhung xanh rêu - Phía trước bên trái)
     const mossVelvetMat = new THREE.MeshStandardMaterial({ color: 0x3d5a3e, roughness: 0.8 });
     const sofa1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.75, 0.85), mossVelvetMat);
-    sofa1.position.set(-3.5, 0.375, -4.5);
+    sofa1.position.set(-3.5, 0.375, 3.8);
     shopGroup.add(sofa1);
     const tableS1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.65), this.materials.retroWood);
-    tableS1.position.set(-3.5, 0.21, -3.2);
+    tableS1.position.set(-3.5, 0.21, 2.5);
     shopGroup.add(tableS1);
-    this._addBoxObstacle(x - 3.5, z - 3.8, 2.4, 2.0, 0, 1.0);
+    this._addBoxObstacle(x - 3.5, z + 3.1, 2.4, 2.0, 0, 1.0);
 
     // Bộ sofa 2 (Da nâu cổ điển - Phía trước bên phải)
     const brownLeatherMat = new THREE.MeshStandardMaterial({ color: 0x54321d, roughness: 0.65 });
     const sofa2 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.75, 0.85), brownLeatherMat);
-    sofa2.position.set(3.5, 0.375, -4.5);
+    sofa2.position.set(3.5, 0.375, 3.8);
     shopGroup.add(sofa2);
     const tableS2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 0.65), this.materials.retroWood);
-    tableS2.position.set(3.5, 0.21, -3.2);
+    tableS2.position.set(3.5, 0.21, 2.5);
     shopGroup.add(tableS2);
-    this._addBoxObstacle(x + 3.5, z - 3.8, 2.4, 2.0, 0, 1.0);
+    this._addBoxObstacle(x + 3.5, z + 3.1, 2.4, 2.0, 0, 1.0);
 
     // Bộ sofa 3 (Góc tường giữa bên trái)
     const sofa3 = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.75, 2.0), brownLeatherMat);
-    sofa3.position.set(-w / 2 + wallThick + 0.6, 0.375, 0.2);
+    sofa3.position.set(-w / 2 + wallThick + 0.6, 0.375, -1.8);
     shopGroup.add(sofa3);
-    this._addBoxObstacle(x - w / 2 + wallThick + 0.6, z + 0.2, 1.2, 2.2, 0, 1.0);
+    this._addBoxObstacle(x - w / 2 + wallThick + 0.6, z - 1.8, 1.2, 2.2, 0, 1.0);
 
     // 4 BỘ BÀN TRÒN GỖ GỤ KHẢM ỐC XÀ CỪ KÈM ĐÔN MÂY TRE ĐAN
     const roundTables = [
@@ -4198,38 +4202,38 @@ getTheHucBridgeInfo(x, y, z) {
     shopGroup.add(bookShelf);
     this._addBoxObstacle(x + w / 2 - wallThick - 0.25, z + 1.8, 0.6, 2.8, 0, 3.5);
 
-    // CẦU THANG GỖ DẪN LÊN GÁC LỬNG (MEZZANINE) DỌC TƯỜNG TRÁI
+    // CẦU THANG GỖ DẪN LÊN GÁC LỬNG (MEZZANINE) DỌC TƯỜNG TRÁI PHÍA SAU
     const stairX = -w / 2 + wallThick + 0.6;
     for (let st = 0; st < 9; st++) {
       const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.18, 0.35), this.materials.retroWood);
-      stepMesh.position.set(stairX, (st + 1) * 0.24, 1.8 + st * 0.35);
+      stepMesh.position.set(stairX, (st + 1) * 0.24, -1.8 - st * 0.35);
       shopGroup.add(stepMesh);
       this.colliders.push(stepMesh);
     }
     // Sàn gác lửng
     const mezzanine = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 3.6), this.materials.retroWood);
-    mezzanine.position.set(-w / 2 + wallThick + 1.6, 2.4, 5.8);
+    mezzanine.position.set(-w / 2 + wallThick + 1.6, 2.4, -5.2);
     shopGroup.add(mezzanine);
     this.colliders.push(mezzanine);
-    this._addBoxObstacle(x - w / 2 + wallThick + 1.6, z + 5.8, 3.4, 3.8, 0, 2.3);
+    this._addBoxObstacle(x - w / 2 + wallThick + 1.6, z - 5.2, 3.4, 3.8, 0, 2.3);
 
     // ĐÈN CHÙM ĐỒNG THẢ TRẦN & 8 ĐÈN RỌI SPOTLIGHT VÀNG ẤM
     const chandelier = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.2, 0.4, 8), brassMat);
-    chandelier.position.set(0, h - 0.3, -0.5);
+    chandelier.position.set(0, h - 0.3, 0.0);
     shopGroup.add(chandelier);
 
     const mainLight = new THREE.PointLight(0xffd580, 2.4, 9);
-    mainLight.position.set(0, h - 0.5, -0.5);
+    mainLight.position.set(0, h - 0.5, 0.0);
     shopGroup.add(mainLight);
 
-    // 3. NPC BÁC BA CÀ PHÊ (Đứng sau quầy bar tiếp đón khách)
-    const hostNpc = this._createCitizenNPC(0, 4.4, 0x5a3923, 'kính lão');
+    // 3. NPC BÁC BA CÀ PHÊ (Đứng sau quầy bar tại tường sau tiếp đón khách)
+    const hostNpc = this._createCitizenNPC(0, -5.6, 0x5a3923, 'kính lão');
     shopGroup.add(hostNpc);
-    this._addNpcCollider(x, z + 4.4, 0.65);
+    this._addNpcCollider(x, z - 5.6, 0.65);
 
     // Điểm tương tác nói chuyện với Bác Ba Cà Phê
     this.interactables.push({
-      position: new THREE.Vector3(x, 0.5, z + 2.0),
+      position: new THREE.Vector3(x, 0.5, z - 2.8),
       radius: 2.8,
       promptText: 'Thưởng thức Cà Phê Trứng & Trò Chuyện',
       actionKey: 'E',
@@ -4293,61 +4297,53 @@ getTheHucBridgeInfo(x, y, z) {
     storeGroup.add(rightWall);
     this._addBoxObstacle(x + w / 2 - wallThick / 2, z, wallThick + 0.05, d, 0, h + 2);
 
-    // Tường sau
+    // Tường sau (z = -d/2 + wallThick/2 = -7.825)
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(w - wallThick * 2, h, wallThick), this.materials.yellowWall);
-    backWall.position.set(0, h / 2, d / 2 - wallThick / 2);
+    backWall.position.set(0, h / 2, -d / 2 + wallThick / 2);
     backWall.castShadow = true;
     storeGroup.add(backWall);
-    this._addBoxObstacle(x, z + d / 2 - wallThick / 2, w - wallThick * 2, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x, z - d / 2 + wallThick / 2, w - wallThick * 2, wallThick + 0.05, 0, h + 2);
 
-    // Tường trước có cửa 2.8m ở giữa
+    // Tường trước (mặt tiền đón khách hướng ra đường tàu z = d/2 - wallThick/2 = +7.825)
+    // Chừa khoảng cửa vào ở giữa rộng 2.8m, cao 3.0m
     const doorW = 2.8;
     const doorH = 3.0;
     const frontSideW = (w - doorW - wallThick * 2) / 2;
 
     const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, h, wallThick), this.materials.yellowWall);
-    frontLeft.position.set(-doorW / 2 - frontSideW / 2, h / 2, -d / 2 + wallThick / 2);
+    frontLeft.position.set(-doorW / 2 - frontSideW / 2, h / 2, d / 2 - wallThick / 2);
     frontLeft.castShadow = true;
     storeGroup.add(frontLeft);
-    this._addBoxObstacle(x - doorW / 2 - frontSideW / 2, z - d / 2 + wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x - doorW / 2 - frontSideW / 2, z + d / 2 - wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
 
     const frontRight = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, h, wallThick), this.materials.yellowWall);
-    frontRight.position.set(doorW / 2 + frontSideW / 2, h / 2, -d / 2 + wallThick / 2);
+    frontRight.position.set(doorW / 2 + frontSideW / 2, h / 2, d / 2 - wallThick / 2);
     frontRight.castShadow = true;
     storeGroup.add(frontRight);
-    this._addBoxObstacle(x + doorW / 2 + frontSideW / 2, z - d / 2 + wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
+    this._addBoxObstacle(x + doorW / 2 + frontSideW / 2, z + d / 2 - wallThick / 2, frontSideW + 0.05, wallThick + 0.05, 0, h + 2);
 
     // Lanh-tô trên cửa
     const lintel = new THREE.Mesh(new THREE.BoxGeometry(doorW, h - doorH, wallThick), this.materials.yellowWall);
-    lintel.position.set(0, doorH + (h - doorH) / 2, -d / 2 + wallThick / 2);
+    lintel.position.set(0, doorH + (h - doorH) / 2, d / 2 - wallThick / 2);
     storeGroup.add(lintel);
 
-    // MÁI NHÀ TRUYỀN THỐNG HÀ NỘI KẾT HỢP CANVA AI VINTAGE:
-    const roof = this._createTraditionalHanoiRoof(w, d, h);
+    // MÁI NHÀ TRUYỀN THỐNG HÀ NỘI KẾT HỢP CANVA AI VINTAGE (Mặt tiền hướng ra đường tàu facing = 1):
+    const roof = this._createTraditionalHanoiRoof(w, d, h, 1);
     storeGroup.add(roof);
 
-    // Biển hiệu đỏ chữ vàng Bách Hóa Mậu Dịch (Ghi rõ phân phối lương thực, tem phiếu, nhu yếu phẩm)
+    // Biển hiệu đỏ chữ vàng Bách Hóa Mậu Dịch (Ghi rõ phân phối lương thực, tem phiếu, nhu yếu phẩm):
+    // Đặt ở mặt tiền ngay TRƯỚC CỬA CHÍNH, nâng cao lên Y = 4.05m trên lanh-tô cửa và trên mái hiên đón khách
     const signBoard = this._createSignboard3D(
       4.4, 1.05,
       'BÁCH HÓA MẬU DỊCH SỐ 18',
       'Phân Phối Lương Thực • Tem Phiếu • Đồ Gia Dụng • Dầu Hỏa',
       '#991b1b', '#fde047', '#facc15'
     );
-    signBoard.position.set(0, 3.45, -d / 2 - 0.12);
+    signBoard.position.set(0, 4.05, d / 2 + 0.16);
     storeGroup.add(signBoard);
 
-    // Biển hiệu mặt sau hướng ra phố đường tàu Z = 60
-    const railSign = this._createSignboard3D(
-      4.4, 1.05,
-      'BÁCH HÓA MẬU DỊCH SỐ 18',
-      'Phân Phối Lương Thực • Tem Phiếu • Đồ Gia Dụng • Dầu Hỏa',
-      '#991b1b', '#fde047', '#facc15'
-    );
-    railSign.position.set(0, 3.45, d / 2 + 0.12);
-    storeGroup.add(railSign);
-
-    // Cánh cửa mở tương tác
-    this._createOpenableDoor(x, z - d / 2, 2.6, 2.8, 'Cửa Hàng Bách Hóa Mậu Dịch Số 18', 0x2e1a12);
+    // Cánh cửa mở tương tác tại lối vào mặt tiền đường tàu
+    this._createOpenableDoor(x, z + d / 2, 2.6, 2.8, 'Cửa Hàng Bách Hóa Mậu Dịch Số 18', 0x2e1a12);
 
     // 2. NỘI THẤT RỘNG THÊNH THANG 11.3M X 15.3M THỜI BAO CẤP
     const floorTile = new THREE.Mesh(new THREE.PlaneGeometry(w - wallThick * 2, d - wallThick * 2), this.materials.hanoiPavement);
@@ -4392,40 +4388,40 @@ getTheHucBridgeInfo(x, y, z) {
       this._addBoxObstacle(x + ax, z - 0.6, 1.0, 7.0, 0, 2.8); // Obstacle từng dãy kệ (chừa hành lang rộng thênh thang 2.4m)
     });
 
-    // BÀN QUẦY THU NGÂN PHÂN PHỐI MẬU DỊCH VIÊN (Ngang phòng tại z = 4.8)
+    // BÀN QUẦY THU NGÂN PHÂN PHỐI MẬU DỊCH VIÊN (Ngang phòng tại z = -4.8 phía tường sau)
     const counterDesk = new THREE.Mesh(new THREE.BoxGeometry(5.8, 1.05, 1.2), this.materials.woodVarnish || this.materials.retroWood);
-    counterDesk.position.set(0, 0.525, 4.8);
+    counterDesk.position.set(0, 0.525, -4.8);
     counterDesk.castShadow = true;
     storeGroup.add(counterDesk);
-    this._addBoxObstacle(x, z + 4.8, 6.0, 1.3, 0, 1.5);
+    this._addBoxObstacle(x, z - 4.8, 6.0, 1.3, 0, 1.5);
 
     // Chiếc cân đĩa đồng cổ có bộ quả cân sắt
     const brassScaleMat = new THREE.MeshStandardMaterial({ color: 0xc49a45, metalness: 0.85, roughness: 0.25 });
     const scaleBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.08, 12), brassScaleMat);
-    scaleBase.position.set(-1.2, 1.09, 4.8);
+    scaleBase.position.set(-1.2, 1.09, -4.8);
     storeGroup.add(scaleBase);
     const scalePole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.38, 8), brassScaleMat);
-    scalePole.position.set(-1.2, 1.28, 4.8);
+    scalePole.position.set(-1.2, 1.28, -4.8);
     storeGroup.add(scalePole);
 
     // Bàn tính gảy bằng gỗ kêu lách cách
     const abacus = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.06, 0.28), this.materials.retroWood);
-    abacus.position.set(-0.3, 1.08, 4.8);
+    abacus.position.set(-0.3, 1.08, -4.8);
     storeGroup.add(abacus);
 
     // ĐÀI RADIO CASSETTE LIÊN XÔ VEF-206
     const radioVef = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 0.22), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.4, roughness: 0.5 }));
-    radioVef.position.set(1.4, 1.21, 4.8);
+    radioVef.position.set(1.4, 1.21, -4.8);
     storeGroup.add(radioVef);
 
     // QUẠT TAI VOI LIÊN XÔ CÁNH CAO SU DẺO XANH NGỌC
     const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.25, 12), new THREE.MeshStandardMaterial({ color: 0x4a7c6d, roughness: 0.4 }));
-    fanBase.position.set(2.2, 1.18, 4.8);
+    fanBase.position.set(2.2, 1.18, -4.8);
     storeGroup.add(fanBase);
 
-    // XE ĐẠP THỐNG NHẤT KHUNG NAM MÀU XANH BỘ ĐỘI DỰNG GÓC PHÒNG DANH DỰ
+    // XE ĐẠP THỐNG NHẤT KHUNG NAM MÀU XANH BỘ ĐỘI DỰNG GÓC PHÒNG DANH DỰ (Gần lối vào)
     const bikeGroup = new THREE.Group();
-    bikeGroup.position.set(-w / 2 + wallThick + 1.2, 0, -4.5);
+    bikeGroup.position.set(-w / 2 + wallThick + 1.2, 0, 3.2);
     bikeGroup.rotation.y = 0.4;
     const armyGreenMat = new THREE.MeshStandardMaterial({ color: 0x2e4a2d, roughness: 0.55, metalness: 0.3 });
     const bikeFrame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.05), armyGreenMat);
@@ -4442,11 +4438,11 @@ getTheHucBridgeInfo(x, y, z) {
     bikeGroup.add(bikeBell);
 
     storeGroup.add(bikeGroup);
-    this._addBoxObstacle(x - w / 2 + wallThick + 1.2, z - 4.5, 1.8, 1.0, 0, 1.2);
+    this._addBoxObstacle(x - w / 2 + wallThick + 1.2, z + 3.2, 1.8, 1.0, 0, 1.2);
 
     // Điểm tương tác rung chuông xe đạp Thống Nhất (Audio Bicycle Bell)
     this.interactables.push({
-      position: new THREE.Vector3(x - w / 2 + wallThick + 1.2, 0.5, z - 4.5),
+      position: new THREE.Vector3(x - w / 2 + wallThick + 1.2, 0.5, z + 3.2),
       radius: 2.2,
       promptText: 'Rung Chuông Xe Đạp Thống Nhất Kính Coong',
       actionKey: 'E',
@@ -4459,10 +4455,10 @@ getTheHucBridgeInfo(x, y, z) {
       }
     });
 
-    // BÍCH HỌA & TRANH CỔ ĐỘNG THỜI BAO CẤP TRÊN TƯỜNG (Texture AI 300KB)
+    // BÍCH HỌA & TRANH CỔ ĐỘNG THỜI BAO CẤP TRÊN TƯỜNG SAU (Texture AI 300KB)
     const posterMat = this.materials.sovietPoster || new THREE.MeshStandardMaterial({ color: 0xb52b27, roughness: 0.7 });
     const propagandaPoster = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.04), posterMat);
-    propagandaPoster.position.set(0, 2.6, d / 2 - wallThick - 0.03);
+    propagandaPoster.position.set(0, 2.6, -d / 2 + wallThick + 0.03);
     storeGroup.add(propagandaPoster);
 
     // ĐÈN TUÝP HUỲNH QUANG DÂY XÍCH & BÓNG SỢI ĐỐT VÀNG ẤM
@@ -4475,14 +4471,14 @@ getTheHucBridgeInfo(x, y, z) {
     storePointLight.position.set(0, h - 0.5, -0.6);
     storeGroup.add(storePointLight);
 
-    // 3. NPC CÔ MẬU DỊCH VIÊN (Đứng sau bàn quầy)
-    const shopkeeper = this._createCitizenNPC(0, 5.8, 0x1e4b6e, 'áo sơ mi hoa');
+    // 3. NPC CÔ MẬU DỊCH VIÊN (Đứng sau bàn quầy tại tường sau)
+    const shopkeeper = this._createCitizenNPC(0, -5.8, 0x1e4b6e, 'áo sơ mi hoa');
     storeGroup.add(shopkeeper);
-    this._addNpcCollider(x, z + 5.8, 0.65);
+    this._addNpcCollider(x, z - 5.8, 0.65);
 
     // Điểm tương tác mua đồ và nghe kể chuyện bao cấp
     this.interactables.push({
-      position: new THREE.Vector3(x, 0.5, z + 3.6),
+      position: new THREE.Vector3(x, 0.5, z - 3.4),
       radius: 2.8,
       promptText: 'Mua Đồ Mậu Dịch & Ký Ức Thời Bao Cấp',
       actionKey: 'E',
@@ -5661,26 +5657,292 @@ getTheHucBridgeInfo(x, y, z) {
   }
 
   /**
-   * Tạo NPC Bà cụ bán quán trà đá vỉa hè
+   * Tạo ghế đẩu gỗ mộc chân thực phong cách Canva retro
+   * 4 chân choãi góc nhẹ, mặt ghế dày dặn vân gỗ cổ, giằng mộng ngang
+   */
+  _createRealisticWoodenStool(w = 0.36, h = 0.32, d = 0.36) {
+    const group = new THREE.Group();
+    const woodMat = this.materials.woodVarnish || this.materials.retroWood || new THREE.MeshStandardMaterial({ color: 0x543622, roughness: 0.75 });
+
+    // 1. Mặt ghế gỗ nguyên tấm, góc vát nhẹ mộc mạc
+    const topPlank = new THREE.Mesh(new THREE.BoxGeometry(w, 0.038, d), woodMat);
+    topPlank.position.y = h - 0.019;
+    topPlank.castShadow = true;
+    topPlank.receiveShadow = true;
+    group.add(topPlank);
+
+    // Khe chỉ rãnh xẻ giữa mặt ghế (kiểu ghế mộc truyền thống)
+    const grooveMat = new THREE.MeshStandardMaterial({ color: 0x2e1a0f, roughness: 0.9 });
+    const groove = new THREE.Mesh(new THREE.BoxGeometry(w * 0.92, 0.005, 0.012), grooveMat);
+    groove.position.set(0, h - 0.002, 0);
+    group.add(groove);
+
+    // 2. 4 chân gỗ tiện vuông choãi nhẹ tạo thế vững chãi
+    const legW = 0.042;
+    const legH = h - 0.038;
+    const legGeo = new THREE.BoxGeometry(legW, legH, legW);
+    const legSpreadX = w * 0.36;
+    const legSpreadZ = d * 0.36;
+
+    for (let lx of [-1, 1]) {
+      for (let lz of [-1, 1]) {
+        const leg = new THREE.Mesh(legGeo, woodMat);
+        leg.position.set(lx * legSpreadX, legH / 2, lz * legSpreadZ);
+        leg.rotation.z = -lx * 0.055; // Choãi nhẹ sang 2 bên
+        leg.rotation.x = lz * 0.055;
+        leg.castShadow = true;
+        group.add(leg);
+      }
+    }
+
+    // 3. Các thanh giằng chân ngang liên kết mộng gỗ
+    const rungGeoX = new THREE.BoxGeometry(w * 0.72, 0.024, 0.024);
+    const rungGeoZ = new THREE.BoxGeometry(0.024, 0.024, d * 0.72);
+    for (let rz of [-1, 1]) {
+      const rung = new THREE.Mesh(rungGeoX, woodMat);
+      rung.position.set(0, legH * 0.38, rz * (legSpreadZ * 0.88));
+      group.add(rung);
+    }
+    for (let rx of [-1, 1]) {
+      const rung = new THREE.Mesh(rungGeoZ, woodMat);
+      rung.position.set(rx * (legSpreadX * 0.88), legH * 0.44, 0);
+      group.add(rung);
+    }
+
+    return group;
+  }
+
+  /**
+   * Tạo Quán Trà Đá Vỉa Hè Chân Thực & NPC Bà Cụ Tính (Phong cách Canva Retro)
+   * Tích hợp 4 ghế đẩu gỗ mộc có thể ngồi tương tác phím [E] mượt mà 60 FPS
    */
   _createTeaStallVendorNPC(x, z) {
     const group = new THREE.Group();
     group.position.set(x, 0, z);
 
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xdfb48c, roughness: 0.6 });
-    const jacketMat = new THREE.MeshStandardMaterial({ color: 0x4a3b32, roughness: 0.85 }); // Áo chần bông nâu
+    const woodMat = this.materials.woodVarnish || this.materials.retroWood || new THREE.MeshStandardMaterial({ color: 0x543622, roughness: 0.75 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.25 });
     const strawMat = new THREE.MeshStandardMaterial({ color: 0xd9b37c, roughness: 0.9 });
 
-    // Ghế đẩu gỗ bà cụ ngồi
-    const stool = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.32, 0.35), this.materials.retroWood);
-    stool.position.set(0, 0.16, 0);
-    group.add(stool);
+    // 1. CHIẾC BÀN GỖ VỈA HÈ CỔ MỘC MẠC (Đặt tại tâm 0, 0, 0)
+    const tableW = 1.05;
+    const tableD = 0.68;
+    const tableH = 0.46;
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(tableW, 0.04, tableD), woodMat);
+    tableTop.position.y = tableH - 0.02;
+    tableTop.castShadow = true;
+    tableTop.receiveShadow = true;
+    group.add(tableTop);
 
-    // Bà cụ ngồi dáng vẻ nhân từ (Mô hình người điêu khắc Á Đông chân thực)
+    // 4 Chân bàn gỗ vuông và giằng liên kết mộng
+    const tLegW = 0.05;
+    const tLegH = tableH - 0.04;
+    for (let lx of [-1, 1]) {
+      for (let lz of [-1, 1]) {
+        const tLeg = new THREE.Mesh(new THREE.BoxGeometry(tLegW, tLegH, tLegW), woodMat);
+        tLeg.position.set(lx * (tableW * 0.42), tLegH / 2, lz * (tableD * 0.40));
+        tLeg.castShadow = true;
+        group.add(tLeg);
+      }
+    }
+    // Giằng ngang chân bàn
+    const tRung = new THREE.Mesh(new THREE.BoxGeometry(tableW * 0.82, 0.03, 0.03), woodMat);
+    tRung.position.set(0, tLegH * 0.35, 0);
+    group.add(tRung);
+
+    this._addBoxObstacle(x, z, tableW + 0.1, tableD + 0.1, 0, tableH + 0.3);
+
+    // 2. PHÍCH NƯỚC RẠNG ĐÔNG ĐỎ VINTAGE (Vỏ sắt sơn đỏ, quai nhôm chữ U, nút bần gỗ)
+    const thermosGroup = new THREE.Group();
+    thermosGroup.position.set(-0.32, tableH, -0.16);
+
+    const thermosRedMat = new THREE.MeshStandardMaterial({ color: 0xbd1e24, roughness: 0.35, metalness: 0.45 });
+    const aluMat = new THREE.MeshStandardMaterial({ color: 0xd0d5dd, metalness: 0.85, roughness: 0.25 });
+    const corkMat = new THREE.MeshStandardMaterial({ color: 0x936738, roughness: 0.9 });
+
+    // Thân phích
+    const tBody = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.088, 0.32, 16), thermosRedMat);
+    tBody.position.y = 0.16;
+    tBody.castShadow = true;
+    thermosGroup.add(tBody);
+
+    // Vai và nắp nhôm
+    const tShoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.082, 0.05, 16), aluMat);
+    tShoulder.position.y = 0.345;
+    thermosGroup.add(tShoulder);
+
+    const tCap = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.046, 0.08, 14), aluMat);
+    tCap.position.y = 0.41;
+    thermosGroup.add(tCap);
+
+    // Nút bần gỗ
+    const tCork = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.032, 0.04, 10), corkMat);
+    tCork.position.y = 0.47;
+    thermosGroup.add(tCork);
+
+    // Quai xách nhôm chữ U
+    const tHandle = new THREE.Mesh(new THREE.TorusGeometry(0.088, 0.007, 8, 16, Math.PI), aluMat);
+    tHandle.position.set(0, 0.32, 0);
+    tHandle.rotation.x = Math.PI;
+    thermosGroup.add(tHandle);
+
+    group.add(thermosGroup);
+
+    // 3. ẤM TÍCH MEN LAM BÁT TRÀNG TRONG GIÀNH MÂY TRE ĐAN GIỮ NHIỆT
+    const teaCosyGroup = new THREE.Group();
+    teaCosyGroup.position.set(-0.10, tableH, -0.15);
+
+    // Giành tre bọc ngoài
+    const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.135, 0.20, 14), strawMat);
+    basket.position.y = 0.10;
+    basket.castShadow = true;
+    teaCosyGroup.add(basket);
+
+    // Nắp giành tre
+    const basketLid = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.03, 14), strawMat);
+    basketLid.position.y = 0.215;
+    teaCosyGroup.add(basketLid);
+
+    // Vòi ấm tích sứ men lam thò ra
+    const ceramicMat = this.materials.batTrangCeramic || new THREE.MeshStandardMaterial({ color: 0x224b6e, roughness: 0.25 });
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, 0.10, 8), ceramicMat);
+    spout.position.set(0.11, 0.16, 0.04);
+    spout.rotation.z = -Math.PI / 4;
+    teaCosyGroup.add(spout);
+
+    // Quai đồng ấm tích
+    const potHandle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.006, 6, 12, Math.PI), brassMat);
+    potHandle.position.set(0, 0.23, 0);
+    teaCosyGroup.add(potHandle);
+
+    group.add(teaCosyGroup);
+
+    // 4. KHAY CỐC THỦY TINH MẮT LIẾC / HOA DÂU VIỀN BỌT XANH HẢI PHÒNG (NƯỚC CHÈ VÀNG HỔ PHÁCH)
+    const trayGroup = new THREE.Group();
+    trayGroup.position.set(0.18, tableH, -0.08);
+
+    // Khay nhôm mờ
+    const tray = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.015, 0.24), aluMat);
+    tray.position.y = 0.008;
+    trayGroup.add(tray);
+
+    // Cốc thủy tinh bọt xanh tái chế kinh điển
+    const greenGlassMat = new THREE.MeshStandardMaterial({
+      color: 0x82bfa8,
+      roughness: 0.15,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.76
+    });
+    const teaLiquidMat = new THREE.MeshStandardMaterial({
+      color: 0xc48020,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.90
+    });
+
+    const cupPositions = [
+      [-0.08, -0.05],
+      [0.08, -0.05],
+      [-0.08, 0.05],
+      [0.08, 0.05]
+    ];
+    cupPositions.forEach(([cx, cz]) => {
+      // Thành cốc viền bọt xanh dày dặn
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.030, 0.085, 10), greenGlassMat);
+      cup.position.set(cx, 0.05, cz);
+      cup.castShadow = true;
+      trayGroup.add(cup);
+
+      // Nước chè sóng sánh bên trong
+      const tea = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.028, 0.065, 8), teaLiquidMat);
+      tea.position.set(cx, 0.045, cz);
+      trayGroup.add(tea);
+    });
+
+    group.add(trayGroup);
+
+    // 5. ĐIẾU CÀY TRE NỨA LÊN NƯỚC CÁNH GIÁN & BAO DIÊM THỐNG NHẤT
+    const pipeGroup = new THREE.Group();
+    pipeGroup.position.set(0.42, 0.08, 0.18);
+    pipeGroup.rotation.z = 0.25;
+
+    // Thân ống nứa ngả màu mật mía bóng loáng
+    const bambooMat = new THREE.MeshStandardMaterial({ color: 0x5c3218, roughness: 0.35, metalness: 0.15 });
+    const pipeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.026, 0.62, 12), bambooMat);
+    pipeBody.position.y = 0.31;
+    pipeBody.castShadow = true;
+    pipeGroup.add(pipeBody);
+
+    // Vành đồng bịt đầu điếu
+    const pipeRing = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.04, 12), brassMat);
+    pipeRing.position.y = 0.60;
+    pipeGroup.add(pipeRing);
+
+    // Nõ điếu mun đen bóng tiện hoa văn
+    const ebonyMat = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.4 });
+    const pipeNo = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 8), ebonyMat);
+    pipeNo.position.set(0.035, 0.46, 0);
+    pipeNo.rotation.z = -Math.PI / 3;
+    pipeGroup.add(pipeNo);
+
+    group.add(pipeGroup);
+
+    // Bát điếu gốm da lươn & ống đóm nứa bên chân bàn
+    const spittoonMat = new THREE.MeshStandardMaterial({ color: 0x4a3423, roughness: 0.5 });
+    const spittoon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.12, 10), spittoonMat);
+    spittoon.position.set(0.36, 0.06, 0.38);
+    group.add(spittoon);
+
+    // Bao diêm Thống Nhất in chim bồ câu hòa bình
+    const matchMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.7 });
+    const matchBox = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.02, 0.038), matchMat);
+    matchBox.position.set(0.25, tableH + 0.01, 0.18);
+    group.add(matchBox);
+
+    // 6. ĐĨA KẸO LẠC RẮC VỪNG TRẮNG, KẸO DỒI & THUỐC LÁ THĂNG LONG
+    const plateGroup = new THREE.Group();
+    plateGroup.position.set(0.05, tableH, 0.18);
+
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4 });
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.075, 0.018, 12), plateMat);
+    plate.position.y = 0.009;
+    plateGroup.add(plate);
+
+    // Thanh kẹo lạc vừng trắng
+    const peanutCandyMat = new THREE.MeshStandardMaterial({ color: 0xba762a, roughness: 0.65 });
+    for (let p = 0; p < 3; p++) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.025), peanutCandyMat);
+      bar.position.set(-0.03 + p * 0.03, 0.022, (p % 2) * 0.01);
+      bar.rotation.y = p * 0.3;
+      plateGroup.add(bar);
+    }
+
+    // Kẹo dồi giòn bọc đường trắng
+    const doiCandyMat = new THREE.MeshStandardMaterial({ color: 0xededed, roughness: 0.6 });
+    const doiCandy = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.06, 8), doiCandyMat);
+    doiCandy.rotation.z = Math.PI / 2;
+    doiCandy.position.set(0.01, 0.032, -0.02);
+    plateGroup.add(doiCandy);
+
+    // Bao thuốc lá Thăng Long bao thiếc
+    const thangLongMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
+    const cigPack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.022, 0.09), thangLongMat);
+    cigPack.position.set(-0.16, tableH + 0.011, 0.16);
+    group.add(cigPack);
+
+    group.add(plateGroup);
+
+    // 7. GHẾ ĐẨU CỦA CỤ TÍNH & NPC CỤ TÍNH (Ngồi nhân từ tại z = +0.65 hướng về bàn)
+    const grandmaStool = this._createRealisticWoodenStool(0.36, 0.32, 0.36);
+    grandmaStool.position.set(0, 0, 0.65);
+    group.add(grandmaStool);
+
     try {
       const model = createHanoiCharacter3D('char_co_gai_ao_ba_ba');
-      // Hạ thấp mô hình nhân vật để khung chậu khớp chính xác trên mặt ghế đẩu gỗ (cao 0.32m), chân chạm đất
-      model.position.set(0, -0.58, 0);
+      // Hạ thấp mô hình nhân vật để khung chậu khớp chính xác trên mặt ghế đẩu gỗ (cao 0.32m), chân buông chạm đất
+      model.position.set(0, -0.60, 0.65);
+      model.rotation.y = Math.PI; // Quay mặt về phía Bắc nhìn vào bàn
       model.traverse(child => {
         if (child.isMesh && child.geometry instanceof THREE.CircleGeometry) {
           child.visible = false;
@@ -5692,10 +5954,18 @@ getTheHucBridgeInfo(x, y, z) {
       const rHip = model.getObjectByName('Joint_R_Hip');
       const lKnee = model.getObjectByName('Joint_L_Knee');
       const rKnee = model.getObjectByName('Joint_R_Knee');
-      if (lHip) lHip.rotation.x = -Math.PI / 2.2;
-      if (rHip) rHip.rotation.x = -Math.PI / 2.2;
-      if (lKnee) lKnee.rotation.x = Math.PI / 2.1;
-      if (rKnee) rKnee.rotation.x = Math.PI / 2.1;
+      const lShoulder = model.getObjectByName('Joint_L_Shoulder');
+      const rShoulder = model.getObjectByName('Joint_R_Shoulder');
+      const lElbow = model.getObjectByName('Joint_L_Elbow');
+      const rElbow = model.getObjectByName('Joint_R_Elbow');
+      if (lHip) lHip.rotation.x = -Math.PI / 2.15;
+      if (rHip) rHip.rotation.x = -Math.PI / 2.15;
+      if (lKnee) lKnee.rotation.x = Math.PI / 2.05;
+      if (rKnee) rKnee.rotation.x = Math.PI / 2.05;
+      if (lShoulder) lShoulder.rotation.x = -0.22;
+      if (rShoulder) rShoulder.rotation.x = -0.22;
+      if (lElbow) lElbow.rotation.x = 0.45;
+      if (rElbow) rElbow.rotation.x = 0.45;
 
       group.add(model);
 
@@ -5709,42 +5979,49 @@ getTheHucBridgeInfo(x, y, z) {
         }
       });
     } catch (e) {
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0xdfb48c, roughness: 0.6 });
+      const jacketMat = new THREE.MeshStandardMaterial({ color: 0x4a3b32, roughness: 0.85 });
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.24, 0.65, 8), jacketMat);
-      body.position.set(0, 0.65, 0);
+      body.position.set(0, 0.65, 0.65);
       group.add(body);
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), skinMat);
-      head.position.set(0, 1.10, 0.05);
+      head.position.set(0, 1.10, 0.70);
       group.add(head);
     }
 
-    // Bàn trà đá nhỏ
-    const teaTable = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.65), this.materials.retroWood);
-    teaTable.position.set(0.65, 0.225, 0.1);
-    group.add(teaTable);
+    // 8. 4 CHIẾC GHẾ ĐẨU GỖ VỈA HÈ CHO KHÁCH NGỒI TƯƠNG TÁC (SIT SPOTS)
+    const sitConfigs = [
+      { lx: 0.0, lz: -0.68, rotY: 0, name: 'Ghế chính diện quán Trà đá' },
+      { lx: -0.76, lz: 0.0, rotY: Math.PI / 2, name: 'Ghế bên trái quán Trà đá' },
+      { lx: 0.76, lz: 0.0, rotY: -Math.PI / 2, name: 'Ghế bên phải quán Trà đá' },
+      { lx: -0.56, lz: -0.56, rotY: Math.PI / 4, name: 'Ghế góc hè quán Trà đá' }
+    ];
 
-    // Cốc thủy tinh trà xanh màu hổ phách
-    const cupMat = new THREE.MeshStandardMaterial({ color: 0xcc9933, roughness: 0.2, transparent: true, opacity: 0.85 });
-    for (let c = 0; c < 2; c++) {
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.08, 8), cupMat);
-      cup.position.set(0.50 + c * 0.12, 0.49, -0.05);
-      group.add(cup);
-    }
+    sitConfigs.forEach((cfg, idx) => {
+      const stoolMesh = this._createRealisticWoodenStool(0.36, 0.32, 0.36);
+      stoolMesh.position.set(cfg.lx, 0, cfg.lz);
+      stoolMesh.rotation.y = cfg.rotY;
+      group.add(stoolMesh);
 
-    // Phích nước Rạng Đông vỏ sắt đỏ huyền thoại
-    const thermosMat = new THREE.MeshStandardMaterial({ color: 0xcc292b, metalness: 0.7, roughness: 0.3 });
-    const thermos = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 10), thermosMat);
-    thermos.position.set(0.85, 0.62, 0.22);
-    group.add(thermos);
+      const worldX = x + cfg.lx;
+      const worldZ = z + cfg.lz;
 
-    // Ấm tích ủ trong giành tre
-    const teaCosy = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.22, 10), strawMat);
-    teaCosy.position.set(0.52, 0.56, 0.18);
-    group.add(teaCosy);
-
-    // Đĩa kẹo lạc & bao thuốc lá
-    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.08, 0.02, 10), skinMat);
-    plate.position.set(0.70, 0.46, -0.08);
-    group.add(plate);
+      // Đăng ký tương tác ngồi ghế phím E
+      this.interactables.push({
+        position: new THREE.Vector3(worldX, 0.35, worldZ),
+        radius: 1.25,
+        promptText: 'Ngồi uống nước chè vỉa hè',
+        actionKey: 'E',
+        isSitSpot: true,
+        sitSpot: {
+          x: worldX,
+          y: 0.0,
+          seatY: 0.05,
+          rotationY: cfg.rotY,
+          name: cfg.name
+        }
+      });
+    });
 
     this.citizens.push(group);
     return group;
@@ -6538,19 +6815,19 @@ getTheHucBridgeInfo(x, y, z) {
    * Khởi tạo danh sách các điểm tương tác tĩnh (Quán trà đá, Bàn cờ tướng)
    */
   _initInteractables() {
-    // 1. Quán trà đá cóc vỉa hè
+    // 1. Quán trà đá vỉa hè & Trò chuyện với Cụ Tính
     this.interactables.push({
-      position: new THREE.Vector3(-50, 0.5, 58),
-      radius: 2.5,
-      promptText: 'Ngồi uống chén trà đá vỉa hè',
+      position: new THREE.Vector3(-50, 0.6, 58.65),
+      radius: 2.2,
+      promptText: 'Trò chuyện cùng Cụ Tính & Nghe Kể Chuyện Phố Cổ',
       actionKey: 'E',
       onInteract: () => {
         if (this.eventBus) {
           this.eventBus.emit('UI:OPEN_DIALOGUE', {
-            name: 'Bà Cụ &bull; Quán Nước Chè Xanh Phố Cổ',
+            name: 'Bà Cụ Tính &bull; Quán Nước Chè Xanh Phố Cổ',
             role: 'Cụ bà mở quán nước chè bên hiên phố hơn 40 năm',
             avatar: '👵',
-            greeting: '"Lãng tử vào làm chén nước chè tươi hay cốc trà đá cho đỡ khát nào cháu!"',
+            greeting: '"Lãng tử vào làm chén nước chè tươi hay cốc trà đá cho đỡ khát nào cháu! Ngồi xuống chiếc ghế đẩu nghỉ chân một lát nhé!"',
             monumentTitle: 'Văn Hóa Trà Đá & Quán Nước Vỉa Hè Hà Nội',
             historyText: `
               <p>Quán nước chè vỉa hè là linh hồn của đời sống thị dân Hà Nội. Chỉ cần vài chiếc ghế đẩu mộc mạc, chiếc ấm tích bọc trong giành tre giữ nhiệt, vài thanh kẹo lạc, bao diêm Thống Nhất và hàng trăm câu chuyện nhân sinh từ thế sự tới chuyện gia đình được sẻ chia ấm áp.</p>
@@ -6562,7 +6839,8 @@ getTheHucBridgeInfo(x, y, z) {
             shopItems: [
               { name: 'Cốc Trà Đá Mát Lạnh', price: '5 Xu', desc: 'Vị chát dịu hậu ngọt thanh tao', icon: '🧊' },
               { name: 'Chén Nước Chè Xanh Nóng', price: '5 Xu', desc: 'Ấm lòng ngày đông giá rét', icon: '🍵' },
-              { name: 'Thanh Kẹo Lạc Giòn Rụm', price: '5 Xu', desc: 'Vị bùi của lạc hòa quyện mật mía ngọt ngào', icon: '🥜' }
+              { name: 'Thanh Kẹo Lạc Giòn Rụm', price: '5 Xu', desc: 'Vị bùi của lạc hòa quyện mật mía ngọt ngào', icon: '🥜' },
+              { name: 'Thanh Kẹo Dồi Giòn Tan', price: '5 Xu', desc: 'Kẹo dồi bọc vừng thơm bùi ngọt dịu', icon: '🍬' }
             ]
           });
         }

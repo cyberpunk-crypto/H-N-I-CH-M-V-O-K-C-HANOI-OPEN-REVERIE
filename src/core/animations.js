@@ -136,6 +136,10 @@ export class HumanoidAnimator {
     this.gestureDuration = 0.0;
     this.gestureWeight = 0.0;
 
+    // Trạng thái ngồi thư giãn vỉa hè (Sitting pose system)
+    this.isSitting = false;
+    this.sitWeight = 0.0;
+
     // Bộ đệm quán tính & giảm chấn (Lag Damping) cho Nón Lá khi đổi hướng/quay đầu
     this.lastCharRotY = (characterGroup && characterGroup.rotation) ? characterGroup.rotation.y : 0.0;
     this.nonLaLagRoll = 0.0;   // Lắc lư nghiêng trái/phải do lực ly tâm khi xoay
@@ -269,6 +273,14 @@ export class HumanoidAnimator {
    */
   setOptions(newOptions = {}) {
     Object.assign(this.options, newOptions);
+  }
+
+  /**
+   * Kích hoạt hoặc hủy tư thế ngồi thư giãn (uống trà đá / ngắm cảnh)
+   * @param {boolean} sitting
+   */
+  setSitPose(sitting) {
+    this.isSitting = !!sitting;
   }
 
   /**
@@ -501,15 +513,22 @@ export class HumanoidAnimator {
       landingKneeCushion = landCurve * 0.18; // Nhún gối đàn hồi êm ái hấp thụ phản lực
     }
 
+    // Trọng số ngồi thư giãn vỉa hè (Smooth Sitting Locomotion Blending)
+    const targetSit = this.isSitting ? 1.0 : 0.0;
+    this.sitWeight = damp(this.sitWeight, targetSit, 12.0, dt);
+    const wSit = this.sitWeight;
+    const invSit = 1.0 - wSit;
+
     // 9. HÒA TRỘN TỔNG HỢP CÁC KHỚP (FINAL TRANSFORMATION BLENDING)
     const r = this.rig;
 
     // 1. Pelvis (Hông/trọng tâm)
     if (r.pelvisGroup) {
-      const blendedY = (idlePelvisY * wIdle + walkPelvisY * wWalk + runPelvisY * wRun + jumpPelvisY * wJump) + landingCushionY;
+      const sitPelvisY = this.baseTorsoY - 0.40;
+      const blendedY = ((idlePelvisY * wIdle + walkPelvisY * wWalk + runPelvisY * wRun + jumpPelvisY * wJump) + landingCushionY) * invSit + sitPelvisY * wSit;
       r.pelvisGroup.position.y = blendedY;
 
-      const blendedRotZ = idleWeightShift * wIdle + walkPelvisRotZ * wWalk + runPelvisRotZ * wRun;
+      const blendedRotZ = (idleWeightShift * wIdle + walkPelvisRotZ * wWalk + runPelvisRotZ * wRun) * invSit;
       r.pelvisGroup.rotation.z = blendedRotZ;
 
       if (this.landingTimer > 0) {
@@ -522,9 +541,10 @@ export class HumanoidAnimator {
 
     // 2. Torso (Thân mình & độ nghiêng dấn bước + thích ứng độ dốc)
     if (r.torsoGroup) {
-      r.torsoGroup.rotation.x = walkTorsoRotX * wWalk + runTorsoRotX * wRun + this.groundSlopeAngle * 0.45;
-      r.torsoGroup.rotation.y = walkTorsoRotY * wWalk + runTorsoRotY * wRun;
-      r.torsoGroup.rotation.z = -idleWeightShift * 0.4 * wIdle;
+      const sitTorsoX = 0.05;
+      r.torsoGroup.rotation.x = (walkTorsoRotX * wWalk + runTorsoRotX * wRun + this.groundSlopeAngle * 0.45) * invSit + sitTorsoX * wSit;
+      r.torsoGroup.rotation.y = (walkTorsoRotY * wWalk + runTorsoRotY * wRun) * invSit;
+      r.torsoGroup.rotation.z = (-idleWeightShift * 0.4 * wIdle) * invSit;
     }
 
     // 3. Chest (Lồng ngực thở & nhô phồng)
@@ -539,7 +559,7 @@ export class HumanoidAnimator {
     if (r.headGroup) {
       const naturalTilt = idleHeadTilt * wIdle;
       const headNod = -Math.sin(wp * 2.0) * 0.025 * wWalk - Math.sin(rp * 2.0) * 0.035 * wRun;
-      r.headGroup.rotation.x = headNod;
+      r.headGroup.rotation.x = headNod * invSit;
       r.headGroup.rotation.y = this.currentHeadYaw * wIdle;
       r.headGroup.rotation.z = naturalTilt;
     }
@@ -547,58 +567,64 @@ export class HumanoidAnimator {
     // 5. Hai Vai & Hai Khuỷu Tay (Vai nhấp nhô thở, vung tay ngược pha)
     const shoulderRestY = this.restPositions.leftShoulderY;
     const finalShoulderBob = idleShoulderBob * wIdle;
+    const sitShoulderX = -0.25;
+    const sitElbowX = 0.50;
 
     if (r.leftShoulderGroup) {
       r.leftShoulderGroup.position.y = shoulderRestY + finalShoulderBob;
-      r.leftShoulderGroup.rotation.x = walkLeftShoulderX * wWalk + runLeftShoulderX * wRun + jumpLeftShoulderX * wJump;
+      r.leftShoulderGroup.rotation.x = (walkLeftShoulderX * wWalk + runLeftShoulderX * wRun + jumpLeftShoulderX * wJump) * invSit + sitShoulderX * wSit;
       r.leftShoulderGroup.rotation.z = -0.10 - 0.04 * wRun - 0.22 * wJump;
     }
 
     if (r.rightShoulderGroup) {
       r.rightShoulderGroup.position.y = shoulderRestY + finalShoulderBob;
-      r.rightShoulderGroup.rotation.x = walkRightShoulderX * wWalk + runRightShoulderX * wRun + jumpRightShoulderX * wJump;
+      r.rightShoulderGroup.rotation.x = (walkRightShoulderX * wWalk + runRightShoulderX * wRun + jumpRightShoulderX * wJump) * invSit + sitShoulderX * wSit;
       r.rightShoulderGroup.rotation.z = 0.10 + 0.04 * wRun + 0.22 * wJump;
     }
 
     if (r.leftElbowGroup) {
-      r.leftElbowGroup.rotation.x = 0.14 * wIdle + walkLeftElbow * wWalk + runLeftElbow * wRun + jumpLeftElbow * wJump;
+      r.leftElbowGroup.rotation.x = (0.14 * wIdle + walkLeftElbow * wWalk + runLeftElbow * wRun + jumpLeftElbow * wJump) * invSit + sitElbowX * wSit;
     }
 
     if (r.rightElbowGroup) {
-      r.rightElbowGroup.rotation.x = 0.14 * wIdle + walkRightElbow * wWalk + runRightElbow * wRun + jumpRightElbow * wJump;
+      r.rightElbowGroup.rotation.x = (0.14 * wIdle + walkRightElbow * wWalk + runRightElbow * wRun + jumpRightElbow * wJump) * invSit + sitElbowX * wSit;
     }
 
     // 6. Chi Dưới (Háng, Đầu Gối, Cổ Chân - Nhún gối tiếp đất đàn hồi)
+    const sitHipX = -Math.PI / 2.15;
+    const sitKneeX = Math.PI / 2.05;
+
     if (r.leftHipGroup) {
-      r.leftHipGroup.rotation.x = walkLeftHip * wWalk + runLeftHip * wRun + jumpLeftHip * wJump - landingKneeCushion * 0.35;
-      r.leftHipGroup.rotation.z = idleWeightShift * 0.25 * wIdle;
+      r.leftHipGroup.rotation.x = (walkLeftHip * wWalk + runLeftHip * wRun + jumpLeftHip * wJump - landingKneeCushion * 0.35) * invSit + sitHipX * wSit;
+      r.leftHipGroup.rotation.z = (idleWeightShift * 0.25 * wIdle) * invSit;
     }
 
     if (r.rightHipGroup) {
-      r.rightHipGroup.rotation.x = walkRightHip * wWalk + runRightHip * wRun + jumpRightHip * wJump - landingKneeCushion * 0.35;
-      r.rightHipGroup.rotation.z = idleWeightShift * 0.25 * wIdle;
+      r.rightHipGroup.rotation.x = (walkRightHip * wWalk + runRightHip * wRun + jumpRightHip * wJump - landingKneeCushion * 0.35) * invSit + sitHipX * wSit;
+      r.rightHipGroup.rotation.z = (idleWeightShift * 0.25 * wIdle) * invSit;
     }
 
     if (r.leftKneeGroup) {
-      r.leftKneeGroup.rotation.x = 0.02 * wIdle + walkLeftKnee * wWalk + runLeftKnee * wRun + jumpLeftKnee * wJump + landingKneeCushion;
+      r.leftKneeGroup.rotation.x = (0.02 * wIdle + walkLeftKnee * wWalk + runLeftKnee * wRun + jumpLeftKnee * wJump + landingKneeCushion) * invSit + sitKneeX * wSit;
     }
 
     if (r.rightKneeGroup) {
-      r.rightKneeGroup.rotation.x = 0.02 * wIdle + walkRightKnee * wWalk + runRightKnee * wRun + jumpRightKnee * wJump + landingKneeCushion;
+      r.rightKneeGroup.rotation.x = (0.02 * wIdle + walkRightKnee * wWalk + runRightKnee * wRun + jumpRightKnee * wJump + landingKneeCushion) * invSit + sitKneeX * wSit;
     }
 
     if (r.leftFootGroup) {
-      r.leftFootGroup.rotation.x = walkLeftFoot * wWalk + runLeftFoot * wRun + jumpLeftFoot * wJump + this.groundSlopeAngle * 0.8;
+      r.leftFootGroup.rotation.x = (walkLeftFoot * wWalk + runLeftFoot * wRun + jumpLeftFoot * wJump + this.groundSlopeAngle * 0.8) * invSit;
     }
 
     if (r.rightFootGroup) {
-      r.rightFootGroup.rotation.x = walkRightFoot * wWalk + runRightFoot * wRun + jumpRightFoot * wJump + this.groundSlopeAngle * 0.8;
+      r.rightFootGroup.rotation.x = (walkRightFoot * wWalk + runRightFoot * wRun + jumpRightFoot * wJump + this.groundSlopeAngle * 0.8) * invSit;
     }
 
     // 7. Tà Áo Dài 3D & Nón Lá 3D & Khăn Rằn 3D (Flowing Cloth & Accessories)
     if (r.frontFlapGroup) {
-      r.frontFlapGroup.rotation.x = idleFrontFlap * wIdle + walkFrontFlap * wWalk + runFrontFlap * wRun + jumpFrontFlap * wJump;
-      r.frontFlapGroup.rotation.z = walkFrontFlapRollZ * wWalk + runFrontFlapRollZ * wRun;
+      const sitFlapX = -Math.PI / 2.2;
+      r.frontFlapGroup.rotation.x = (idleFrontFlap * wIdle + walkFrontFlap * wWalk + runFrontFlap * wRun + jumpFrontFlap * wJump) * invSit + sitFlapX * wSit;
+      r.frontFlapGroup.rotation.z = (walkFrontFlapRollZ * wWalk + runFrontFlapRollZ * wRun) * invSit;
     }
 
     if (r.backFlapGroup) {

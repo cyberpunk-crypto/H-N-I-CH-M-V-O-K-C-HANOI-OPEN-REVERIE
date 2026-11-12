@@ -186,8 +186,13 @@ export class PlayerController {
     this._isGltfReady = false;
     this._gltfCache = {};
 
-    // Điểm tương tác
+    // Điểm tương tác & Hệ thống ngồi ghế tương tác (Sit System)
     this.activeInteractable = null;
+    this.isSitting = false;
+    this.currentSitSpot = null;
+    if (this.worldManager) {
+      this.worldManager.playerController = this;
+    }
 
     // Khởi tạo mô hình con người bo tròn mềm mại, chân thực
     this._createRealisticHumanMesh();
@@ -1066,12 +1071,76 @@ export class PlayerController {
   }
 
   _handleInteract() {
+    if (this.isSitting) {
+      this.standUp();
+      return;
+    }
     if (this.worldManager && this.worldManager.isPlayerRidingTrain) {
       this.worldManager.leaveTrain(this);
       return;
     }
-    if (this.activeInteractable && this.activeInteractable.onInteract) {
-      this.activeInteractable.onInteract();
+    if (this.activeInteractable) {
+      if (this.activeInteractable.isSitSpot && this.activeInteractable.sitSpot) {
+        this.sitAt(this.activeInteractable.sitSpot);
+        return;
+      }
+      if (this.activeInteractable.onInteract) {
+        this.activeInteractable.onInteract();
+      }
+    }
+  }
+
+  /**
+   * Ngồi xuống một vị trí ghế tương tác (Ghế quán trà đá, ghế đẩu vỉa hè, ghế đá)
+   * @param {Object} spot - { x, y, z, seatY, rotationY, name }
+   */
+  sitAt(spot) {
+    if (!spot) return;
+    this.isSitting = true;
+    this.currentSitSpot = spot;
+    this.velocity.set(0, 0, 0);
+    this.isGrounded = true;
+    this.isJumping = false;
+    const targetY = spot.seatY !== undefined ? spot.seatY : (spot.y !== undefined ? spot.y : 0.0);
+    this.characterGroup.position.set(spot.x, targetY, spot.z);
+    if (spot.rotationY !== undefined) {
+      this.characterGroup.rotation.y = spot.rotationY;
+      this.characterGroup.quaternion.setFromAxisAngle(this._worldUp, spot.rotationY);
+    }
+    if (this.humanoidAnimator && typeof this.humanoidAnimator.setSitPose === 'function') {
+      this.humanoidAnimator.setSitPose(true);
+    }
+    if (this._animActions && this._animActions.idle) {
+      this._switchAnim('idle');
+    }
+    if (this.eventBus) {
+      this.eventBus.emit('CORE:PLAYER_SIT', { spot });
+      this.eventBus.emit('CORE:INTERACTION_AVAILABLE', {
+        canInteract: true,
+        promptText: 'Đứng dậy (E / Phím di chuyển)',
+        actionKey: 'E'
+      });
+    }
+  }
+
+  /**
+   * Đứng dậy khỏi ghế, khôi phục quyền điều khiển đi đứng hoàn toàn tự nhiên
+   */
+  standUp() {
+    if (!this.isSitting) return;
+    this.isSitting = false;
+    const prevSpot = this.currentSitSpot;
+    this.currentSitSpot = null;
+    if (this.humanoidAnimator && typeof this.humanoidAnimator.setSitPose === 'function') {
+      this.humanoidAnimator.setSitPose(false);
+    }
+    if (this.eventBus) {
+      this.eventBus.emit('CORE:PLAYER_STAND', { spot: prevSpot });
+      this.eventBus.emit('CORE:INTERACTION_AVAILABLE', {
+        canInteract: false,
+        promptText: '',
+        actionKey: 'E'
+      });
     }
   }
 
@@ -1418,6 +1487,41 @@ export class PlayerController {
         this.humanoidAnimator.update(delta, isMoving ? (this.keys.sprint ? 5.0 : 2.5) : 0, true, 0);
       }
       return;
+    }
+
+    // 🪑 KHI NGƯỜI CHƠI ĐANG NGỒI TRÊN GHẾ (UỐNG NƯỚC CHÈ VỈA HÈ / NGẮM PHỐ):
+    if (this.isSitting) {
+      // Nếu bấm bất kỳ phím di chuyển nào (WASD / Space) hoặc Shift: tự động đứng dậy mượt mà
+      if (!this.isLocked && (this.keys.forward || this.keys.backward || this.keys.left || this.keys.right || this.keys.jump)) {
+        this.standUp();
+      } else {
+        // Cố định vị trí và tư thế ngồi vững vàng trên mặt ghế
+        if (this.currentSitSpot) {
+          const targetY = this.currentSitSpot.seatY !== undefined ? this.currentSitSpot.seatY : (this.currentSitSpot.y || 0.0);
+          this.characterGroup.position.set(this.currentSitSpot.x, targetY, this.currentSitSpot.z);
+          if (this.currentSitSpot.rotationY !== undefined) {
+            this.characterGroup.rotation.y = this.currentSitSpot.rotationY;
+          }
+        }
+        this.velocity.set(0, 0, 0);
+
+        // Cập nhật hoạt ảnh ở tư thế ngồi
+        if (this._gltfMixer) {
+          this._gltfMixer.update(delta);
+        } else if (this.humanoidAnimator) {
+          this.humanoidAnimator.update(delta, 0, true, 0);
+        }
+
+        // Luôn duy trì thông báo prompt [E] Đứng dậy
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:INTERACTION_AVAILABLE', {
+            canInteract: true,
+            promptText: 'Đứng dậy (E / Phím di chuyển)',
+            actionKey: 'E'
+          });
+        }
+        return;
+      }
     }
 
     // Căn góc Camera ban đầu theo trục Cầu Kim Quy (yaw = 0.785 rad / 45 độ)
