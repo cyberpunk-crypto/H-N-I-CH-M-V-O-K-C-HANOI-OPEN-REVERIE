@@ -85,9 +85,14 @@ export class UIManager {
     // Nút mở Bản Đồ trên HUD
     const btnMap = document.getElementById('btnOpenMapHud');
     if (btnMap) {
-      btnMap.addEventListener('click', () => {
+      btnMap.addEventListener('click', (e) => {
+        btnMap.blur();
         if (this.minimap) {
-          this.minimap.openMapModal();
+          if (typeof this.minimap.toggleMapModal === 'function') {
+            this.minimap.toggleMapModal();
+          } else {
+            this.minimap.openMapModal();
+          }
         }
       });
     }
@@ -95,9 +100,14 @@ export class UIManager {
     // Nút mở Album Ký Ức trên HUD
     const btnAlbum = document.getElementById('btnOpenScrapbookHud');
     if (btnAlbum) {
-      btnAlbum.addEventListener('click', () => {
+      btnAlbum.addEventListener('click', (e) => {
+        btnAlbum.blur();
         if (this.scrapbook) {
-          this.scrapbook.openAlbum();
+          if (typeof this.scrapbook.toggleAlbum === 'function') {
+            this.scrapbook.toggleAlbum();
+          } else {
+            this.scrapbook.openAlbum();
+          }
         }
       });
     }
@@ -105,7 +115,8 @@ export class UIManager {
     // Nút bật máy ảnh film trên HUD
     const btnCamera = document.getElementById('btnToggleCameraHud');
     if (btnCamera) {
-      btnCamera.addEventListener('click', () => {
+      btnCamera.addEventListener('click', (e) => {
+        btnCamera.blur();
         if (this.viewfinder) {
           this.viewfinder.switchCameraMode(this.viewfinder.currentMode === 'FPS' ? 'TPS' : 'FPS');
         }
@@ -115,7 +126,8 @@ export class UIManager {
     // Nút đổi nhân vật / tạo lại nhân vật
     const btnRecreate = document.getElementById('btnRecreateCharacterHud');
     if (btnRecreate) {
-      btnRecreate.addEventListener('click', () => {
+      btnRecreate.addEventListener('click', (e) => {
+        btnRecreate.blur();
         if (this.onboarding) {
           this.onboarding.showCharacterCreation({ isRecreate: true });
         }
@@ -129,7 +141,8 @@ export class UIManager {
 
     const buttons = quickBar.querySelectorAll('.btn-quick-char');
     buttons.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        btn.blur();
         const charId = btn.dataset.charId;
         if (!charId) return;
 

@@ -62,6 +62,13 @@ export class ChatBoxHUD {
       }
     });
 
+    // Nhấp chuột ra ngoài khung chat thì tự động đóng và mở khóa di chuyển
+    document.addEventListener('pointerdown', (e) => {
+      if (this.isChatOpen && this.element && !this.element.contains(e.target)) {
+        this.closeChat();
+      }
+    });
+
     // Xử lý gửi tin nhắn
     if (inputForm) {
       inputForm.addEventListener('submit', (e) => {

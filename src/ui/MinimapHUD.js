@@ -179,18 +179,16 @@ export class MinimapHUD {
 
     // Đóng modal
     const btnClose = this.modalElement.querySelector('#btnCloseMapModal');
-    btnClose.addEventListener('click', () => {
-      this.closeMapModal();
-    });
+    if (btnClose) {
+      btnClose.addEventListener('click', () => {
+        btnClose.blur();
+        this.closeMapModal();
+      });
+    }
 
-    // Phím tắt M / Tab / Escape
+    // Phím tắt Escape đóng bản đồ khi đang mở
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'm' || e.key === 'M' || e.key === 'Tab') {
-        // Tránh tab khi đang gõ vào input
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        e.preventDefault();
-        this.toggleMapModal();
-      } else if (e.key === 'Escape' && this.isMapOpen) {
+      if (e.key === 'Escape' && this.isMapOpen) {
         this.closeMapModal();
       }
     });

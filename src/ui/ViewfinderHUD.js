@@ -193,6 +193,7 @@ export class ViewfinderHUD {
     const btnExit = this.element.querySelector('#btnExitViewfinder');
     if (btnExit) {
       btnExit.addEventListener('click', () => {
+        btnExit.blur();
         this.switchCameraMode('TPS');
       });
     }
@@ -201,7 +202,12 @@ export class ViewfinderHUD {
     const btnAlbum = this.element.querySelector('#btnViewfinderAlbum');
     if (btnAlbum) {
       btnAlbum.addEventListener('click', () => {
-        GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: true });
+        btnAlbum.blur();
+        if (window._UIManagerInstance && window._UIManagerInstance.scrapbook) {
+          window._UIManagerInstance.scrapbook.openAlbum();
+        } else {
+          GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: true });
+        }
       });
     }
 
@@ -210,6 +216,7 @@ export class ViewfinderHUD {
     const valIso = this.element.querySelector('#valIsoDisplay');
     if (btnIso) {
       btnIso.addEventListener('click', () => {
+        btnIso.blur();
         this.isoIndex = (this.isoIndex + 1) % this.isoList.length;
         if (valIso) valIso.textContent = this.isoList[this.isoIndex];
       });
@@ -220,6 +227,7 @@ export class ViewfinderHUD {
     const filmLabel = this.element.querySelector('#filmPresetLabel');
     if (btnFilm) {
       btnFilm.addEventListener('click', () => {
+        btnFilm.blur();
         this.filmIndex = (this.filmIndex + 1) % this.filmStockList.length;
         if (filmLabel) filmLabel.innerHTML = this.filmStockList[this.filmIndex];
       });
@@ -230,6 +238,7 @@ export class ViewfinderHUD {
     const valShutter = this.element.querySelector('#valShutterDisplay');
     if (btnShutterSpeed) {
       btnShutterSpeed.addEventListener('click', () => {
+        btnShutterSpeed.blur();
         this.shutterIndex = (this.shutterIndex + 1) % this.shutterList.length;
         if (valShutter) valShutter.textContent = this.shutterList[this.shutterIndex];
       });
@@ -240,12 +249,13 @@ export class ViewfinderHUD {
     const valAperture = this.element.querySelector('#valApertureDisplay');
     if (btnAperture) {
       btnAperture.addEventListener('click', () => {
+        btnAperture.blur();
         this.apertureIndex = (this.apertureIndex + 1) % this.apertureList.length;
         if (valAperture) valAperture.textContent = this.apertureList[this.apertureIndex];
       });
     }
 
-    // Bàn phím: Hỗ trợ phím C & V để đổi camera, F & Space để chụp ảnh, B để mở Album
+    // Bàn phím: Hỗ trợ phím C & V để đổi camera, F & Space để chụp ảnh
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
@@ -256,15 +266,20 @@ export class ViewfinderHUD {
         const nextMode = this.currentMode === 'FPS' ? 'TPS' : 'FPS';
         this.switchCameraMode(nextMode);
       } 
-      // Chụp ảnh khi đang trong khung ngắm FPS: phím F hoặc Space
-      else if ((key === 'f' || key === ' ') && this.currentMode === 'FPS') {
+      // Phím F: Chụp ảnh nếu đang FPS, hoặc bật máy ảnh film FPS nếu đang TPS
+      else if (key === 'f') {
+        e.preventDefault();
+        if (this.currentMode === 'FPS') {
+          this.triggerShutter();
+        } else {
+          this.switchCameraMode('FPS');
+        }
+      } 
+      // Phím Space chụp ảnh khi đang trong khung ngắm FPS
+      else if (key === ' ' && this.currentMode === 'FPS') {
         e.preventDefault();
         this.triggerShutter();
       } 
-      // Mở Album Ký Ức: phím B
-      else if (key === 'b') {
-        GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: true });
-      }
       // Thoát Viewfinder: phím Escape
       else if (key === 'escape' && this.currentMode === 'FPS') {
         this.switchCameraMode('TPS');

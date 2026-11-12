@@ -156,18 +156,26 @@ export class ScrapbookModal {
   bindEvents() {
     // Đóng Album
     const btnClose = this.element.querySelector('#btnCloseAlbum');
-    btnClose.addEventListener('click', () => {
-      this.closeAlbum();
+    if (btnClose) {
+      btnClose.addEventListener('click', () => {
+        btnClose.blur();
+        this.closeAlbum();
+      });
+    }
+
+    // Phím tắt Escape đóng Album
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isOpen) {
+        this.closeAlbum();
+      }
     });
 
-    // Phím tắt B / Escape
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'b' || e.key === 'B') {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        e.preventDefault();
-        this.toggleAlbum();
-      } else if (e.key === 'Escape' && this.isOpen) {
-        this.closeAlbum();
+    // Lắng nghe sự kiện Core hoặc UI yêu cầu mở/đóng Album
+    GameEventBus.on('UI:OPEN_SCRAPBOOK', (payload) => {
+      if (payload && payload.open) {
+        if (!this.isOpen) this.openAlbum(true);
+      } else if (payload && payload.open === false) {
+        if (this.isOpen) this.closeAlbum(true);
       }
     });
 
@@ -201,7 +209,7 @@ export class ScrapbookModal {
     }
   }
 
-  openAlbum() {
+  openAlbum(fromEventBus = false) {
     this.isOpen = true;
     this.element.classList.remove('hidden');
 
@@ -209,10 +217,12 @@ export class ScrapbookModal {
       window.GameAPI.setPlayerMovementLock(true);
     }
 
-    GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: true });
+    if (!fromEventBus) {
+      GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: true });
+    }
   }
 
-  closeAlbum() {
+  closeAlbum(fromEventBus = false) {
     this.isOpen = false;
     this.element.classList.add('hidden');
 
@@ -220,6 +230,8 @@ export class ScrapbookModal {
       window.GameAPI.setPlayerMovementLock(false);
     }
 
-    GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: false });
+    if (!fromEventBus) {
+      GameEventBus.emit('UI:OPEN_SCRAPBOOK', { open: false });
+    }
   }
 }

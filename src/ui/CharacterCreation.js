@@ -97,7 +97,7 @@ export class CharacterCreation {
     this.selectedCharacterId = this.initialCharacterId;
     this.selectedOutfitId = this.selectedCharacterId; // alias
     this.selectedCameraId = this.initialCameraId;
-    this.isNameValid = false;
+    this.isNameValid = this.isRecreate ? true : false;
     this.currentName = this.initialName;
     this.debounceTimer = null;
 
@@ -236,7 +236,7 @@ export class CharacterCreation {
             Hủy & Tiếp Tục Dạo Phố
           </button>
         ` : ''}
-        <button type="button" id="btnEnterReverie" class="btn-primary-retro btn-enter-reverie" disabled>
+        <button type="button" id="btnEnterReverie" class="btn-primary-retro btn-enter-reverie" ${this.isRecreate ? '' : 'disabled'}>
           ${this.isRecreate ? 'Xác Nhận Đổi Nhân Vật' : 'Bước Vào Ký Ức Hà Nội'}
         </button>
       </div>
@@ -244,8 +244,8 @@ export class CharacterCreation {
 
     this.bindEvents();
 
-    // Tự động kiểm tra tên ban đầu nếu đã có
-    if (this.currentName && this.currentName.length >= 3) {
+    // Tự động kiểm tra tên ban đầu nếu đã có (chỉ bắt buộc kiểm tra khi tạo mới lần đầu)
+    if (this.currentName && this.currentName.length >= 3 && !this.isRecreate) {
       this.validateName(this.currentName);
     }
 
@@ -348,6 +348,16 @@ export class CharacterCreation {
         }
       });
     }
+
+    // Phím tắt Escape hủy modal và tiếp tục dạo phố khi isRecreate = true
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isRecreate) {
+        if (typeof this.onClose === 'function') {
+          this.onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', this._onKeyDown);
   }
 
   selectCharacter(charId) {
@@ -617,6 +627,10 @@ export class CharacterCreation {
   }
 
   destroy() {
+    if (this._onKeyDown) {
+      window.removeEventListener('keydown', this._onKeyDown);
+      this._onKeyDown = null;
+    }
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
