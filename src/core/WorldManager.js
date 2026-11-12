@@ -1339,6 +1339,195 @@ getTheHucBridgeInfo(x, y, z) {
   }
 
   /**
+   * Tạo CanvasTexture vẽ biển hiệu sơn son thếp vàng di sản Hà Nội (Độ phân giải 1024x256 sắc nét)
+   * Hiển thị rõ ràng: Tên hiệu lớn và Mô tả ngành nghề/mặt hàng kinh doanh cụ thể
+   */
+  _createShopSignboardTexture(title, subtitle, bgCol = '#7d1912', textCol = '#fce49f', borderCol = '#d4af37') {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // An toàn tuyệt đối trong môi trường test Node.js mock canvas
+    if (typeof ctx.fillRect !== 'function') return null;
+
+    // 1. Nền sơn then / sơn son hào hoa truyền thống
+    ctx.fillStyle = bgCol;
+    ctx.fillRect(0, 0, 1024, 256);
+
+    // Hiệu ứng ánh sáng gradient bề mặt gỗ bóng
+    if (typeof ctx.createLinearGradient === 'function') {
+      const grad = ctx.createLinearGradient(0, 0, 1024, 256);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+      grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.0)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1024, 256);
+    }
+
+    // 2. Khung viền đôi hoa văn kim nhũ phong cách phố cổ Hà Nội
+    if (typeof ctx.strokeRect === 'function') {
+      ctx.strokeStyle = borderCol;
+      ctx.lineWidth = 8;
+      ctx.strokeRect(14, 14, 1024 - 28, 256 - 28);
+
+      ctx.strokeStyle = 'rgba(255, 235, 170, 0.65)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(26, 26, 1024 - 52, 256 - 52);
+    }
+
+    // Đinh tán đồng / họa tiết 4 góc
+    if (typeof ctx.beginPath === 'function' && typeof ctx.arc === 'function') {
+      const corners = [
+        [36, 36], [1024 - 36, 36],
+        [36, 256 - 36], [1024 - 36, 256 - 36]
+      ];
+      ctx.fillStyle = borderCol;
+      corners.forEach(([cx, cy]) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // 3. Tên cửa hiệu chính và mặt hàng kinh doanh
+    if (typeof ctx.fillText === 'function') {
+      ctx.font = '22px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = borderCol;
+      ctx.fillText('★ ❖ ★', 512, 48);
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.fillStyle = textCol;
+      ctx.font = 'bold 52px "Times New Roman", "Georgia", "Be Vietnam Pro", serif';
+      ctx.fillText(title, 512, 106);
+
+      // Đường gạch chỉ ngăn cách hoa văn
+      ctx.shadowColor = 'transparent';
+      if (typeof ctx.beginPath === 'function' && typeof ctx.stroke === 'function') {
+        ctx.strokeStyle = borderCol;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(180, 148);
+        ctx.lineTo(844, 148);
+        ctx.stroke();
+      }
+
+      // 4. Ngành nghề kinh doanh / Mặt hàng bày bán (Ghi rõ bán cái gì)
+      ctx.fillStyle = '#fff9e6';
+      ctx.font = 'bold 28px "Arial", "Segoe UI", "Be Vietnam Pro", sans-serif';
+      ctx.fillText(subtitle, 512, 192);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  }
+
+  /**
+   * Tạo mô hình 3D biển hiệu hoàn chỉnh gồm khung viền gỗ và mặt biển hai chiều
+   */
+  _createSignboard3D(w, h, title, subtitle, bgCol, textCol, borderCol) {
+    const group = new THREE.Group();
+    group.name = `Signboard_${title}`;
+
+    // Khung viền gỗ dày 12cm
+    const frameMat = this.materials.woodVarnish || this.materials.retroWood;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.12), frameMat);
+    frame.castShadow = true;
+    group.add(frame);
+
+    // Mặt biển vẽ tay có chữ (CanvasTexture)
+    const tex = this._createShopSignboardTexture(title, subtitle, bgCol, textCol, borderCol);
+    if (tex) {
+      const signMat = new THREE.MeshStandardMaterial({
+        map: tex,
+        roughness: 0.35,
+        metalness: 0.10
+      });
+      // Mặt trước hướng về -Z (mặt tiền nhìn từ ngoài đường vào)
+      const frontPlate = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.96, h * 0.90), signMat);
+      frontPlate.position.set(0, 0, -0.065);
+      frontPlate.rotation.y = Math.PI; // quay mặt ra ngoài trục -Z
+      group.add(frontPlate);
+
+      // Mặt sau hướng về +Z
+      const backPlate = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.96, h * 0.90), signMat);
+      backPlate.position.set(0, 0, 0.065);
+      group.add(backPlate);
+    }
+    return group;
+  }
+
+  _getShopSignMeta(shopType, defaultSign) {
+    switch (shopType) {
+      case 'thuoc_bac':
+        return {
+          title: 'HIỆU THUỐC BẮC GIA TRUYỀN',
+          subtitle: 'Bốc Thuốc Bắc • Nam Dược Thần Hiệu • Sâm Nhung Cát Cánh',
+          bgCol: '#6b1812',
+          textCol: '#fbe296',
+          borderCol: '#d4af37'
+        };
+      case 'may_do':
+        return {
+          title: 'MAY ĐO ÂU PHỤC PHỐ CỔ',
+          subtitle: 'Âu Phục Cổ Điển • Áo Dài Di Sản • Tơ Lụa Hà Đông Cao Cấp',
+          bgCol: '#172740',
+          textCol: '#fae8c8',
+          borderCol: '#c8a846'
+        };
+      case 'pho_gia_truyen':
+        return {
+          title: 'PHỞ GIA TRUYỀN 1954',
+          subtitle: 'Phở Bò Tái Nạm Gầu • Bánh Cuốn Nóng • Quẩy Giòn Hà Nội',
+          bgCol: '#851a14',
+          textCol: '#fff0a8',
+          borderCol: '#ffd700'
+        };
+      case 'bia_hoi':
+        return {
+          title: 'BIA HƠI HÀ NỘI CỔ',
+          subtitle: 'Bia Hơi Bát Bảo • Lạc Luộc Nem Chua • Đậu Phụ Rán Mắm Tôm',
+          bgCol: '#163d24',
+          textCol: '#fcf0be',
+          borderCol: '#58a06e'
+        };
+      case 'sua_dong_ho':
+        return {
+          title: 'SỬA ĐỒNG HỒ LIÊN XÔ',
+          subtitle: 'Poljot • Vostok • Slava • Thay Pin Lau Dầu Lấy Ngay',
+          bgCol: '#152433',
+          textCol: '#e8c974',
+          borderCol: '#cca242'
+        };
+      case 'cat_toc':
+        return {
+          title: 'CẮT TÓC BÌNH DÂN',
+          subtitle: 'Cắt Tóc Nam Nữ • Cạo Mặt Ráy Tai • Gội Đầu Dưỡng Sinh',
+          bgCol: '#781c16',
+          textCol: '#fff5c0',
+          borderCol: '#d4af37'
+        };
+      default:
+        return {
+          title: defaultSign || 'TIỆM CỔ TRUYỀN HÀ NỘI',
+          subtitle: 'Kính Chào Quý Khách • Nét Đẹp Ngàn Năm Văn Hiến',
+          bgCol: '#6b1d16',
+          textCol: '#fce59f',
+          borderCol: '#d4af37'
+        };
+    }
+  }
+
+  /**
    * Tạo ngôi nhà ống phố cổ mở được cửa đi vào bên trong với đầy đủ nội thất ngành nghề truyền thống:
    * 1. Hiệu Thuốc Bắc Gia Truyền
    * 2. Tiệm May Đo Âu Phục Phố Cổ
@@ -1412,10 +1601,26 @@ getTheHucBridgeInfo(x, y, z) {
     shopGroup.add(floor);
     this.colliders.push(floor);
 
-    // Biển hiệu gỗ sơn son vẽ tay chữ vàng
-    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(w * 0.65, 0.95, 0.15), new THREE.MeshStandardMaterial({ color: 0x8a2318, roughness: 0.5 }));
-    signBoard.position.set(0, 3.5, -d / 2 - 0.1);
+    // Biển hiệu di sản phố cổ sơn son thiếp vàng (Hiển thị rõ ràng tên hiệu & ngành nghề kinh doanh)
+    const signMeta = this._getShopSignMeta(shopType, signText);
+    const signBoard = this._createSignboard3D(
+      w * 0.68, 1.05,
+      signMeta.title, signMeta.subtitle,
+      signMeta.bgCol, signMeta.textCol, signMeta.borderCol
+    );
+    signBoard.position.set(0, 3.45, -d / 2 - 0.12);
     shopGroup.add(signBoard);
+
+    // Đối với các căn nhà dọc mặt Nam đường tàu (Hiệu Thuốc Bắc, May Đo), bổ sung biển hiệu mặt tường sau hướng ra đường tàu
+    if (shopType === 'thuoc_bac' || shopType === 'may_do') {
+      const railFacingSign = this._createSignboard3D(
+        w * 0.68, 1.05,
+        signMeta.title, signMeta.subtitle,
+        signMeta.bgCol, signMeta.textCol, signMeta.borderCol
+      );
+      railFacingSign.position.set(0, 3.45, d / 2 + 0.12);
+      shopGroup.add(railFacingSign);
+    }
 
     // 2. NỘI THẤT NGHỆ THUẬT TỪNG NGÀNH NGHỀ
     this._populateShopInterior(shopGroup, x, z, w, d, shopType);
@@ -3504,30 +3709,45 @@ getTheHucBridgeInfo(x, y, z) {
     });
 
     // 4. ĐƯỜNG RAY XE LỬA DI SẢN PHỐ CỔ (Phố Cà Phê Đường Tàu Phùng Hưng nối liền Cầu Long Biên)
-    // Đồng bộ 100% quy chuẩn kiến trúc và vật liệu với Cầu Long Biên:
-    // - Đệm đá ballast sỏi xám đen nguyên khối
-    // - Tà vẹt gỗ quy cách chuẩn 0.35 x 0.22 x 2.8m (khoảng cách 0.8m)
-    // - 2 Ray sắt thép luyện chịu lực (khổ ray 1.0m, tâm ray Z = 59.5 & Z = 60.5)
-    // - Ván sàn gỗ bảo trì giữa 2 ray rộng 0.92m
-    const trackLenZ2 = 110.0; // Từ X = -140.0 đến X = -30.0 (chân dốc dẫn Long Biên)
-    const trackMidXZ2 = -85.0;
+    // Hạ thấp toàn bộ đệm đá, tà vẹt và ray sắt đặt khít sát mặt đường tự nhiên (Y = 0.0), loại bỏ lỗi ray bay lơ lửng:
+    // Từ X = -140.0 đến X = -35.0: Chạy phẳng sát mặt đất (Y = 0.0 -> 0.22)
+    // Từ X = -35.0 đến X = -30.0: Dốc thoai thoải kết nối êm ái vào chân dốc Cầu Long Biên
     const Z_TRACK = 60.0;
+    const flatLen = 105.0; // Từ X = -140.0 đến X = -35.0
+    const flatMidX = -87.5;
+    const transLen = 5.0;  // Từ X = -35.0 đến X = -30.0
+    const transMidX = -32.5;
+    const transAngle = 0.0997; // atan2(0.50, 5.0)
 
-    // A. Đệm đá Ballast đường sắt (Crushed Stone Ballast Embankment)
+    // A. Đệm đá Ballast đường sắt (Crushed Stone Ballast Embankment sát mặt đất)
     const ballastBed = new THREE.Mesh(
-      new THREE.BoxGeometry(trackLenZ2 + 2, 0.20, 3.8),
+      new THREE.BoxGeometry(flatLen + 1, 0.12, 3.8),
       this.materials.hanoiPavement
     );
     ballastBed.name = 'trainStreetBallastBed';
     ballastBed._isBaseGround = true;
-    ballastBed.position.set(trackMidXZ2, 0.5 + 0.10, Z_TRACK);
+    ballastBed.position.set(flatMidX, 0.06, Z_TRACK);
     ballastBed.receiveShadow = true;
     zoneGroup.add(ballastBed);
     this.colliders.push(ballastBed);
 
+    // Đoạn đệm đá chuyển tiếp lên dốc cầu (-35 -> -30)
+    const ballastTrans = new THREE.Mesh(
+      new THREE.BoxGeometry(5.05, 0.12, 3.8),
+      this.materials.hanoiPavement
+    );
+    ballastTrans.name = 'trainStreetBallastTrans';
+    ballastTrans._isBaseGround = true;
+    ballastTrans.position.set(transMidX, 0.31, Z_TRACK);
+    ballastTrans.rotation.z = transAngle;
+    ballastTrans.receiveShadow = true;
+    zoneGroup.add(ballastTrans);
+    this.colliders.push(ballastTrans);
+
     // B. Tà vẹt gỗ (InstancedMesh chuẩn mực)
-    const tieCountZ2 = Math.floor(trackLenZ2 / 0.8);
-    const tieGeomZ2 = new THREE.BoxGeometry(0.35, 0.22, 2.8);
+    const trackTotalLen = 110.0;
+    const tieCountZ2 = Math.floor(trackTotalLen / 0.8);
+    const tieGeomZ2 = new THREE.BoxGeometry(0.35, 0.16, 2.8);
     const tieMatZ2 = this.materials.woodTie || this.materials.retroWood;
     const tieInstancedZ2 = new THREE.InstancedMesh(tieGeomZ2, tieMatZ2, tieCountZ2);
     tieInstancedZ2.name = 'trainStreetTieInstanced';
@@ -3535,8 +3755,11 @@ getTheHucBridgeInfo(x, y, z) {
     const dummyTie = new THREE.Object3D();
     for (let i = 0; i < tieCountZ2; i++) {
       const tx = -140.0 + i * 0.8;
-      dummyTie.position.set(tx, 0.5 + 0.21, Z_TRACK);
-      dummyTie.rotation.set(0, 0, 0);
+      const progress = Math.max(0, Math.min(1, (tx - (-35.0)) / 5.0));
+      const ty = 0.12 + progress * 0.50; // Chạy sát mặt đất Y = 0.12, rồi dốc lên 0.62 tại X = -30
+      const tzAngle = progress > 0 ? transAngle : 0;
+      dummyTie.position.set(tx, ty, Z_TRACK);
+      dummyTie.rotation.set(0, 0, tzAngle);
       dummyTie.scale.set(1, 1, 1);
       dummyTie.updateMatrix();
       tieInstancedZ2.setMatrixAt(i, dummyTie.matrix);
@@ -3545,31 +3768,59 @@ getTheHucBridgeInfo(x, y, z) {
 
     // C. Hai ray sắt song song kết nối thẳng vào chân dốc Cầu Long Biên
     const railMatZ2 = this.materials.rustySteel;
-    const railNorth = new THREE.Mesh(new THREE.BoxGeometry(trackLenZ2 + 2, 0.18, 0.12), railMatZ2);
-    railNorth.position.set(trackMidXZ2, 0.5 + 0.38, Z_TRACK + 0.5);
+    // Đoạn phẳng (X = -140 -> -35)
+    const railNorth = new THREE.Mesh(new THREE.BoxGeometry(flatLen + 1, 0.14, 0.12), railMatZ2);
+    railNorth.position.set(flatMidX, 0.22, Z_TRACK + 0.5);
     railNorth.castShadow = true;
     railNorth.frustumCulled = false;
     zoneGroup.add(railNorth);
 
-    const railSouth = new THREE.Mesh(new THREE.BoxGeometry(trackLenZ2 + 2, 0.18, 0.12), railMatZ2);
-    railSouth.position.set(trackMidXZ2, 0.5 + 0.38, Z_TRACK - 0.5);
+    const railSouth = new THREE.Mesh(new THREE.BoxGeometry(flatLen + 1, 0.14, 0.12), railMatZ2);
+    railSouth.position.set(flatMidX, 0.22, Z_TRACK - 0.5);
     railSouth.castShadow = true;
     railSouth.frustumCulled = false;
     zoneGroup.add(railSouth);
 
+    // Đoạn dốc nối tiếp ray lên chân cầu Long Biên (X = -35 -> -30)
+    const railTransN = new THREE.Mesh(new THREE.BoxGeometry(5.05, 0.14, 0.12), railMatZ2);
+    railTransN.position.set(transMidX, 0.47, Z_TRACK + 0.5);
+    railTransN.rotation.z = transAngle;
+    railTransN.castShadow = true;
+    railTransN.frustumCulled = false;
+    zoneGroup.add(railTransN);
+
+    const railTransS = new THREE.Mesh(new THREE.BoxGeometry(5.05, 0.14, 0.12), railMatZ2);
+    railTransS.position.set(transMidX, 0.47, Z_TRACK - 0.5);
+    railTransS.rotation.z = transAngle;
+    railTransS.castShadow = true;
+    railTransS.frustumCulled = false;
+    zoneGroup.add(railTransS);
+
     // D. Ván sàn gỗ bảo trì giữa 2 ray (đi bộ an toàn, chống lọt chân)
     const centerWalkwayZ2 = new THREE.Mesh(
-      new THREE.BoxGeometry(trackLenZ2 + 2, 0.12, 0.92),
+      new THREE.BoxGeometry(flatLen + 1, 0.08, 0.92),
       this.materials.retroWood
     );
     centerWalkwayZ2.name = 'trainStreetCenterWalkway';
     centerWalkwayZ2._isBaseGround = true;
     centerWalkwayZ2.frustumCulled = false;
-    centerWalkwayZ2.position.set(trackMidXZ2, 0.5 + 0.33, Z_TRACK);
+    centerWalkwayZ2.position.set(flatMidX, 0.16, Z_TRACK);
     zoneGroup.add(centerWalkwayZ2);
     this.colliders.push(centerWalkwayZ2);
 
-    // E. Không gian Cà phê đường tàu: bàn ghế gỗ gập và chậu cây ven đường ray
+    const centerTrans = new THREE.Mesh(
+      new THREE.BoxGeometry(5.05, 0.08, 0.92),
+      this.materials.retroWood
+    );
+    centerTrans.name = 'trainStreetCenterTrans';
+    centerTrans._isBaseGround = true;
+    centerTrans.frustumCulled = false;
+    centerTrans.position.set(transMidX, 0.41, Z_TRACK);
+    centerTrans.rotation.z = transAngle;
+    zoneGroup.add(centerTrans);
+    this.colliders.push(centerTrans);
+
+    // E. Không gian Cà phê đường tàu: bàn ghế gỗ gập đặt chuẩn xác trên mặt đất (Y = 0.0)
     const tableMat = this.materials.retroWood;
     const stoolMat = new THREE.MeshStandardMaterial({ color: 0x2b382e, roughness: 0.7 });
     const cafeStops = [-45, -55, -68, -82, -98, -112];
@@ -3578,15 +3829,15 @@ getTheHucBridgeInfo(x, y, z) {
       for (let side of [-1, 1]) {
         const cz = Z_TRACK + side * 2.4;
         const table = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.65, 0.75), tableMat);
-        table.position.set(cx, 0.5 + 0.325, cz);
+        table.position.set(cx, 0.325, cz); // Đặt khít trên mặt đất Y = 0.0
         table.castShadow = true;
         zoneGroup.add(table);
-        this._addBoxObstacle(cx, cz, 0.9, 0.9, 0.5, 1.4);
+        this._addBoxObstacle(cx, cz, 0.9, 0.9, 0, 0.85);
 
         // 2 ghế đẩu
         for (let s of [-0.45, 0.45]) {
           const stool = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), stoolMat);
-          stool.position.set(cx + s, 0.5 + 0.175, cz);
+          stool.position.set(cx + s, 0.175, cz); // Đặt khít trên mặt đất Y = 0.0
           zoneGroup.add(stool);
         }
       }
@@ -3708,10 +3959,25 @@ getTheHucBridgeInfo(x, y, z) {
     const roof = this._createTraditionalHanoiRoof(w, d, h);
     shopGroup.add(roof);
 
-    // Biển hiệu tiệm cà phê chữ thư pháp vintage
-    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.9, 0.15), this.materials.vintagePosters);
-    signBoard.position.set(0, 3.4, -d / 2 - 0.08);
+    // Biển hiệu tiệm cà phê chữ thư pháp vintage (Ghi rõ bán cà phê trứng, trà sen, hạt hướng dương)
+    const signBoard = this._createSignboard3D(
+      4.2, 1.05,
+      'CÀ PHÊ TRỨNG & TRÀ SEN TÂY HỒ',
+      'Cà Phê Trứng Nóng • Trà Sen Ướp Gạo • Hướng Dương Rang Tay',
+      '#3b2014', '#fce292', '#d4af37'
+    );
+    signBoard.position.set(0, 3.45, -d / 2 - 0.12);
     shopGroup.add(signBoard);
+
+    // Biển hiệu mặt sau hướng ra phố đường tàu Z = 60
+    const railSign = this._createSignboard3D(
+      4.2, 1.05,
+      'CÀ PHÊ TRỨNG & TRÀ SEN TÂY HỒ',
+      'Cà Phê Trứng Nóng • Trà Sen Ướp Gạo • Hướng Dương Rang Tay',
+      '#3b2014', '#fce292', '#d4af37'
+    );
+    railSign.position.set(0, 3.45, d / 2 + 0.12);
+    shopGroup.add(railSign);
 
     // Cánh cửa mở tương tác tại lối vào
     this._createOpenableDoor(x, z - d / 2, 2.6, 2.8, 'Tiệm Cà Phê Trứng & Trà Sen Tây Hồ', 0x3d2316);
@@ -4060,11 +4326,25 @@ getTheHucBridgeInfo(x, y, z) {
     const roof = this._createTraditionalHanoiRoof(w, d, h);
     storeGroup.add(roof);
 
-    // Biển hiệu đỏ chữ vàng Bách Hóa Mậu Dịch
-    const signMat = new THREE.MeshStandardMaterial({ color: 0x9e2424, roughness: 0.5 });
-    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.95, 0.15), signMat);
-    signBoard.position.set(0, 3.4, -d / 2 - 0.08);
+    // Biển hiệu đỏ chữ vàng Bách Hóa Mậu Dịch (Ghi rõ phân phối lương thực, tem phiếu, nhu yếu phẩm)
+    const signBoard = this._createSignboard3D(
+      4.4, 1.05,
+      'BÁCH HÓA MẬU DỊCH SỐ 18',
+      'Phân Phối Lương Thực • Tem Phiếu • Đồ Gia Dụng • Dầu Hỏa',
+      '#991b1b', '#fde047', '#facc15'
+    );
+    signBoard.position.set(0, 3.45, -d / 2 - 0.12);
     storeGroup.add(signBoard);
+
+    // Biển hiệu mặt sau hướng ra phố đường tàu Z = 60
+    const railSign = this._createSignboard3D(
+      4.4, 1.05,
+      'BÁCH HÓA MẬU DỊCH SỐ 18',
+      'Phân Phối Lương Thực • Tem Phiếu • Đồ Gia Dụng • Dầu Hỏa',
+      '#991b1b', '#fde047', '#facc15'
+    );
+    railSign.position.set(0, 3.45, d / 2 + 0.12);
+    storeGroup.add(railSign);
 
     // Cánh cửa mở tương tác
     this._createOpenableDoor(x, z - d / 2, 2.6, 2.8, 'Cửa Hàng Bách Hóa Mậu Dịch Số 18', 0x2e1a12);
@@ -4837,6 +5117,7 @@ getTheHucBridgeInfo(x, y, z) {
     }
 
     // Biển tên nhà ga cổ kính: "GA LONG BIÊN • GARE DE LONG BIÊN"
+    // Bác Hùng Gác Cầu Long Biên & Bảo Vệ Nhà Ga Di Sản
     const signBoard = createBoxBeam(12, 1.1, 0.2, new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 }));
     signBoard.position.set(40.0, PLATFORM_Y + 4.5, PLATFORM_Z + 2.2);
     stationGroup.add(signBoard);
@@ -5398,7 +5679,13 @@ getTheHucBridgeInfo(x, y, z) {
     // Bà cụ ngồi dáng vẻ nhân từ (Mô hình người điêu khắc Á Đông chân thực)
     try {
       const model = createHanoiCharacter3D('char_co_gai_ao_ba_ba');
-      model.position.set(0, 0.35, 0);
+      // Hạ thấp mô hình nhân vật để khung chậu khớp chính xác trên mặt ghế đẩu gỗ (cao 0.32m), chân chạm đất
+      model.position.set(0, -0.58, 0);
+      model.traverse(child => {
+        if (child.isMesh && child.geometry instanceof THREE.CircleGeometry) {
+          child.visible = false;
+        }
+      });
 
       // Uốn khớp vào tư thế ngồi hiền từ
       const lHip = model.getObjectByName('Joint_L_Hip');
@@ -5555,7 +5842,13 @@ getTheHucBridgeInfo(x, y, z) {
     // Mô hình người 3D điêu khắc ngồi uống cà phê
     try {
       const model = createHanoiCharacter3D('char_nam_tri_thuc_suit');
-      model.position.set(0, 0.35, 0);
+      // Hạ thấp mô hình ngồi vừa khít mặt ghế đẩu gỗ (cao 0.35m), không bay lơ lửng
+      model.position.set(0, -0.55, 0);
+      model.traverse(child => {
+        if (child.isMesh && child.geometry instanceof THREE.CircleGeometry) {
+          child.visible = false;
+        }
+      });
 
       // Uốn khớp hông và đầu gối vào tư thế ngồi thư thái
       const lHip = model.getObjectByName('Joint_L_Hip');

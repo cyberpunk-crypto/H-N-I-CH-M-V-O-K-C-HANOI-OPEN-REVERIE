@@ -116,11 +116,12 @@ export class CameraController {
 
     window.addEventListener('mousemove', (e) => {
       // Hỗ trợ cả PointerLock trực tiếp hoặc kéo rê chuột tự do
+      const minPitch = (this.mode === 'TPS') ? -0.42 : -Math.PI / 2.6;
       if (document.pointerLockElement === this.domElement) {
         const sens = 0.0028;
         this.targetYaw -= e.movementX * sens;
         this.targetPitch -= e.movementY * sens;
-        this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, -Math.PI / 2.6, Math.PI / 2.8);
+        this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, minPitch, Math.PI / 2.8);
       } else if (isDragging) {
         const deltaX = e.clientX - prevMouseX;
         const deltaY = e.clientY - prevMouseY;
@@ -130,7 +131,7 @@ export class CameraController {
         const sens = 0.0045;
         this.targetYaw -= deltaX * sens;
         this.targetPitch -= deltaY * sens;
-        this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, -Math.PI / 2.6, Math.PI / 2.8);
+        this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, minPitch, Math.PI / 2.8);
       }
     });
 
@@ -214,6 +215,8 @@ export class CameraController {
 
     // 1. Phản hồi chuột tức thì 1:1 theo thời gian thực - Triệt tiêu 100% cảm giác lì lợm/trôi camera
     this.yaw = this.targetYaw;
+    const minPitch = (this.mode === 'TPS') ? -0.42 : -Math.PI / 2.6;
+    this.targetPitch = THREE.MathUtils.clamp(this.targetPitch, minPitch, Math.PI / 2.8);
     this.pitch = this.targetPitch;
 
     // Vector hướng nhìn 3D tính từ góc chuột (Hỗ trợ quay tự do 360 độ theo mọi góc nhìn)
@@ -394,7 +397,7 @@ export class CameraController {
       }
 
       if (tMin < minAllowedArm) {
-        minAllowedArm = Math.max(this.minArmLength, tMin - 0.28);
+        minAllowedArm = Math.max(this.minArmLength, tMin - 0.45);
       }
     }
 
@@ -429,7 +432,7 @@ export class CameraController {
 
       const hits = this.raycaster.intersectObjects(colliders, false);
       if (hits.length > 0) {
-        const hitDistance = hits[0].distance - 0.25;
+        const hitDistance = hits[0].distance - 0.40;
         if (hitDistance < minAllowedArm) {
           minAllowedArm = Math.max(this.minArmLength, hitDistance);
         }
@@ -437,12 +440,28 @@ export class CameraController {
     }
 
     if (minAllowedArm < this.currentArmLength) {
-      this.currentArmLength = Math.max(minAllowedArm, THREE.MathUtils.lerp(this.currentArmLength, minAllowedArm, 0.4));
+      // Co ngắn tay cần camera tức thì khi chạm tường - Triệt tiêu 100% hiện tượng nhìn xuyên vào trong nhà
+      this.currentArmLength = minAllowedArm;
     } else {
       this.currentArmLength = THREE.MathUtils.lerp(this.currentArmLength, this.targetArmLength, 0.1);
     }
 
     const actualTpsPos = this._actualTpsPos.copy(eyePos).addScaledVector(camDir, this.currentArmLength);
+
+    // CHỐNG TRIỆT ĐỂ LỖI CAMERA CHÚC XUỐNG DƯỚI ĐẤT / NHÌN XUYÊN NỀN VÀ XUYÊN NHÀ:
+    // Kiểm tra cao độ mặt đất / mặt sàn cầu tại vị trí camera TPS
+    let groundAtCam = 0.0;
+    if (this.worldManager && typeof this.worldManager.checkBridgeSurface === 'function') {
+      const brCheck = this.worldManager.checkBridgeSurface(actualTpsPos.x, actualTpsPos.y, actualTpsPos.z);
+      if (brCheck && brCheck.onBridge) {
+        groundAtCam = Math.max(groundAtCam, brCheck.closestY);
+      }
+    }
+    // Camera phải luôn cao hơn mặt đất tối thiểu 0.35m và cao hơn bàn chân nhân vật tối thiểu 0.25m
+    const minCamY = Math.max(groundAtCam + 0.35, playerPos.y + 0.25, 0.35);
+    if (actualTpsPos.y < minCamY) {
+      actualTpsPos.y = minCamY;
+    }
 
     // 7. Head-Bobbing & Nhịp thở người cầm máy trong FPS
     this.bobbingOffset.set(0, 0, 0);
