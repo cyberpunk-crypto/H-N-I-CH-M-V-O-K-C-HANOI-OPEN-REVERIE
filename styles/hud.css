@@ -341,17 +341,7 @@
 }
 
 .chat-messages-area {
-  max-height: 155px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  background: rgba(18, 14, 11, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 6px;
-  margin-bottom: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  display: none !important;
 }
 
 .chat-msg-row {

@@ -252,6 +252,16 @@ export class GameEngine {
       // 7. Xử lý Resize
       window.addEventListener('resize', this._onWindowResize.bind(this));
 
+      // Tiền biên dịch trước toàn bộ Shaders & Materials (Pre-warm Shaders)
+      // Triệt tiêu 100% hiện tượng đơ/khựng 1-2 giây khi người chơi bắt đầu di chuyển
+      if (this.renderer && scene && this.camera) {
+        try {
+          this.renderer.compile(scene, this.camera);
+        } catch (e) {
+          console.warn('[GameEngine] Pre-warm shader compile skipped:', e);
+        }
+      }
+
       this._reportProgress(100, 'Thủ đô Hà Nội đã sẵn sàng!');
 
       // Bắt đầu Game Loop

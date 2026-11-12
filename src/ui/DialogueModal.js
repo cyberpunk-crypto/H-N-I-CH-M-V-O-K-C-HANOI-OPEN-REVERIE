@@ -157,6 +157,11 @@ export class DialogueModal {
     if (roleEl) roleEl.textContent = npcData.role || npcData.title || 'Cư dân phố cổ';
     if (textEl) textEl.textContent = npcData.greeting || '"Chào bạn lãng tử!"';
 
+    // Phát sự kiện để NPC 3D hiển thị bong bóng thoại trên đầu
+    GameEventBus.emit('UI:NPC_SPOKE', {
+      text: (npcData.greeting || 'Chào bạn lãng tử!').replace(/^"|"$/g, '')
+    });
+
     // 1. Thuyết minh lịch sử
     if (historyTitleEl) historyTitleEl.textContent = `🏛️ ${npcData.monumentTitle || 'Di Tích Lịch Sử'}`;
     if (historyTextEl) {
@@ -180,6 +185,9 @@ export class DialogueModal {
         btn.textContent = opt.text;
         btn.addEventListener('click', () => {
           textEl.textContent = opt.reply;
+          GameEventBus.emit('UI:NPC_SPOKE', {
+            text: (opt.reply || '').replace(/^"|"$/g, '')
+          });
         });
         optionsContainer.appendChild(btn);
       });

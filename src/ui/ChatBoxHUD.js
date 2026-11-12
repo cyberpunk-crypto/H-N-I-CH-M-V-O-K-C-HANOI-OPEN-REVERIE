@@ -26,23 +26,13 @@ export class ChatBoxHUD {
     this.element.id = 'chatBoxHudContainer';
     this.element.className = 'chatbox-hud-container';
     this.element.innerHTML = `
-      <!-- Khung hiển thị tin nhắn -->
-      <div id="chatMessagesArea" class="chat-messages-area">
-        ${this.messages.map(m => `
-          <div class="chat-msg-row">
-            <span class="chat-sender-badge">${m.sender}:</span>
-            <span class="chat-msg-text">${m.text}</span>
-          </div>
-        `).join('')}
-      </div>
-
-      <!-- Ô nhập tin nhắn (Bấm Enter để mở) -->
+      <!-- Ô nhập tin nhắn (Bấm Enter để mở - Tối giản, không có bảng tin nhắn che màn hình) -->
       <form id="chatInputForm" class="chat-input-form ${this.isChatOpen ? '' : 'collapsed'}">
         <input 
           type="text" 
           id="chatTextInput" 
           class="chat-text-input" 
-          placeholder="Nhấn Enter để gửi lời nhắn đến những người bạn dạo phố..." 
+          placeholder="Nhấn Enter để gửi lời nhắn (hiện bong bóng 3D trên đầu nhân vật)..." 
           maxlength="100"
           autocomplete="off"
         />
@@ -56,7 +46,6 @@ export class ChatBoxHUD {
   _bindEvents() {
     const inputForm = this.element.querySelector('#chatInputForm');
     const inputField = this.element.querySelector('#chatTextInput');
-    const messagesArea = this.element.querySelector('#chatMessagesArea');
 
     // Phím Enter bật/tắt ô nhập chat
     window.addEventListener('keydown', (e) => {
@@ -81,10 +70,9 @@ export class ChatBoxHUD {
         if (text.length > 0) {
           const profile = JSON.parse(localStorage.getItem('hanoi_user_profile') || '{}');
           const myName = profile.username || 'Tôi';
-          this.addMessage(myName, text);
           inputField.value = '';
 
-          // Kích hoạt bong bóng chat 3D trên đầu nhân vật
+          // Kích hoạt bong bóng chat 3D trực quan trên đầu nhân vật (Hiện chữ trên đầu theo yêu cầu)
           GameEventBus.emit('UI:CHAT_MESSAGE_SENT', {
             sender: myName,
             text: text
@@ -93,20 +81,6 @@ export class ChatBoxHUD {
         this.closeChat();
       });
     }
-
-    // Tự động mô phỏng tin nhắn cộng đồng ghé thăm
-    const communityQuotes = [
-      { sender: 'ThuTrang_Hanoi', text: 'Quán cà phê trứng ở số 18 mở cửa rồi đó mọi người, vào uống đi!' },
-      { sender: 'NhiếpẢnhGia_89', text: 'Chị Lan bán hoa đang đi bộ ven hồ đó, hoa sen thơm nức.' },
-      { sender: 'BảoNam_TràngAn', text: 'Hoàng hôn đỏ lửa trên nhịp cầu Long Biên chụp lên film đẹp mê hồn.' }
-    ];
-
-    let quoteIdx = 0;
-    setInterval(() => {
-      const q = communityQuotes[quoteIdx % communityQuotes.length];
-      this.addMessage(q.sender, q.text);
-      quoteIdx++;
-    }, 28000);
   }
 
   openChat() {
