@@ -553,8 +553,9 @@ export class PlayerController {
     if (token !== this._loadToken) return;
 
     try {
-      // SỬA TRIỆT ĐỂ LỖI BIẾN MẤT NHÂN VẬT: Dựng model mới hoàn tất xong mới hoán đổi nguyên tử (Atomic Swap)
-      // KHÔNG gọi _disposeHierarchy trước khi model mới sẵn sàng để nhân vật không bao giờ bị biến mất
+      // Dọn dẹp sạch 100% tài nguyên và Mixer cũ trước khi dựng model mới
+      this._disposeHierarchy(this.characterGroup);
+
       let modelLoaded = false;
       if (typeof window !== 'undefined' && typeof window.document !== 'undefined' && this._gltfLoader) {
         try {
@@ -832,13 +833,6 @@ export class PlayerController {
               this.humanoidAnimator = null;
             }
 
-            if (token !== this._loadToken) {
-              this._disposeHierarchy(model);
-              return;
-            }
-
-            // Hoán đổi nguyên tử: chỉ dọn dẹp model cũ khi model mới đã 100% sẵn sàng
-            this._disposeHierarchy(this.characterGroup);
             this.characterMesh = model;
             this.characterGroup.add(model);
             this._isGltfReady = true;
@@ -854,7 +848,6 @@ export class PlayerController {
       if (!modelLoaded && token === this._loadToken) {
         const charModel = createHanoiCharacter3D(characterId);
         charModel.position.set(0, 0.045, 0); // Đồng bộ nâng đế chân 4.5cm cho mô hình Procedural, triệt tiêu lún chân
-        this._disposeHierarchy(this.characterGroup);
         this.characterMesh = charModel;
         this.characterGroup.add(charModel);
 
