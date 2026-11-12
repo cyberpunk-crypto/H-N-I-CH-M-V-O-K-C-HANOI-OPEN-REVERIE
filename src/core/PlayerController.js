@@ -812,10 +812,7 @@ export class PlayerController {
               const walkAction = mixer.clipAction(walkClip);
               const runAction = mixer.clipAction(runClip);
 
-              // Pre-warm toàn bộ Animation Actions để tránh hitch/stutter khi chuyển động lần đầu
-              if (walkAction) walkAction.reset().setEffectiveWeight(0).play();
-              if (runAction) runAction.reset().setEffectiveWeight(0).play();
-              idleAction.reset().setEffectiveWeight(1).play();
+              idleAction.reset().play();
               mixer.update(0.016);
 
               this._gltfMixer = mixer;
@@ -829,7 +826,6 @@ export class PlayerController {
                 const jumpAction = mixer.clipAction(jumpClip);
                 jumpAction.setLoop(THREE.LoopOnce);
                 jumpAction.clampWhenFinished = true;
-                jumpAction.reset().setEffectiveWeight(0).play();
                 this._animActions.jump = jumpAction;
               }
 
