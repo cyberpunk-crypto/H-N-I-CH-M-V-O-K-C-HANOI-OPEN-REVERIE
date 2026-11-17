@@ -26,7 +26,13 @@ if (typeof document === 'undefined') {
           moveTo: () => {},
           lineTo: () => {},
           stroke: () => {},
-          fill: () => {}
+          fill: () => {},
+          strokeRect: () => {},
+          arc: () => {},
+          rect: () => {},
+          closePath: () => {},
+          save: () => {},
+          restore: () => {}
         }),
         addEventListener: () => {},
         removeEventListener: () => {},

@@ -8,6 +8,7 @@ import { THREE } from './ThreeLib.js';
 import { ZONES } from './ZoneManager.js';
 import * as BufferGeometryUtils from '../lib/utils/BufferGeometryUtils.js';
 import { createHanoiCharacter3D, create3DNonLa, create3DFedoraHat, create3DKhanXep } from './CharacterFactory.js';
+import { KimLienEnvironmentAnimator, createElephantEarFanMesh, createBambooBirdcageMesh } from './animations.js';
 
 export class WorldManager {
   constructor(sceneManager, eventBus) {
@@ -31,6 +32,7 @@ export class WorldManager {
     this.roamingNpcs = [];
     this.citizens = []; // Danh sách toàn bộ NPC người dân Thủ Đô
     this.lakeFish = []; // Đàn cá chép vàng & cá koi bơi lội dưới lòng Hồ Gươm
+    this.kimLienAnimator = new KimLienEnvironmentAnimator(new THREE.Vector3(-65, 3.8, -60));
 
     // Lắng nghe sự kiện NPC trò chuyện để hiển thị bong bóng thoại 3D trên đầu NPC
     if (this.eventBus) {
@@ -500,8 +502,15 @@ getTheHucBridgeInfo(x, y, z) {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (typeof drawFn === 'function') {
-      drawFn(ctx, width, height);
-    } else {
+      try {
+        drawFn(ctx, width, height);
+      } catch (e) {
+        if (ctx && typeof ctx.fillRect === 'function') {
+          ctx.fillStyle = '#c49a65';
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+    } else if (ctx && typeof ctx.fillRect === 'function') {
       ctx.fillStyle = '#c49a65';
       ctx.fillRect(0, 0, width, height);
     }
@@ -1089,6 +1098,235 @@ getTheHucBridgeInfo(x, y, z) {
       map: canvaMasterpieceTex,
       roughness: 0.70,
       metalness: 0.10
+    });
+
+    // =========================================================================
+    // 31. VẬT LIỆU KHU TẬP THỂ KIM LIÊN MỞ HOÀN TOÀN & ĐỒ HỌA CANVA AI (ZONE 4)
+    // =========================================================================
+    // a. Tranh cổ động thời Bao Cấp Canva AI: "Thi Đua Lao Động Sản Xuất - Tất Cả Vì Chủ Nghĩa Xã Hội"
+    const canvaKimLienTex = this._loadTextureWithFallback(
+      'assets/textures/canva_poster_kimlien.jpg',
+      (ctx, w, h) => {
+        // Nền đỏ cờ bã trầu thời bao cấp
+        ctx.fillStyle = '#a62424';
+        ctx.fillRect(0, 0, w, h);
+        // Khung viền hoa văn vàng kim
+        ctx.strokeStyle = '#f5c542';
+        ctx.lineWidth = 14;
+        ctx.strokeRect(16, 16, w - 32, h - 32);
+        ctx.lineWidth = 3;
+        ctx.strokeRect(26, 26, w - 52, h - 52);
+
+        // Vầng mặt trời tỏa tia sáng vàng
+        ctx.fillStyle = '#f5c542';
+        ctx.beginPath();
+        ctx.arc(w / 2, h * 0.42, 68, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Biểu tượng Búa Liềm vàng cách điệu
+        ctx.fillStyle = '#e81818';
+        ctx.beginPath();
+        ctx.arc(w / 2, h * 0.42, 48, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f5c542';
+        ctx.font = 'bold 42px "Times New Roman", serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('☭', w / 2, h * 0.42);
+
+        // Khẩu hiệu cổ động hào hùng
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px "Be Vietnam Pro", sans-serif';
+        ctx.fillText('THI ĐUA LAO ĐỘNG SẢN XUẤT', w / 2, h * 0.72);
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 20px "Be Vietnam Pro", sans-serif';
+        ctx.fillText('TẤT CẢ VÌ CHỦ NGHĨA XÃ HỘI!', w / 2, h * 0.82);
+        ctx.fillStyle = '#ffdada';
+        ctx.font = 'italic 16px "Be Vietnam Pro", sans-serif';
+        ctx.fillText('Khu Tập Thể Kim Liên • Hà Nội 1985', w / 2, h * 0.91);
+      },
+      1, 1
+    );
+    this.materials.canvaPosterKimLien = new THREE.MeshStandardMaterial({
+      map: canvaKimLienTex,
+      roughness: 0.65,
+      metalness: 0.05
+    });
+
+    // b. Biển số nhà nhôm A1 dập nổi Canva AI
+    const blockSignTex = this._loadTextureWithFallback(
+      'assets/textures/kimlien_block_sign.png',
+      (ctx, w, h) => {
+        // Nền nhôm xước viền đỏ
+        ctx.fillStyle = '#d4d8db';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#b91c1c';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(8, 8, w - 16, h - 16);
+
+        ctx.fillStyle = '#991b1b';
+        ctx.font = '900 64px "Be Vietnam Pro", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('NHÀ A1', w / 2, h * 0.40);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 22px "Be Vietnam Pro", sans-serif';
+        ctx.fillText('KHU TẬP THỂ KIM LIÊN', w / 2, h * 0.76);
+      },
+      1, 1
+    );
+    this.materials.kimLienBlockSign = new THREE.MeshStandardMaterial({
+      map: blockSignTex,
+      roughness: 0.42,
+      metalness: 0.35
+    });
+
+    // c. Lịch bloc tường xé ngày 02/09/1985 giấy ngả vàng
+    const blocCalendarTex = this._loadTextureWithFallback(
+      'assets/textures/bloc_calendar_1985.png',
+      (ctx, w, h) => {
+        // Bìa gỗ đỏ
+        ctx.fillStyle = '#831818';
+        ctx.fillRect(0, 0, w, h);
+        // Khánh lịch son đỏ chữ vàng
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 18px "Be Vietnam Pro", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NƯỚC CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', w / 2, 28);
+
+        // Tờ lịch bloc xé giấy màu ngà
+        ctx.fillStyle = '#fffdf0';
+        ctx.fillRect(20, 48, w - 40, h - 68);
+        ctx.strokeStyle = '#d4c5a0';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(20, 48, w - 40, h - 68);
+
+        ctx.fillStyle = '#b91c1c';
+        ctx.font = 'bold 18px "Be Vietnam Pro", sans-serif';
+        ctx.fillText('THÁNG CHÍN', w / 2, 85);
+        ctx.font = '900 76px "Times New Roman", serif';
+        ctx.fillText('2', w / 2, 160);
+        ctx.font = 'bold 16px "Be Vietnam Pro", sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('QUỐC KHÁNH • 1985', w / 2, 215);
+        ctx.fillStyle = '#475569';
+        ctx.font = 'italic 12px "Be Vietnam Pro", sans-serif';
+        ctx.fillText('Không có gì quý hơn độc lập tự do', w / 2, 250);
+      },
+      1, 1
+    );
+    this.materials.blocCalendar1985 = new THREE.MeshStandardMaterial({
+      map: blocCalendarTex,
+      roughness: 0.75
+    });
+
+    // d. Bảng tin phường phấn trắng viết tay thông báo tem phiếu
+    const bulletinTex = this._loadTextureWithFallback(
+      'assets/textures/ward_bulletin_board.png',
+      (ctx, w, h) => {
+        // Khung gỗ nâu sẫm
+        ctx.fillStyle = '#3a2414';
+        ctx.fillRect(0, 0, w, h);
+        // Mặt bảng đen phấn trắng
+        ctx.fillStyle = '#18201a';
+        ctx.fillRect(16, 16, w - 32, h - 32);
+
+        ctx.fillStyle = '#fef08a';
+        ctx.font = 'bold 22px "Be Vietnam Pro", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('BẢNG TIN PHƯỜNG KIM LIÊN', w / 2, 45);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px "Be Vietnam Pro", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('• Thông báo phân phối dầu hỏa & gạo tháng 9', 36, 85);
+        ctx.fillText('• Lịch cắt điện luân phiên: Thứ 3 & Thứ 6', 36, 120);
+        ctx.fillText('• Tiêu chuẩn vải mậu dịch: 5 mét / năm', 36, 155);
+        ctx.fillText('• Cấp nước máy bể chung: 5h00 - 7h00 sáng', 36, 190);
+        ctx.fillStyle = '#facc15';
+        ctx.fillText('UBND PHƯỜNG &bull; TỔ DÂN PHỐ SỐ 4', 36, 235);
+      },
+      1, 1
+    );
+    this.materials.wardBulletinBoard = new THREE.MeshStandardMaterial({
+      map: bulletinTex,
+      roughness: 0.85
+    });
+
+    // e. Đá mài granito lấm tấm xám đen đỏ cho cầu thang bộ và chiếu nghỉ
+    const granitoTex = this._createCanvasFallback((ctx, w, h) => {
+      ctx.fillStyle = '#8f9499';
+      ctx.fillRect(0, 0, w, h);
+      // Lấm tấm hạt đá đen
+      ctx.fillStyle = '#222831';
+      for (let i = 0; i < 400; i++) {
+        ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 3 + 1, Math.random() * 3 + 1);
+      }
+      // Hạt đá đỏ gạch
+      ctx.fillStyle = '#993322';
+      for (let i = 0; i < 200; i++) {
+        ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 2 + 1, Math.random() * 2 + 1);
+      }
+      // Hạt đá trắng ngà
+      ctx.fillStyle = '#ececec';
+      for (let i = 0; i < 300; i++) {
+        ctx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 2 + 1, Math.random() * 2 + 1);
+      }
+    }, 128, 128);
+    granitoTex.repeat.set(4, 4);
+
+    this.materials.granitoStairs = new THREE.MeshStandardMaterial({
+      map: granitoTex,
+      roughness: 0.48,
+      metalness: 0.08
+    });
+
+    // f. Gạch bông xi măng Bát Tràng lát sàn căn hộ tập thể 204
+    const apartmentFloorTex = this._createCanvasFallback((ctx, w, h) => {
+      ctx.fillStyle = '#ded9cf';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#2b4d45'; // Men lam hoa cúc
+      ctx.lineWidth = 3;
+      for (let x = 0; x < w; x += 32) {
+        for (let y = 0; y < h; y += 32) {
+          ctx.strokeRect(x + 2, y + 2, 28, 28);
+          ctx.beginPath();
+          ctx.arc(x + 16, y + 16, 8, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }, 128, 128);
+    apartmentFloorTex.repeat.set(8, 8);
+
+    this.materials.apartmentFloor = new THREE.MeshStandardMaterial({
+      map: apartmentFloorTex,
+      roughness: 0.55,
+      metalness: 0.05
+    });
+
+    // g. Lan can con tiện bê tông đúc rỗng hoa văn quả trám / hoa chanh
+    const balustradeTex = this._createCanvasFallback((ctx, w, h) => {
+      ctx.fillStyle = '#cfd4d8';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#1c2226';
+      for (let x = 8; x < w; x += 24) {
+        // Hoa văn con tiện quả trám
+        ctx.beginPath();
+        ctx.moveTo(x + 6, 8);
+        ctx.lineTo(x + 12, 32);
+        ctx.lineTo(x + 6, 56);
+        ctx.lineTo(x, 32);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }, 128, 64);
+    balustradeTex.repeat.set(8, 1);
+
+    this.materials.balustradeConTien = new THREE.MeshStandardMaterial({
+      map: balustradeTex,
+      roughness: 0.72,
+      metalness: 0.05
     });
   }
 
@@ -5219,41 +5457,713 @@ getTheHucBridgeInfo(x, y, z) {
     zoneGroup.name = 'Zone4_CollectiveHousing';
     this.zone4Group = zoneGroup;
 
-    // 1. Dãy nhà tập thể 5 tầng lắp ghép Kim Liên đồ sộ
-    const blocks = [
-      { x: -50, z: -55, w: 32, d: 16, h: 18 },
-      { x: -95, z: -55, w: 36, d: 16, h: 18 },
-      { x: -65, z: -105, w: 42, d: 16, h: 18 }
-    ];
+    // =========================================================================
+    // 🏢 1. KHỐI NHÀ TẬP THỂ A1 MỞ HOÀN TOÀN (ENTERABLE ARCHITECTURE - ZONE D)
+    // Tọa độ (-65.0, 0, -60.0), bước vào trong 100%, leo cầu thang bộ granito,
+    // dạo hành lang thông thoáng, tham quan Căn hộ mẫu 204 bao cấp & chuồng cọp
+    // =========================================================================
+    this._buildEnterableCollectiveBlockA1(zoneGroup, -65.0, -60.0);
 
-    blocks.forEach((b, idx) => {
-      const blockMesh = this._createDetailedCollectiveBlock(b.w, b.h, b.d, `NHÀ TẬP THỂ A${idx + 1}`);
-      blockMesh.position.set(b.x, 0, b.z);
-      zoneGroup.add(blockMesh);
-      // ĐĂNG KÝ VA CHẠM CỨNG CÁP: CHỐNG ĐI XUYÊN TOÀN BỘ KHU NHÀ TẬP THỂ!
-      this._addBoxObstacle(b.x, b.z, b.w + 0.4, b.d + 0.4, 0, b.h + 2.0);
+    // =========================================================================
+    // 🏢 2. HAI KHỐI NHÀ TẬP THỂ CẢNH QUAN HẬU CẢNH (A2 & B1 - KHỐI RỖNG CHỮ U)
+    // =========================================================================
+    // Khối Nhà A2 phía Tây (-110.0, 0, -60.0)
+    const blockA2 = this._createDetailedCollectiveBlock(36, 18, 16, 'NHÀ TẬP THỂ A2');
+    blockA2.position.set(-110.0, 0, -60.0);
+    zoneGroup.add(blockA2);
+    // Thin-wall obstacles 4 vách ngoài của A2 (không chặn kín sân chung)
+    this._addBoxObstacle(-110.0, -68.0, 36.0, 0.45, 0, 18.0);
+    this._addBoxObstacle(-110.0, -52.0, 36.0, 0.45, 0, 18.0);
+    this._addBoxObstacle(-128.0, -60.0, 0.45, 16.0, 0, 18.0);
+    this._addBoxObstacle(-92.0, -60.0, 0.45, 16.0, 0, 18.0);
+
+    // Khối Nhà B1 phía Nam (-75.0, 0, -115.0)
+    const blockB1 = this._createDetailedCollectiveBlock(42, 18, 16, 'NHÀ TẬP THỂ B1');
+    blockB1.position.set(-75.0, 0, -115.0);
+    zoneGroup.add(blockB1);
+    // Thin-wall obstacles 4 vách ngoài của B1 (không chặn kín sân chung)
+    this._addBoxObstacle(-75.0, -123.0, 42.0, 0.45, 0, 18.0);
+    this._addBoxObstacle(-75.0, -107.0, 42.0, 0.45, 0, 18.0);
+    this._addBoxObstacle(-96.0, -115.0, 0.45, 16.0, 0, 18.0);
+    this._addBoxObstacle(-54.0, -115.0, 0.45, 16.0, 0, 18.0);
+
+    // =========================================================================
+    // 🌳 3. SÂN CHUNG KHU TẬP THỂ & KHÔNG GIAN SINH HOẠT CỘNG ĐỒNG (-75.0, 0, -80.0)
+    // =========================================================================
+    // A. Bể nước máy tập thể rêu phong xây gạch trát xi măng (4.5m x 2.8m x 1.2m)
+    const waterResGroup = new THREE.Group();
+    waterResGroup.position.set(-75.0, 0, -86.0);
+
+    const resWallMat = this.materials.mossStone;
+    // 4 thành bể gạch trát xi măng rêu phong
+    const resFront = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.3), resWallMat);
+    resFront.position.set(0, 0.6, 1.25);
+    const resBack = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.3), resWallMat);
+    resBack.position.set(0, 0.6, -1.25);
+    const resLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 2.8), resWallMat);
+    resLeft.position.set(-2.1, 0.6, 0);
+    const resRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 2.8), resWallMat);
+    resRight.position.set(2.1, 0.6, 0);
+    waterResGroup.add(resFront, resBack, resLeft, resRight);
+
+    // Mặt nước trong bể (Y = 0.95m)
+    const resWater = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 2.2), this.materials.lakeWater);
+    resWater.rotation.x = -Math.PI / 2;
+    resWater.position.set(0, 0.95, 0);
+    waterResGroup.add(resWater);
+
+    // 2 vòi van đồng cổ vươn ra xả nước róc rách
+    for (let vx of [-0.8, 0.8]) {
+      const tapPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.45, 8), this.materials.bronze);
+      tapPipe.rotation.x = Math.PI / 2;
+      tapPipe.position.set(vx, 1.15, 1.35);
+      waterResGroup.add(tapPipe);
+
+      const tapValve = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.015, 6, 12), this.materials.templeGold);
+      tapValve.position.set(vx, 1.22, 1.22);
+      waterResGroup.add(tapValve);
+
+      // Xô nhôm múc nước đặt dưới vòi
+      const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.32, 10), new THREE.MeshStandardMaterial({ color: 0xc8d0d8, roughness: 0.35, metalness: 0.7 }));
+      bucket.position.set(vx, 0.16, 1.65);
+      waterResGroup.add(bucket);
+    }
+    zoneGroup.add(waterResGroup);
+    this._addBoxObstacle(-75.0, -86.0, 4.6, 2.9, 0, 1.3);
+
+    // Điểm tương tác vặn vòi nước bể tập thể
+    this.interactables.push({
+      position: new THREE.Vector3(-75.0, 0.5, -84.2),
+      radius: 2.6,
+      promptText: 'Vặn Van Đồng Múc Nước Bể Tập Thể',
+      actionKey: 'E',
+      onInteract: () => {
+        try {
+          const audio = new Audio('assets/audio/water_tap_audio.mp3');
+          audio.volume = 0.85;
+          audio.play().catch(() => {});
+        } catch {}
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '💧 Tiếng vòi nước máy róc rách: Ký ức những sớm tinh sương cư dân xếp hàng xô nhôm múc nước rộn rã sân tập thể.'
+          });
+        }
+      }
     });
 
-    // 2. Bàn cờ tướng đá dưới sân chung
-    const chessTable = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.75, 16), this.materials.mossStone);
-    chessTable.position.set(-75, 0.375, -78);
-    chessTable.castShadow = true;
-    zoneGroup.add(chessTable);
-    this._addBoxObstacle(-75, -78, 2.4, 2.4, 0, 1.2); // Chống xuyên bàn cờ tướng!
-
-    // 3. Cây bàng già lá đỏ cuối thu góc sân
+    // B. Cây bàng già lá đỏ cuối thu góc sân (-68.0, 0, -74.0)
     const bangTree = this._createBangTree();
-    bangTree.position.set(-68, 0, -74);
+    bangTree.position.set(-68.0, 0, -74.0);
     zoneGroup.add(bangTree);
-    this._addBoxObstacle(-68, -74, 1.5, 1.5, 0, 10.0); // Chống xuyên gốc bàng!
+    this._addBoxObstacle(-68.0, -74.0, 1.6, 1.6, 0, 10.0);
 
-    // 4. Loa truyền thanh phường trên cột bê tông
+    // C. Bàn cờ tướng đá tròn của 2 cụ già kỳ thủ (-75.0, 0, -78.0)
+    const chessGroup = new THREE.Group();
+    chessGroup.position.set(-75.0, 0, -78.0);
+    const chessTable = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.85, 0.75, 16), this.materials.mossStone);
+    chessTable.position.y = 0.375;
+    chessTable.castShadow = true;
+    chessGroup.add(chessTable);
+
+    // 2 ghế đôn đá 2 bên bàn cờ
+    for (let sx of [-1.15, 1.15]) {
+      const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.42, 12), this.materials.mossStone);
+      stool.position.set(sx, 0.21, 0);
+      chessGroup.add(stool);
+    }
+    zoneGroup.add(chessGroup);
+    this._addBoxObstacle(-75.0, -78.0, 2.4, 1.4, 0, 1.1);
+
+    // D. Bảng tin phường mái ngói dán thông báo tem phiếu & Canva AI (-82.0, 0, -75.0)
+    const bulletinGroup = new THREE.Group();
+    bulletinGroup.position.set(-82.0, 0, -75.0);
+    bulletinGroup.rotation.y = 0.25;
+
+    // Hai cột gỗ dựng bảng tin
+    for (let px of [-1.2, 1.2]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 3.2, 8), this.materials.retroWood);
+      post.position.set(px, 1.6, 0);
+      bulletinGroup.add(post);
+    }
+    // Mặt bảng tin gỗ đen phấn trắng
+    const boardMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.5, 0.08), this.materials.wardBulletinBoard || this.materials.vintagePosters);
+    boardMesh.position.set(0, 2.0, 0);
+    bulletinGroup.add(boardMesh);
+
+    // Mái ngói nhỏ che mưa bảng tin
+    const roofMini = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.12, 0.65), this.materials.roofTile);
+    roofMini.position.set(0, 2.85, 0);
+    bulletinGroup.add(roofMini);
+
+    zoneGroup.add(bulletinGroup);
+    this._addBoxObstacle(-82.0, -75.0, 2.6, 0.6, 0, 3.2);
+
+    this.interactables.push({
+      position: new THREE.Vector3(-82.0, 0.5, -74.2),
+      radius: 2.6,
+      promptText: 'Đọc Bảng Tin Phường & Thông Báo Tem Phiếu',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '📜 Bảng Tin Phường Kim Liên 1985: Thông báo phân phối gạo, tiêu chuẩn vải 5m/năm và lịch cắt điện luân phiên thứ 3, thứ 6.'
+          });
+        }
+      }
+    });
+
+    // E. Quán nước chè tươi ấm tích giành tre (-71.0, 0, -78.0)
+    const teaStallGroup = new THREE.Group();
+    teaStallGroup.position.set(-71.0, 0, -78.0);
+    const teaTable = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 0.8), this.materials.retroWood);
+    teaTable.position.y = 0.275;
+    teaStallGroup.add(teaTable);
+
+    // Ấm tích bọc giành tre ủ ấm
+    const teaPotBasket = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.26, 12), new THREE.MeshStandardMaterial({ color: 0xd9b37c, roughness: 0.85 }));
+    teaPotBasket.position.set(-0.25, 0.68, 0);
+    teaStallGroup.add(teaPotBasket);
+
+    // Điếu cày thuốc lào bằng tre nứa
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.55, 8), this.materials.retroWood);
+    pipe.rotation.z = 0.55;
+    pipe.position.set(0.32, 0.40, 0.18);
+    teaStallGroup.add(pipe);
+
+    zoneGroup.add(teaStallGroup);
+    this._addBoxObstacle(-71.0, -78.0, 1.4, 1.0, 0, 0.9);
+
+    // F. Cột loa truyền thanh phường (cao 9m)
     const speakerPole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 9.0, 8), this.materials.darkIron);
-    speakerPole.position.set(-58, 4.5, -75);
+    speakerPole.position.set(-58.0, 4.5, -75.0);
     zoneGroup.add(speakerPole);
-    this._addBoxObstacle(-58, -75, 0.6, 0.6, 0, 9.5);
+    this._addBoxObstacle(-58.0, -75.0, 0.6, 0.6, 0, 9.5);
 
     this.worldGroup.add(zoneGroup);
+  }
+
+  /**
+   * XÂY DỰNG KHỐI NHÀ TẬP THỂ A1 MỞ HOÀN TOÀN (ENTERABLE COLLECTIVE BLOCK A1)
+   * Tọa độ tâm (-65.0, 0, -60.0), kích thước 38m x 16m x 15.2m (4 tầng)
+   * Bước vào trong 100%, leo thang bộ granito, dạo hành lang dài, tham quan Căn hộ mẫu 204 & chuồng cọp
+   */
+  _buildEnterableCollectiveBlockA1(zoneGroup, x0 = -65.0, z0 = -60.0) {
+    const a1Group = new THREE.Group();
+    a1Group.name = 'EnterableBlock_A1_KimLien';
+    zoneGroup.add(a1Group);
+
+    const W = 38.0; // Rộng theo trục X
+    const D = 16.0; // Sâu theo trục Z
+    const H = 15.2; // Cao 4 tầng (3.8m / tầng)
+    const wallThick = 0.35;
+    const floorH = 3.80;
+
+    const wallMat = this.materials.yellowWall;
+    const stoneMat = this.materials.mossStone;
+    const woodMat = this.materials.retroWood;
+    const shutterMat = this.materials.frenchGreenShutter;
+    const ironMat = this.materials.darkIron;
+    const granitoMat = this.materials.granitoStairs || this.materials.mossStone;
+    const apartmentFloorMat = this.materials.apartmentFloor || this.materials.hanoiPavement;
+    const balustradeMat = this.materials.balustradeConTien || this.materials.mossStone;
+
+    // =========================================================================
+    // 1. SÀN CÁC TẦNG BÊ TÔNG ĐA TẦNG (FLOOR COLLIDERS: _isBaseGround = true)
+    // =========================================================================
+    // A. SÀN TẦNG 1 (Nền nhà trệt tại Y = 0.04m, kích thước 38m x 16m)
+    const floor1 = new THREE.Mesh(new THREE.BoxGeometry(W, 0.08, D), this.materials.hanoiPavement);
+    floor1.name = 'KimLien_A1_Floor1';
+    floor1.position.set(x0, 0.04, z0);
+    floor1.receiveShadow = true;
+    floor1._isBaseGround = true;
+    floor1.frustumCulled = false;
+    a1Group.add(floor1);
+    this.colliders.push(floor1);
+
+    // B. SÀN TẦNG 2, TẦNG 3, TẦNG 4 (Có ô thông tầng khoang thang tại x0 ± 2.5m, z0: -63.5 -> -56.5)
+    for (let f = 2; f <= 4; f++) {
+      const floorY = (f - 1) * floorH;
+
+      // Cánh trái (x: -84.0 -> -67.5, rộng 16.5m, sâu 16m)
+      const slabLeft = new THREE.Mesh(new THREE.BoxGeometry(16.5, 0.20, D), f === 2 ? apartmentFloorMat : this.materials.hanoiPavement);
+      slabLeft.name = `KimLien_A1_Floor${f}_Left`;
+      slabLeft.position.set(x0 - 10.75, floorY, z0);
+      slabLeft.receiveShadow = true;
+      slabLeft._isBaseGround = true;
+      slabLeft.frustumCulled = false;
+      a1Group.add(slabLeft);
+      this.colliders.push(slabLeft);
+
+      // Cánh phải (gồm Căn hộ 204 ở Tầng 2, x: -62.5 -> -46.0, rộng 16.5m, sâu 16m)
+      const slabRight = new THREE.Mesh(new THREE.BoxGeometry(16.5, 0.20, D), f === 2 ? apartmentFloorMat : this.materials.hanoiPavement);
+      slabRight.name = `KimLien_A1_Floor${f}_Right`;
+      slabRight.position.set(x0 + 10.75, floorY, z0);
+      slabRight.receiveShadow = true;
+      slabRight._isBaseGround = true;
+      slabRight.frustumCulled = false;
+      a1Group.add(slabRight);
+      this.colliders.push(slabRight);
+
+      // Hành lang trước khoang thang nối 2 cánh (x: -67.5 -> -62.5, rộng 5m, sâu 4.5m)
+      const slabCorridorMid = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.20, 4.5), this.materials.hanoiPavement);
+      slabCorridorMid.name = `KimLien_A1_Floor${f}_CorridorMid`;
+      slabCorridorMid.position.set(x0, floorY, z0 - 5.75);
+      slabCorridorMid.receiveShadow = true;
+      slabCorridorMid._isBaseGround = true;
+      slabCorridorMid.frustumCulled = false;
+      a1Group.add(slabCorridorMid);
+      this.colliders.push(slabCorridorMid);
+    }
+
+    // C. MÁI BẰNG BÊ TÔNG TRÊN NÓC (Y = 15.20m)
+    const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 0.5, D + 0.6), stoneMat);
+    roofSlab.name = 'KimLien_A1_RoofSlab';
+    roofSlab.position.set(x0, H + 0.25, z0);
+    roofSlab.castShadow = true;
+    roofSlab.receiveShadow = true;
+    roofSlab._isBaseGround = true;
+    roofSlab.frustumCulled = false;
+    a1Group.add(roofSlab);
+    this.colliders.push(roofSlab);
+
+    // =========================================================================
+    // 🧱 2. TƯỜNG BAO MỎNG & CỬA VÒM SẢNH ĐÓN TẦNG 1 (THIN-WALL ARCHITECTURE)
+    // =========================================================================
+    // A. Mặt tiền Tầng 1 (Z = z0 - 8.0 = -68.0):
+    // Cửa vòm thông thoáng 3.6m ở giữa (x: -66.8 -> -63.2) THÔNG THẲNG VÀO CẦU THANG BỘ!
+    const frontL1Left = new THREE.Mesh(new THREE.BoxGeometry(17.2, floorH, wallThick), wallMat);
+    frontL1Left.position.set(x0 - 10.4, floorH / 2, z0 - D / 2 + wallThick / 2);
+    frontL1Left.castShadow = true;
+    a1Group.add(frontL1Left);
+    this._addBoxObstacle(x0 - 10.4, z0 - D / 2 + wallThick / 2, 17.2, wallThick, 0, floorH);
+
+    const frontL1Right = new THREE.Mesh(new THREE.BoxGeometry(17.2, floorH, wallThick), wallMat);
+    frontL1Right.position.set(x0 + 10.4, floorH / 2, z0 - D / 2 + wallThick / 2);
+    frontL1Right.castShadow = true;
+    a1Group.add(frontL1Right);
+    this._addBoxObstacle(x0 + 10.4, z0 - D / 2 + wallThick / 2, 17.2, wallThick, 0, floorH);
+
+    // Lanh-tô cửa vòm sảnh (trên cao Y: 3.2m -> 3.8m, rộng 3.6m)
+    const portalLintel = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.6, wallThick), wallMat);
+    portalLintel.position.set(x0, 3.5, z0 - D / 2 + wallThick / 2);
+    a1Group.add(portalLintel);
+
+    // Biển số nhà nhôm dập nổi Canva AI: "NHÀ A1 - KHU TẬP THỂ KIM LIÊN"
+    const portalSign = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.85, 0.12), this.materials.kimLienBlockSign || wallMat);
+    portalSign.position.set(x0, 3.45, z0 - D / 2 - 0.08);
+    a1Group.add(portalSign);
+
+    // Điểm tương tác tại sảnh đón
+    this.interactables.push({
+      position: new THREE.Vector3(x0, 0.5, z0 - 7.5),
+      radius: 2.8,
+      promptText: 'Bước vào Cầu thang bộ Nhà Tập Thể A1',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '🏛️ Sảnh Nhà Tập Thể A1 Kim Liên: Cửa vòm thông thoáng dẫn vào cầu thang bộ đá mài granito và các tầng lộng gió.'
+          });
+        }
+      }
+    });
+
+    // B. Tường sau (Z = z0 + 8.0 = -52.0) các tầng:
+    // Tầng 1, 3, 4 tường sau liền khối:
+    const backWallOther = new THREE.Mesh(new THREE.BoxGeometry(W, H, wallThick), wallMat);
+    backWallOther.position.set(x0, H / 2, z0 + D / 2 - wallThick / 2);
+    backWallOther.castShadow = true;
+    a1Group.add(backWallOther);
+    // Thin-wall obstacle tường sau (trừ khoảng mở cửa ra ban công Căn hộ 204 ở Tầng 2)
+    this._addBoxObstacle(x0, z0 + D / 2 - wallThick / 2, W, wallThick, 0, 3.80);
+    this._addBoxObstacle(x0, z0 + D / 2 - wallThick / 2, W, wallThick, 7.60, H);
+    // Ở Tầng 2 (Y: 3.80 -> 7.60): chừa cửa mở rộng 1.4m tại x = x0 + 7.0 (-58.0)
+    this._addBoxObstacle(x0 - 9.0, z0 + D / 2 - wallThick / 2, 20.0, wallThick, 3.80, 7.60);
+    this._addBoxObstacle(x0 + 13.0, z0 + D / 2 - wallThick / 2, 10.0, wallThick, 3.80, 7.60);
+
+    // C. Hai đầu hồi trái (X = x0 - 19.0 = -84.0) và phải (X = x0 + 19.0 = -46.0):
+    const leftGable = new THREE.Mesh(new THREE.BoxGeometry(wallThick, H, D), wallMat);
+    leftGable.position.set(x0 - W / 2 + wallThick / 2, H / 2, z0);
+    leftGable.castShadow = true;
+    a1Group.add(leftGable);
+    this._addBoxObstacle(x0 - W / 2 + wallThick / 2, z0, wallThick, D, 0, H);
+
+    const rightGable = new THREE.Mesh(new THREE.BoxGeometry(wallThick, H, D), wallMat);
+    rightGable.position.set(x0 + W / 2 - wallThick / 2, H / 2, z0);
+    rightGable.castShadow = true;
+    a1Group.add(rightGable);
+    this._addBoxObstacle(x0 + W / 2 - wallThick / 2, z0, wallThick, D, 0, H);
+
+    // =========================================================================
+    // 🪜 3. CẦU THANG BỘ GRANITO TRUNG TÂM NỐI TẦNG 1 -> T2 -> T3 -> T4
+    // (Bậc thang ốp đá mài granito xám đen đỏ, dốc 32 độ, chiếu nghỉ _isBaseGround = true)
+    // =========================================================================
+    for (let f = 1; f <= 3; f++) {
+      const baseFloorY = (f - 1) * floorH + 0.04;
+      const landingY = baseFloorY + 1.90;
+
+      // Chiếu nghỉ (Landing) ở phía sau khoang thang
+      const landing = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.20, 1.8), granitoMat);
+      landing.name = `KimLien_A1_Stair_Landing_${f}`;
+      landing.position.set(x0, landingY, z0 + 2.4);
+      landing.receiveShadow = true;
+      landing._isBaseGround = true;
+      landing.frustumCulled = false;
+      a1Group.add(landing);
+      this.colliders.push(landing);
+
+      // Vế thang 1: Từ sàn tầng (z: z0 - 2.8, x: x0 - 1.2 = -66.2) lên chiếu nghỉ (z: z0 + 1.5)
+      // Dài theo Z: 4.3m, cao: 1.90m.
+      const rampLen1 = Math.hypot(4.3, 1.90);
+      const rampAngle1 = Math.atan2(1.90, 4.3);
+
+      const rampCol1 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.15, rampLen1), granitoMat);
+      rampCol1.name = `KimLien_A1_StairRamp1_${f}`;
+      rampCol1.position.set(x0 - 1.2, baseFloorY + 0.95, z0 - 0.65);
+      rampCol1.rotation.x = rampAngle1;
+      rampCol1._isBaseGround = true;
+      rampCol1.frustumCulled = false;
+      a1Group.add(rampCol1);
+      this.colliders.push(rampCol1);
+
+      // Các bậc thang 3D granito vế 1
+      const numSteps = 10;
+      for (let s = 0; s < numSteps; s++) {
+        const stepY = baseFloorY + (s + 0.5) * (1.90 / numSteps);
+        const stepZ = (z0 - 2.8) + (s + 0.5) * (4.3 / numSteps);
+        const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.19, 0.43), granitoMat);
+        stepMesh.position.set(x0 - 1.2, stepY, stepZ);
+        stepMesh.receiveShadow = true;
+        a1Group.add(stepMesh);
+      }
+
+      // Vế thang 2: Từ chiếu nghỉ (z: z0 + 1.5, x: x0 + 1.2 = -63.8) dốc lên sàn tầng trên (z: z0 - 2.8)
+      const rampCol2 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.15, rampLen1), granitoMat);
+      rampCol2.name = `KimLien_A1_StairRamp2_${f}`;
+      rampCol2.position.set(x0 + 1.2, landingY + 0.95, z0 - 0.65);
+      rampCol2.rotation.x = -rampAngle1;
+      rampCol2._isBaseGround = true;
+      rampCol2.frustumCulled = false;
+      a1Group.add(rampCol2);
+      this.colliders.push(rampCol2);
+
+      // Các bậc thang 3D granito vế 2
+      for (let s = 0; s < numSteps; s++) {
+        const stepY = landingY + (s + 0.5) * (1.90 / numSteps);
+        const stepZ = (z0 + 1.5) - (s + 0.5) * (4.3 / numSteps);
+        const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.19, 0.43), granitoMat);
+        stepMesh.position.set(x0 + 1.2, stepY, stepZ);
+        stepMesh.receiveShadow = true;
+        a1Group.add(stepMesh);
+      }
+
+      // Vách ngăn giữa 2 vế thang (chống rơi ngang)
+      const stairDivider = new THREE.Mesh(new THREE.BoxGeometry(0.12, floorH, 4.3), wallMat);
+      stairDivider.position.set(x0, baseFloorY + floorH / 2, z0 - 0.65);
+      a1Group.add(stairDivider);
+      this._addBoxObstacle(x0, z0 - 0.65, 0.25, 4.3, baseFloorY, baseFloorY + floorH);
+
+      // Tay vịn sắt hoa văn xanh rêu
+      const railMesh1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.95, rampLen1), new THREE.MeshStandardMaterial({ color: 0x24422e, roughness: 0.6 }));
+      railMesh1.position.set(x0 - 2.1, baseFloorY + 1.45, z0 - 0.65);
+      railMesh1.rotation.x = rampAngle1;
+      a1Group.add(railMesh1);
+
+      const railMesh2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.95, rampLen1), new THREE.MeshStandardMaterial({ color: 0x24422e, roughness: 0.6 }));
+      railMesh2.position.set(x0 + 2.1, landingY + 1.45, z0 - 0.65);
+      railMesh2.rotation.x = -rampAngle1;
+      a1Group.add(railMesh2);
+    }
+
+    // =========================================================================
+    // 🚪 4. HÀNH LANG THÔNG THOÁNG CÁC TẦNG 2, 3, 4 & ĐÈN SỢI ĐỐT HOÀNG HÔN
+    // =========================================================================
+    for (let f = 2; f <= 4; f++) {
+      const flY = (f - 1) * floorH;
+
+      // Lan can con tiện bê tông cao 1.05m dọc theo mép ngoài mặt tiền (Z = z0 - 8.0)
+      const balustrade = new THREE.Mesh(new THREE.BoxGeometry(W - 2.0, 1.05, 0.20), balustradeMat);
+      balustrade.position.set(x0, flY + 0.525, z0 - D / 2 + 0.1);
+      balustrade.castShadow = true;
+      a1Group.add(balustrade);
+      // Rào cản va chạm bảo vệ người chơi không rơi khỏi hành lang tầng cao
+      this._addBoxObstacle(x0, z0 - D / 2 + 0.1, W - 1.0, 0.35, flY, flY + 1.25);
+
+      // Chao đèn nhôm nón lá thả xích phát ánh sáng vàng ấm 2700K dọc hành lang
+      for (let lx of [x0 - 12.0, x0, x0 + 12.0]) {
+        const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.16, 12), new THREE.MeshStandardMaterial({ color: 0xc4c9ce, metalness: 0.8, roughness: 0.3 }));
+        lampShade.position.set(lx, flY + floorH - 0.45, z0 - 6.8);
+        a1Group.add(lampShade);
+
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffea9f }));
+        bulb.position.set(lx, flY + floorH - 0.55, z0 - 6.8);
+        a1Group.add(bulb);
+
+        if (f === 2) {
+          const corridorLight = new THREE.PointLight(0xffb347, 1.6, 14);
+          corridorLight.position.set(lx, flY + floorH - 0.6, z0 - 6.8);
+          a1Group.add(corridorLight);
+        }
+      }
+
+      // Dây điện mạng nhện & Công tơ điện sứ đen tròn
+      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, W - 4, 4), ironMat);
+      wire.rotation.z = Math.PI / 2;
+      wire.position.set(x0, flY + floorH - 0.35, z0 - 6.4);
+      a1Group.add(wire);
+
+      for (let mx of [-14, -7, 7, 14]) {
+        const meter = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+        meter.rotation.x = Math.PI / 2;
+        meter.position.set(x0 + mx, flY + 2.0, z0 - 6.2);
+        a1Group.add(meter);
+      }
+
+      // Dây phơi quần áo rung rinh trong gió
+      const clothesLine = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 8.0, 4), ironMat);
+      clothesLine.rotation.z = Math.PI / 2;
+      clothesLine.position.set(x0 - 10.0, flY + 2.2, z0 - 7.4);
+      a1Group.add(clothesLine);
+
+      const towelMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.9, side: THREE.DoubleSide });
+      const towel = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), towelMat);
+      towel.name = `Clothesline_Towel_T${f}`;
+      towel.position.set(x0 - 10.0, flY + 1.85, z0 - 7.4);
+      a1Group.add(towel);
+      if (this.kimLienAnimator) {
+        this.kimLienAnimator.registerClothesline(towel);
+      }
+    }
+
+    // =========================================================================
+    // 🛋️ 5. CĂN HỘ MẪU THỜI BAO CẤP SỐ 204 (TẦNG 2 - BƯỚC VÀO TRỰC TIẾP 100%)
+    // Vị trí (x0 + 7.0, 3.80, z0 + 1.0) = (-58.0, 3.80, -59.0), diện tích 8.5m x 6.5m
+    // =========================================================================
+    const aptX = x0 + 7.0; // -58.0
+    const aptZ = z0 + 1.0; // -59.0
+    const aptY = floorH;   // 3.80
+
+    // A. Tường ngăn Căn hộ 204:
+    // Tường trước (Z = z0 - 6.2 = -66.2): Cửa vào mở rộng 1.4m tại X = -58.0 (không có obstacle!)
+    const aptFrontLeft = new THREE.Mesh(new THREE.BoxGeometry(2.8, floorH, 0.25), wallMat);
+    aptFrontLeft.position.set(aptX - 2.8, aptY + floorH / 2, z0 - 6.2);
+    a1Group.add(aptFrontLeft);
+    this._addBoxObstacle(aptX - 2.8, z0 - 6.2, 2.8, 0.25, aptY, aptY + floorH);
+
+    const aptFrontRight = new THREE.Mesh(new THREE.BoxGeometry(2.8, floorH, 0.25), wallMat);
+    aptFrontRight.position.set(aptX + 2.8, aptY + floorH / 2, z0 - 6.2);
+    a1Group.add(aptFrontRight);
+    this._addBoxObstacle(aptX + 2.8, z0 - 6.2, 2.8, 0.25, aptY, aptY + floorH);
+
+    // Cánh cửa gỗ màu xanh lá mạ mở hé đón khách
+    const aptDoor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.4, 0.08), shutterMat);
+    aptDoor.position.set(aptX - 0.6, aptY + 1.2, z0 - 6.0);
+    aptDoor.rotation.y = 0.55;
+    a1Group.add(aptDoor);
+
+    // Biển số phòng nhôm: "204"
+    const roomSign = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.04), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.6 }));
+    roomSign.position.set(aptX + 0.9, aptY + 1.8, z0 - 6.3);
+    a1Group.add(roomSign);
+
+    // Tường trái ngăn căn hộ với khoang thang (X = x0 + 2.5 = -62.5):
+    const aptLeftWall = new THREE.Mesh(new THREE.BoxGeometry(0.25, floorH, 13.0), wallMat);
+    aptLeftWall.position.set(x0 + 2.5, aptY + floorH / 2, aptZ);
+    a1Group.add(aptLeftWall);
+    this._addBoxObstacle(x0 + 2.5, aptZ, 0.25, 13.0, aptY, aptY + floorH);
+
+    // Tường phải ngăn căn hộ 204 với căn bên cạnh (X = aptX + 4.5 = -53.5):
+    const aptRightWall = new THREE.Mesh(new THREE.BoxGeometry(0.25, floorH, 13.0), wallMat);
+    aptRightWall.position.set(aptX + 4.5, aptY + floorH / 2, aptZ);
+    a1Group.add(aptRightWall);
+    this._addBoxObstacle(aptX + 4.5, aptZ, 0.25, 13.0, aptY, aptY + floorH);
+
+    // Tường ngăn giữa Phòng Khách và Gian Bếp
+    const dividerWall = new THREE.Mesh(new THREE.BoxGeometry(4.2, floorH, 0.20), wallMat);
+    dividerWall.position.set(aptX - 1.8, aptY + floorH / 2, aptZ + 1.8);
+    a1Group.add(dividerWall);
+    this._addBoxObstacle(aptX - 1.8, aptZ + 1.8, 4.2, 0.20, aptY, aptY + floorH);
+
+    // Điểm tương tác trước cửa căn hộ 204
+    this.interactables.push({
+      position: new THREE.Vector3(aptX, aptY + 0.5, z0 - 5.5),
+      radius: 2.4,
+      promptText: 'Bước vào Căn Hộ 204 Thời Bao Cấp',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '🏡 Căn Hộ 204 Tập Thể Kim Liên: Không gian hoài niệm thời bao cấp với bàn ghế nan, ấm chén Bát Tràng, đài cassette và giàn hoa giấy chuồng cọp.'
+          });
+        }
+      }
+    });
+
+    // B. PHÒNG KHÁCH CĂN HỘ 204:
+    // Bộ bàn ghế nan gỗ guột mộc mạc
+    const teaTable = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 0.65), woodMat);
+    teaTable.position.set(aptX, aptY + 0.275, aptZ - 1.5);
+    a1Group.add(teaTable);
+    this._addBoxObstacle(aptX, aptZ - 1.5, 1.4, 0.85, aptY, aptY + 0.8);
+
+    // Ấm chén men rạn Bát Tràng quả hồng trên bàn
+    const potMat = this.materials.batTrangCeramic || new THREE.MeshStandardMaterial({ color: 0x2f574d, roughness: 0.25 });
+    const teaPot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), potMat);
+    teaPot.position.set(aptX - 0.15, aptY + 0.63, aptZ - 1.5);
+    a1Group.add(teaPot);
+    for (let c = 0; c < 3; c++) {
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.045, 8), potMat);
+      cup.position.set(aptX + 0.1 + c * 0.08, aptY + 0.58, aptZ - 1.5);
+      a1Group.add(cup);
+    }
+
+    // 4 Ghế nan gỗ guột xung quanh bàn
+    for (let s of [-0.65, 0.65]) {
+      const chair = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.42, 0.45), woodMat);
+      chair.position.set(aptX + s, aptY + 0.21, aptZ - 1.5);
+      a1Group.add(chair);
+    }
+
+    // Tủ ly / Tủ chè gỗ gụ vec-ni bóng loáng kê sát tường trái
+    const cupboard = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 1.8), this.materials.woodVarnish || woodMat);
+    cupboard.position.set(x0 + 3.0, aptY + 0.8, aptZ - 1.5);
+    cupboard.castShadow = true;
+    a1Group.add(cupboard);
+    this._addBoxObstacle(x0 + 3.0, aptZ - 1.5, 0.7, 1.9, aptY, aptY + 1.8);
+
+    // Quạt tai voi Liên Xô cánh cao su dẻo màu xanh ngọc bích đặt trên kệ (quay tút-năng 60 FPS)
+    const sovietFan = createElephantEarFanMesh({ name: 'ElephantEar_SovietFan_204' });
+    sovietFan.position.set(x0 + 3.0, aptY + 1.62, aptZ - 1.8);
+    a1Group.add(sovietFan);
+    if (this.kimLienAnimator) {
+      this.kimLienAnimator.registerElephantEarFan(sovietFan);
+    }
+
+    // Đài radio cassette VEF-206 cổ vỏ nhựa đen viền nhôm trên bàn trà
+    const cassette = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.22, 0.16), new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.6, roughness: 0.35 }));
+    cassette.position.set(aptX, aptY + 0.66, aptZ - 1.5);
+    a1Group.add(cassette);
+
+    // Điểm tương tác bật đài cassette nghe bài hát Hà Nội Mùa Thu
+    this.interactables.push({
+      position: new THREE.Vector3(aptX, aptY + 0.5, aptZ - 1.5),
+      radius: 2.2,
+      promptText: 'Bật Đài Cassette Riga Nghe Bài Hát Hà Nội Mùa Thu',
+      actionKey: 'E',
+      onInteract: () => {
+        try {
+          const audio = new Audio('assets/audio/cassette_autumn_audio.mp3');
+          audio.volume = 0.85;
+          audio.play().catch(() => {});
+        } catch {}
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '📻 Đài Cassette VEF-206: "Hà Nội mùa thu, cây cơm nguội vàng, cây bàng lá đỏ..." vang lên rè rè ấm áp cả căn hộ 204.'
+          });
+        }
+      }
+    });
+
+    // Tranh cổ động Canva AI khổ lớn treo giữa tường phòng khách
+    const canvaPoster = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.35, 0.04), this.materials.canvaPosterKimLien || wallMat);
+    canvaPoster.position.set(aptX, aptY + 2.3, z0 - 6.05);
+    a1Group.add(canvaPoster);
+
+    // Lịch bloc treo tường xé ngày 02/09/1985
+    const blocCal = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.03), this.materials.blocCalendar1985 || wallMat);
+    blocCal.position.set(x0 + 3.0, aptY + 2.3, aptZ - 0.2);
+    blocCal.rotation.y = Math.PI / 2;
+    a1Group.add(blocCal);
+
+    // Ánh đèn sợi đốt ấm cúng phòng khách
+    const aptLight = new THREE.PointLight(0xffd285, 2.0, 9);
+    aptLight.position.set(aptX, aptY + 2.8, aptZ - 1.5);
+    a1Group.add(aptLight);
+
+    // C. GIAN BẾP DẦU THÔ SƠ:
+    // Bếp dầu Thăng Long 16 bấc xanh ngọc bích & ấm nhôm
+    const oilStove = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.26, 12), new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 0.5 }));
+    oilStove.position.set(aptX + 3.2, aptY + 0.55, aptZ + 4.2);
+    a1Group.add(oilStove);
+
+    const kettle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.18, 10), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.8, roughness: 0.2 }));
+    kettle.position.set(aptX + 3.2, aptY + 0.77, aptZ + 4.2);
+    a1Group.add(kettle);
+
+    // Chạn bát tre mắt lưới sắt
+    const dishRack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.45), woodMat);
+    dishRack.position.set(aptX + 3.2, aptY + 1.2, aptZ + 2.6);
+    dishRack.castShadow = true;
+    a1Group.add(dishRack);
+
+    // Vại sành muối dưa cải bẹ nén hòn đá cuội góc chân tường
+    const pickleJar = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.20, 0.48, 12), new THREE.MeshStandardMaterial({ color: 0x6e4726, roughness: 0.85 }));
+    pickleJar.position.set(aptX + 3.8, aptY + 0.24, aptZ + 5.2);
+    a1Group.add(pickleJar);
+    this._addBoxObstacle(aptX + 3.4, aptZ + 3.8, 1.6, 2.8, aptY, aptY + 1.8);
+
+    // D. BAN CÔNG CƠI NỚI "CHUỒNG CỌP" SẮT (TIGER CAGE BALCONY - VƯƠN RA 1.4M)
+    // Tường sau có cửa mở thông ra chuồng cọp tại X = aptX, Z = z0 + 8.0 = -52.0
+    const cageW = 4.8;
+    const cageD = 1.6; // Vươn ra ngoài 1.6m
+    const cageFloorY = aptY + 0.04;
+
+    // Sàn chuồng cọp gán _isBaseGround = true để người chơi bước ra ngắm cảnh
+    const cageFloor = new THREE.Mesh(new THREE.BoxGeometry(cageW, 0.12, cageD), this.materials.hanoiPavement);
+    cageFloor.name = 'KimLien_A1_Cage_Floor';
+    cageFloor.position.set(aptX, cageFloorY, z0 + D / 2 + cageD / 2);
+    cageFloor.receiveShadow = true;
+    cageFloor._isBaseGround = true;
+    cageFloor.frustumCulled = false;
+    a1Group.add(cageFloor);
+    this.colliders.push(cageFloor);
+
+    // Khung lồng sắt chuồng cọp chữ U
+    const cageMesh = new THREE.Mesh(new THREE.BoxGeometry(cageW, 2.2, cageD), ironMat);
+    cageMesh.position.set(aptX, aptY + 1.1, z0 + D / 2 + cageD / 2);
+    a1Group.add(cageMesh);
+
+    // Giàn hoa giấy đỏ rực rỡ buông rủ phủ kín nóc chuồng cọp (đung đưa 60 FPS)
+    const bougainvillea = new THREE.Mesh(new THREE.BoxGeometry(cageW + 0.3, 0.7, cageD + 0.3), this.materials.bougainvilleaRed);
+    bougainvillea.name = 'Bougainvillea_ChuongCop_A1';
+    bougainvillea.position.set(aptX, aptY + 2.3, z0 + D / 2 + cageD / 2);
+    a1Group.add(bougainvillea);
+    if (this.kimLienAnimator) {
+      this.kimLienAnimator.registerBougainvillea(bougainvillea);
+    }
+
+    // Lồng chim sơn ca bằng tre khuyên treo đung đưa (con lắc 60 FPS)
+    const birdCage = createBambooBirdcageMesh({ name: 'Bamboo_Birdcage_ChuongCop' });
+    birdCage.position.set(aptX - 1.2, aptY + 2.0, z0 + D / 2 + 0.6);
+    a1Group.add(birdCage);
+    if (this.kimLienAnimator) {
+      this.kimLienAnimator.registerBirdcage(birdCage);
+    }
+
+    // Chậu ớt chỉ thiên cay nồng góc ban công
+    const pepperPot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.18, 8), new THREE.MeshStandardMaterial({ color: 0x8a452a }));
+    pepperPot.position.set(aptX + 1.8, aptY + 0.15, z0 + D / 2 + 0.6);
+    a1Group.add(pepperPot);
+
+    // Rào cản va chạm chuồng cọp bảo vệ người chơi không rơi ra ngoài
+    this._addBoxObstacle(aptX, z0 + D / 2 + cageD, cageW, 0.25, aptY, aptY + 2.4);
+    this._addBoxObstacle(aptX - cageW / 2, z0 + D / 2 + cageD / 2, 0.25, cageD, aptY, aptY + 2.4);
+    this._addBoxObstacle(aptX + cageW / 2, z0 + D / 2 + cageD / 2, 0.25, cageD, aptY, aptY + 2.4);
+
+    // Điểm tương tác ngắm hoàng hôn qua chuồng cọp
+    this.interactables.push({
+      position: new THREE.Vector3(aptX, aptY + 0.5, z0 + D / 2 + 0.8),
+      radius: 2.2,
+      promptText: 'Đứng Ngắm Hoàng Hôn Khu Tập Thể Qua Chuồng Cọp',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '🌇 Chuồng Cọp Hoàng Hôn: Ngắm trọn sân chung khu tập thể Kim Liên rợp bóng cây bàng và làn khói bếp thơm mùi cơm chiều.'
+          });
+        }
+      }
+    });
   }
 
   /**
@@ -6578,43 +7488,76 @@ getTheHucBridgeInfo(x, y, z) {
   }
 
   /**
-   * Tạo tòa nhà tập thể 5 tầng kiểu Kim Liên / Giảng Võ
+   * Tạo tòa nhà tập thể hậu cảnh 5 tầng kiểu Kim Liên / Giảng Võ (Khối tường ngoài rỗng, không dùng Box đặc)
    */
   _createDetailedCollectiveBlock(width, height, depth, blockName) {
     const blockGroup = new THREE.Group();
+    const wallThick = 0.40;
 
-    // Khối nhà bê tông tấm lớn màu vàng hoàng cúc cũ kỹ
-    const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.materials.yellowWall);
-    bodyMesh.position.y = height / 2;
-    bodyMesh.castShadow = true;
-    bodyMesh.receiveShadow = true;
-    blockGroup.add(bodyMesh);
-    this.colliders.push(bodyMesh);
+    // 1. Thân nhà rỗng 4 vách tường ngoài bê tông tấm lớn màu vàng hoàng cúc cũ kỹ
+    // Tường trước (z = depth/2 - wallThick/2)
+    const frontWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, wallThick), this.materials.yellowWall);
+    frontWall.position.set(0, height / 2, depth / 2 - wallThick / 2);
+    frontWall.castShadow = true;
+    frontWall.receiveShadow = true;
+    blockGroup.add(frontWall);
 
-    // Mái bằng bê tông có gờ chắn nước
+    // Tường sau (z = -depth/2 + wallThick/2)
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, wallThick), this.materials.yellowWall);
+    backWall.position.set(0, height / 2, -depth / 2 + wallThick / 2);
+    backWall.castShadow = true;
+    backWall.receiveShadow = true;
+    blockGroup.add(backWall);
+
+    // Đầu hồi trái (x = -width/2 + wallThick/2)
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, height, depth - wallThick * 2), this.materials.yellowWall);
+    leftWall.position.set(-width / 2 + wallThick / 2, height / 2, 0);
+    leftWall.castShadow = true;
+    leftWall.receiveShadow = true;
+    blockGroup.add(leftWall);
+
+    // Đầu hồi phải (x = width/2 - wallThick/2)
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, height, depth - wallThick * 2), this.materials.yellowWall);
+    rightWall.position.set(width / 2 - wallThick / 2, height / 2, 0);
+    rightWall.castShadow = true;
+    rightWall.receiveShadow = true;
+    blockGroup.add(rightWall);
+
+    // 2. Mái bằng bê tông có gờ chắn nước rêu phong
     const roofBorder = new THREE.Mesh(new THREE.BoxGeometry(width + 0.6, 0.8, depth + 0.6), this.materials.mossStone);
     roofBorder.position.y = height + 0.4;
+    roofBorder.castShadow = true;
     blockGroup.add(roofBorder);
 
-    // Hệ thống "Chuồng Cọp" sắt cơi nới nhô ra ngoài
+    // 3. Hệ thống Cửa chớp xanh và "Chuồng Cọp" sắt cơi nới nhô ra ngoài
     const floors = 5;
     const floorH = height / floors;
 
     for (let f = 1; f < floors; f++) {
       const y = f * floorH + floorH * 0.45;
       for (let s of [-1, 1]) {
-        // Lồng chuồng cọp sắt
-        const cage = new THREE.Mesh(new THREE.BoxGeometry(width * 0.35, floorH * 0.8, 1.4), this.materials.darkIron);
-        cage.position.set(s * (width * 0.25), y, depth / 2 + 0.7);
+        // Cửa chớp gỗ xanh Pháp cổ
+        const win = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 0.1), this.materials.frenchGreenShutter);
+        win.position.set(s * (width * 0.38), y, depth / 2 + 0.05);
+        blockGroup.add(win);
+
+        // Lồng chuồng cọp sắt cơi nới
+        const cage = new THREE.Mesh(new THREE.BoxGeometry(width * 0.32, floorH * 0.75, 1.4), this.materials.darkIron);
+        cage.position.set(s * (width * 0.20), y, depth / 2 + 0.7);
         blockGroup.add(cage);
 
-        // Giàn hoa giấy đỏ rực rủ từ chuồng cọp
-        if (Math.random() > 0.3) {
-          const flower = new THREE.Mesh(new THREE.BoxGeometry(width * 0.36, 0.6, 1.5), this.materials.bougainvilleaRed);
-          flower.position.set(s * (width * 0.25), y - 0.4, depth / 2 + 0.75);
-          blockGroup.add(flower);
-        }
+        // Giàn hoa giấy đỏ rực buông rủ từ chuồng cọp
+        const flower = new THREE.Mesh(new THREE.BoxGeometry(width * 0.33, 0.55, 1.45), this.materials.bougainvilleaRed);
+        flower.position.set(s * (width * 0.20), y - 0.4, depth / 2 + 0.75);
+        blockGroup.add(flower);
       }
+    }
+
+    // 4. Biển tên khối nhà tập thể hậu cảnh
+    if (blockName) {
+      const signBoard = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1.1, 0.12), this.materials.kimLienBlockSign || this.materials.yellowWall);
+      signBoard.position.set(0, height - 1.2, depth / 2 + 0.15);
+      blockGroup.add(signBoard);
     }
 
     return blockGroup;
@@ -7051,6 +7994,81 @@ getTheHucBridgeInfo(x, y, z) {
         }
       }
     });
+
+    // 9. TƯƠNG TÁC ĐÀI RADIO CASSETTE CỔ (CĂN HỘ MẪU 204 THỜI BAO CẤP)
+    this.interactables.push({
+      id: 'cassette_kim_lien_204',
+      position: new THREE.Vector3(-62, 3.8, -62),
+      radius: 3.5,
+      promptText: 'Bật Đài Cassette Cổ (Giai Điệu Hà Nội Mùa Thu)',
+      actionKey: 'E',
+      onInteract: () => {
+        try {
+          const audio = new Audio('assets/audio/cassette_autumn_audio.mp3');
+          audio.volume = 0.85;
+          audio.play().catch(() => {});
+        } catch (e) {}
+
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:LANDMARK_ENTERED', {
+            title: 'Đài Radio Cassette VEF-206',
+            body: 'Giai điệu "Hà Nội Mùa Thu" vang lên rè rè ấm áp từ chiếc băng từ cuộn, gợi nhớ những chiều thu bao cấp bình yên...',
+            icon: 'cassette'
+          });
+          this.eventBus.emit('CORE:CASSETTE_PLAYED', {
+            song: 'Hà Nội Mùa Thu',
+            device: 'VEF-206 Riga',
+            location: 'Căn Hộ 204 Kim Liên'
+          });
+        }
+      }
+    });
+
+    // 10. TƯƠNG TÁC VẶN VÒI NƯỚC MÁY TẬP THỂ (BỂ NƯỚC SÂN CHUNG KIM LIÊN)
+    this.interactables.push({
+      id: 'water_tap_kim_lien',
+      position: new THREE.Vector3(-62, 0.5, -70),
+      radius: 3.5,
+      promptText: 'Vặn Vòi Nước Máy Bể Tập Thể (Tiếng Nước Chảy Róc Rách)',
+      actionKey: 'E',
+      onInteract: () => {
+        try {
+          const audio = new Audio('assets/audio/water_tap_audio.mp3');
+          audio.volume = 0.85;
+          audio.play().catch(() => {});
+        } catch (e) {}
+
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:LANDMARK_ENTERED', {
+            title: 'Bể Nước Máy Tập Thể Kim Liên',
+            body: 'Tiếng nước máy van đồng chảy róc rách vào xô nhôm, gợi lại cảnh người dân xếp hàng chờ gánh nước mỗi sớm mai...',
+            icon: 'water'
+          });
+          this.eventBus.emit('CORE:WATER_TAP_TURNED', {
+            location: 'Bể nước chung A1 Kim Liên',
+            material: 'Van đồng thời Pháp - Liên Xô'
+          });
+        }
+      }
+    });
+
+    // 11. TƯƠNG TÁC BAN CÔNG CHUỒNG CỌP (NGẮM HOÀNG HÔN NGÕ PHỐ XƯA)
+    this.interactables.push({
+      id: 'chuong_cop_sunset',
+      position: new THREE.Vector3(-62, 3.8, -53),
+      radius: 3.5,
+      promptText: 'Ngắm Hoàng Hôn Phố Xưa Qua Ban Công Chuồng Cọp',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:LANDMARK_ENTERED', {
+            title: 'Ban Công Chuồng Cọp Hoàng Hôn',
+            body: 'Nắng chiều vàng ruộm ngõ nhỏ Kim Liên, giàn hoa giấy đỏ thắm rung rinh trong gió thu dịu mát...',
+            icon: 'sunset'
+          });
+        }
+      }
+    });
   }
 
   /**
@@ -7113,6 +8131,11 @@ getTheHucBridgeInfo(x, y, z) {
       if (this.animatedObjects[i].update) {
         this.animatedObjects[i].update(time, delta);
       }
+    }
+
+    // 1.1. Cập nhật hoạt họa môi trường Khu Tập Thể Kim Liên (hoa giấy, quạt tai voi, lồng chim, dây phơi) 60 FPS
+    if (this.kimLienAnimator) {
+      this.kimLienAnimator.update(delta, playerPos);
     }
 
     // 2. Cập nhật cửa mở mượt mà
@@ -7188,7 +8211,16 @@ getTheHucBridgeInfo(x, y, z) {
 
     // 2. Kiểm tra danh sách interactables tĩnh
     for (let item of this.interactables) {
-      if (playerPos.distanceTo(item.position) <= item.radius) {
+      const d3 = playerPos.distanceTo(item.position);
+      if (d3 <= item.radius) {
+        return item;
+      }
+      // Hỗ trợ kiểm tra 2.5D cho các cấu trúc đa tầng (Khu tập thể tầng 1, tầng 2)
+      const dx = playerPos.x - item.position.x;
+      const dz = playerPos.z - item.position.z;
+      const distXZ = Math.sqrt(dx * dx + dz * dz);
+      const dy = Math.abs(playerPos.y - item.position.y);
+      if (distXZ <= item.radius && dy <= 2.2) {
         return item;
       }
     }

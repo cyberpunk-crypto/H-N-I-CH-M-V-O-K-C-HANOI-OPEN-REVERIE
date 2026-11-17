@@ -5,9 +5,9 @@
 
 import { THREE } from './ThreeLib.js';
 import { SceneManager } from './SceneManager.js';
-import { WorldManager } from './WorldManager.js?v=4.9';
+import { WorldManager } from './WorldManager.js';
 import { ZoneManager } from './ZoneManager.js';
-import { PlayerController } from './PlayerController.js?v=5.0';
+import { PlayerController } from './PlayerController.js';
 import { CameraController } from './CameraController.js';
 import { PerspectivePuzzle } from './PerspectivePuzzle.js';
 import { PhotoSystem } from './PhotoSystem.js';
@@ -64,7 +64,7 @@ export class GameEngine {
         await this.playerController.setCharacter(payload.characterId || payload.outfitId);
       }
 
-      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 20.0, y: 0.5, z: -20.0 };
+      const spawnPos = this.playerController ? this.playerController.getPosition() : { x: 16.5, y: 0.5, z: -16.5 };
       this.eventBus.emit('CORE:WORLD_READY', {
         spawnZone: 'ho_guom',
         playerPosition: {

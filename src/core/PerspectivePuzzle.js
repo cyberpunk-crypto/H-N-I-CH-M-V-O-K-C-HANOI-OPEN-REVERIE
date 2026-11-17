@@ -31,7 +31,7 @@ export class PerspectivePuzzle {
         puzzleName: 'Văn Miếu Ký Ức',
         title: 'Khuê Văn Các Soi Bóng',
         zoneId: 'ho_guom',
-        targetPosition: new THREE.Vector3(17, 0.5, -17),
+        targetPosition: new THREE.Vector3(16.5, 0.5, -16.5),
         // Hướng nhìn thẳng ra Tháp Rùa giữa hồ
         targetDirection: new THREE.Vector3(0.707, 0.04, -0.707).normalize(),
         maxDistance: 3.5,
@@ -71,12 +71,13 @@ export class PerspectivePuzzle {
       {
         id: 'puzzle_tap_the',
         puzzleName: 'Khát Vọng Chuồng Cọp',
-        title: 'Cánh Chim Chuồng Cọp',
+        title: 'Chim Bồ Câu Bay Khỏi Lồng Sắt',
         zoneId: 'tap_the',
-        targetPosition: new THREE.Vector3(-80, 0.5, -105),
-        // Hướng nhìn chếch lên lồng sắt chuồng cọp và giàn hoa giấy
-        targetDirection: new THREE.Vector3(0.0, 0.45, 0.89).normalize(),
-        maxDistance: 2.8,
+        targetPosition: new THREE.Vector3(-58.0, 3.84, -51.2),
+        altTargetPosition: new THREE.Vector3(-80, 0.5, -105),
+        // Hướng nhìn qua khe sắt chuồng cọp và giàn hoa giấy đón ánh hoàng hôn
+        targetDirection: new THREE.Vector3(0.0, 0.35, 0.93).normalize(),
+        maxDistance: 3.2,
         solved: false,
         quote: 'Giữa những song sắt chật hẹp, cánh hoa giấy vẫn vươn lên đón nắng hoàng hôn rực rỡ.',
         unlockedShortcut: 'Lối tắt xuyên ngõ khu tập thể Kim Liên',
@@ -123,6 +124,14 @@ export class PerspectivePuzzle {
       ring.position.y += 0.06; // Nằm sát mặt sàn
       this.standpointGroup.add(ring);
       p.visualRing = ring;
+
+      if (p.altTargetPosition) {
+        const altRing = new THREE.Mesh(circleGeo, circleMat.clone());
+        altRing.position.copy(p.altTargetPosition);
+        altRing.position.y += 0.06;
+        this.standpointGroup.add(altRing);
+        p.visualAltRing = altRing;
+      }
     });
 
     this.scene.add(this.standpointGroup);
@@ -147,12 +156,18 @@ export class PerspectivePuzzle {
     for (const puzzle of this.puzzles) {
       if (puzzle.solved) continue;
 
-      const dist = playerPosition.distanceTo(puzzle.targetPosition);
+      const d1 = playerPosition.distanceTo(puzzle.targetPosition);
+      const d2 = puzzle.altTargetPosition ? playerPosition.distanceTo(puzzle.altTargetPosition) : 9999;
+      const dist = Math.min(d1, d2);
 
       // Hiệu ứng nhấp nháy vòng tròn định mệnh khi người chơi tới gần
       if (puzzle.visualRing) {
         const pulse = Math.sin(performance.now() * 0.003) * 0.2 + 0.5;
-        puzzle.visualRing.material.opacity = (dist < 10) ? pulse : 0.2;
+        puzzle.visualRing.material.opacity = (d1 < 10) ? pulse : 0.2;
+      }
+      if (puzzle.visualAltRing) {
+        const pulse = Math.sin(performance.now() * 0.003) * 0.2 + 0.5;
+        puzzle.visualAltRing.material.opacity = (d2 < 10) ? pulse : 0.2;
       }
 
       if (dist <= puzzle.maxDistance) {
@@ -221,6 +236,9 @@ export class PerspectivePuzzle {
       // Ẩn vòng tròn định mệnh sau khi giải
       if (p.visualRing) {
         p.visualRing.visible = false;
+      }
+      if (p.visualAltRing) {
+        p.visualAltRing.visible = false;
       }
 
       // Kích hoạt biến đổi không gian thế giới

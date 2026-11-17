@@ -1056,6 +1056,733 @@ export class ParticleVFXAnimator {
 }
 
 // ============================================================================
+// HỆ THỐNG HOẠT HỌA MÔI TRƯỜNG KHU TẬP THỂ KIM LIÊN (KIM LIEN ENVIRONMENT ANIMATOR)
+// ============================================================================
+
+export class KimLienEnvironmentAnimator {
+  /**
+   * Quản lý hoạt ảnh môi trường sống động 60 FPS cho Khu Tập Thể Kim Liên:
+   * 1. Đung đưa giàn hoa giấy đỏ trên ban công chuồng cọp theo nhịp gió nhẹ (Sway easing)
+   * 2. Dây phơi quần áo rung rinh phấp phới nhẹ dọc hành lang (Flutter animation)
+   * 3. Quạt tai voi quay tút-năng nhịp nhàng trong phòng khách căn hộ 204
+   * 4. Lồng chim sơn ca khuyên tre đung đưa nhẹ ngoài ban công chuồng cọp
+   *
+   * Tuân thủ triệt để Zero Heap Allocation trong game loop, tối ưu culling theo khoảng cách.
+   */
+  constructor(options = {}, maybeOptions = {}) {
+    let opts = options || {};
+    let center = { x: -68.0, z: -75.0 };
+
+    if (options && (options.isVector3 || (typeof options.x === 'number' && typeof options.z === 'number'))) {
+      center = { x: options.x, z: options.z };
+      opts = maybeOptions || {};
+    } else if (options && options.centerPosition) {
+      center = { x: options.centerPosition.x, z: options.centerPosition.z };
+    }
+
+    this.time = 0.0;
+    this.windSystem = opts.windSystem || new EnvironmentWindSystem();
+    this.cullingDistance = opts.cullingDistance || 135.0; // Khoảng cách tối đa cập nhật chi tiết (mét)
+    this.cullingDistanceSq = this.cullingDistance * this.cullingDistance;
+    this.centerPosition = center; // Tâm khu nhà A1 Kim Liên
+    
+    // Mảng lưu trữ các đối tượng hoạt họa cố định
+    this.bougainvilleas = [];
+    this.clotheslines = [];
+    this.elephantFans = [];
+    this.birdcages = [];
+
+    // Tái sử dụng mảng/biến tạm tránh cấp phát GC (Zero Heap Allocation)
+    this._dx = 0.0;
+    this._dz = 0.0;
+    this._distSq = 0.0;
+    this._isCulled = false;
+    this._windGust = 0.0;
+    this._windStrength = 0.65;
+    this._windFactor = 0.65;
+    this._currentTime = 0.0;
+  }
+
+  /**
+   * 1. Đăng ký Giàn hoa giấy đỏ trên ban công chuồng cọp
+   * @param {THREE.Object3D} target - Mesh hoặc Group giàn hoa giấy
+   * @param {Object} options - { x, z, swayAmpX, swayAmpZ, swayAmpY, liftAmpY, speed, phase, applyLift }
+   */
+  registerBougainvillea(target, options = {}) {
+    if (!target) return null;
+    const posX = options.x !== undefined ? options.x : target.position.x;
+    const posZ = options.z !== undefined ? options.z : target.position.z;
+    const spatialPhase = options.phase !== undefined ? options.phase : (posX * 0.14 + posZ * 0.09);
+
+    const entry = {
+      target,
+      initRotX: target.rotation.x,
+      initRotY: target.rotation.y,
+      initRotZ: target.rotation.z,
+      initPosY: target.position.y,
+      swayAmpX: options.swayAmpX || 0.052,  // Biên độ lắc theo trục X (~3.0 độ)
+      swayAmpZ: options.swayAmpZ || 0.040,  // Biên độ lắc theo trục Z (~2.3 độ)
+      swayAmpY: options.swayAmpY || 0.024,  // Biên độ xoay nhẹ trục Y (~1.4 độ)
+      liftAmpY: options.liftAmpY || 0.012,  // Nhấp nhô nâng vòm khi gió thốc
+      phase: spatialPhase,
+      speed: options.speed || 1.0,
+      applyLift: options.applyLift !== undefined ? options.applyLift : true
+    };
+    this.bougainvilleas.push(entry);
+    return entry;
+  }
+
+  /**
+   * 2. Đăng ký Dây phơi quần áo rung rinh phấp phới dọc hành lang
+   * @param {THREE.Object3D} target - Nhóm dây phơi (chứa dây và các món quần áo)
+   * @param {Object} options - { x, z, clothesItems, swingAmp, flutterFreq, flutterAmp }
+   */
+  registerClothesline(target, options = {}) {
+    if (!target) return null;
+    const posX = options.x !== undefined ? options.x : target.position.x;
+    const posZ = options.z !== undefined ? options.z : target.position.z;
+    const linePhase = options.phase !== undefined ? options.phase : (posX * 0.12 + posZ * 0.08);
+
+    // Xác định danh sách các món quần áo treo trên dây
+    const items = [];
+    if (options.clothesItems && Array.isArray(options.clothesItems)) {
+      for (let i = 0; i < options.clothesItems.length; i++) {
+        const itemObj = options.clothesItems[i];
+        const m = itemObj.mesh || itemObj;
+        items.push({
+          mesh: m,
+          initRotX: m.rotation.x,
+          initRotY: m.rotation.y,
+          initRotZ: m.rotation.z,
+          swingAmp: itemObj.swingAmp || options.swingAmp || 0.14,      // Góc vung quanh dây thép (~8 độ)
+          flutterFreq: itemObj.flutterFreq || options.flutterFreq || 8.5, // Tần số phấp phới nếp vải
+          flutterAmp: itemObj.flutterAmp || options.flutterAmp || 0.065,   // Biên độ phấp phới
+          phase: (linePhase + i * 1.35)
+        });
+      }
+    } else if (target.clothesItems && Array.isArray(target.clothesItems)) {
+      for (let i = 0; i < target.clothesItems.length; i++) {
+        const m = target.clothesItems[i];
+        items.push({
+          mesh: m,
+          initRotX: m.rotation.x,
+          initRotY: m.rotation.y,
+          initRotZ: m.rotation.z,
+          swingAmp: options.swingAmp || 0.14,
+          flutterFreq: options.flutterFreq || 8.5,
+          flutterAmp: options.flutterAmp || 0.065,
+          phase: (linePhase + i * 1.35)
+        });
+      }
+    } else {
+      // Tự động tìm kiếm các con trực tiếp của target (bỏ qua dây cáp thép)
+      const children = target.children || [];
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.name && (child.name.includes('Line') || child.name.includes('Wire') || child.name.includes('Rope'))) continue;
+        items.push({
+          mesh: child,
+          initRotX: child.rotation.x,
+          initRotY: child.rotation.y,
+          initRotZ: child.rotation.z,
+          swingAmp: options.swingAmp || 0.14,
+          flutterFreq: options.flutterFreq || 8.5,
+          flutterAmp: options.flutterAmp || 0.065,
+          phase: (linePhase + items.length * 1.35)
+        });
+      }
+    }
+
+    const entry = {
+      target,
+      initRotX: target.rotation.x,
+      initRotY: target.rotation.y,
+      initRotZ: target.rotation.z,
+      phase: linePhase,
+      items
+    };
+    this.clotheslines.push(entry);
+    return entry;
+  }
+
+  /**
+   * 3. Đăng ký Quạt tai voi Liên Xô quay tút-năng trong phòng khách căn hộ 204
+   * @param {THREE.Object3D|Object} target - Nhóm quạt hoặc { head, blades, base, root }
+   * @param {Object} options - { bladeSpeed, bladeAxis, sweepAmp, sweepPeriod, isRunning }
+   */
+  registerElephantEarFan(target, options = {}) {
+    if (!target) return null;
+
+    let head = null;
+    let blades = null;
+
+    if (target.head && target.blades) {
+      head = target.head;
+      blades = target.blades;
+    } else if (target.isObject3D) {
+      head = target.getObjectByName('FanHead') || 
+             target.getObjectByName('Head') || 
+             target.getObjectByName('Motor') || 
+             target;
+      blades = target.getObjectByName('FanBlades') || 
+               target.getObjectByName('Blades') || 
+               target.getObjectByName('CanhQuat');
+      
+      // Nếu chưa tìm thấy blades, tìm mesh con đầu tiên của head có geometry
+      if (!blades && head && head.children.length > 0) {
+        for (let i = 0; i < head.children.length; i++) {
+          const c = head.children[i];
+          if (c.name && (c.name.includes('blade') || c.name.includes('Canh') || c.name.includes('Rotor'))) {
+            blades = c;
+            break;
+          }
+        }
+      }
+    }
+
+    const entry = {
+      root: target.root || target,
+      head: head || target,
+      blades: blades || null,
+      initHeadRotY: head ? head.rotation.y : 0.0,
+      bladeAxis: options.bladeAxis || 'z', // trục quay cánh quạt
+      bladeSpeed: options.bladeSpeed || 24.0, // rad/s (~230 rpm)
+      bladeRotation: 0.0,
+      sweepAmp: options.sweepAmp || 0.62, // ~35.5 độ quét tút-năng sang mỗi bên
+      sweepPeriod: options.sweepPeriod || 5.8, // 5.8 giây mỗi chu kỳ tút-năng
+      phase: options.phase || 0.0,
+      isRunning: options.isRunning !== undefined ? options.isRunning : true,
+      setRunning: (running) => { entry.isRunning = !!running; },
+      setSpeed: (speed) => { entry.bladeSpeed = Number(speed) || 24.0; }
+    };
+
+    this.elephantFans.push(entry);
+    return entry;
+  }
+
+  /**
+   * 4. Đăng ký Lồng chim sơn ca khuyên tre ngoài ban công chuồng cọp
+   * @param {THREE.Object3D|Object} target - Lồng chim hoặc { cage, bird, hook }
+   * @param {Object} options - { pendulumAmpX, pendulumAmpZ, pendulumFreq, yawTwistAmp }
+   */
+  registerBirdcage(target, options = {}) {
+    if (!target) return null;
+
+    let cage = null;
+    let bird = null;
+
+    if (target.cage) {
+      cage = target.cage;
+      bird = target.bird || null;
+    } else if (target.isObject3D) {
+      cage = target.getObjectByName('Birdcage') || target;
+      bird = target.getObjectByName('Songbird') || 
+             target.getObjectByName('Bird') || 
+             target.getObjectByName('Chim');
+      
+      if (!bird) {
+        target.traverse((c) => {
+          if (c !== target && c.name && (c.name.includes('bird') || c.name.includes('Bird') || c.name.includes('chim'))) {
+            bird = c;
+          }
+        });
+      }
+    }
+
+    const entry = {
+      cage: cage || target,
+      bird: bird || null,
+      initRotX: cage ? cage.rotation.x : 0.0,
+      initRotY: cage ? cage.rotation.y : 0.0,
+      initRotZ: cage ? cage.rotation.z : 0.0,
+      initBirdPosY: bird ? bird.position.y : 0.0,
+      initBirdRotY: bird ? bird.rotation.y : 0.0,
+      pendulumAmpX: options.pendulumAmpX || 0.045, // Biên độ lắc trục X (~2.6 độ)
+      pendulumAmpZ: options.pendulumAmpZ || 0.038, // Biên độ lắc trục Z (~2.2 độ)
+      pendulumFreq: options.pendulumFreq || 1.65, // Tần số con lắc tự nhiên (~3.8s chu kỳ)
+      yawTwistAmp: options.yawTwistAmp || 0.075,   // Dao động tự xoắn quanh dây treo (~4.3 độ)
+      phase: options.phase || 0.0,
+      birdTimer: 0.0,
+      birdHopCooldown: 2.5 + Math.random() * 2.0
+    };
+
+    this.birdcages.push(entry);
+    return entry;
+  }
+
+  /**
+   * Tự động quét và liên kết toàn bộ hoa giấy, dây phơi, quạt tai voi, lồng chim trong Scene/Group
+   * @param {THREE.Object3D} containerGroup
+   */
+  autoScanAndRegister(containerGroup) {
+    if (!containerGroup || !containerGroup.traverse) return;
+
+    containerGroup.traverse((obj) => {
+      if (!obj || !obj.name) return;
+      const lower = obj.name.toLowerCase();
+
+      // Hoa giấy
+      if (lower.includes('bougainvillea') || lower.includes('hoagiay') || lower.includes('hoagiấy') || lower.includes('flower_vine')) {
+        this.registerBougainvillea(obj);
+      }
+      // Dây phơi quần áo
+      else if (lower.includes('clothesline') || lower.includes('dayphoi') || lower.includes('dâyphơi') || lower.includes('hanging_clothes')) {
+        this.registerClothesline(obj);
+      }
+      // Quạt tai voi
+      else if (lower.includes('quattaivoi') || lower.includes('quạt_tai_voi') || lower.includes('elephant_fan') || lower.includes('soviet_fan')) {
+        this.registerElephantEarFan(obj);
+      }
+      // Lồng chim
+      else if (lower.includes('birdcage') || lower.includes('longchim') || lower.includes('lồng_chim') || lower.includes('caged_bird')) {
+        this.registerBirdcage(obj);
+      }
+    });
+  }
+
+  /**
+   * Cập nhật toàn bộ hoạt họa 60 FPS mượt mà với Zero Heap Allocation
+   * @param {number} delta - Delta time (giây)
+   * @param {THREE.Vector3|Object} playerPos - Tọa độ người chơi để tính Culling
+   * @param {EnvironmentWindSystem} externalWind - Hệ thống gió tuỳ chọn
+   */
+  update(delta, playerPos = null, externalWind = null) {
+    if (delta <= 0) return;
+    // Kẹp delta an toàn chống nhảy vọt khi lag máy
+    const dt = delta > 0.1 ? 0.016 : delta;
+    this.time += dt;
+    this._currentTime = this.time;
+
+    // 0. CULLING THEO KHOẢNG CÁCH NGƯỜI CHƠI (Tối ưu 60 FPS tuyệt đối)
+    if (playerPos) {
+      this._dx = playerPos.x - this.centerPosition.x;
+      this._dz = playerPos.z - this.centerPosition.z;
+      this._distSq = this._dx * this._dx + this._dz * this._dz;
+      if (this._distSq > this.cullingDistanceSq) {
+        this._isCulled = true;
+        return; // Đứng cách xa hơn 135m -> Bỏ qua cập nhật chi tiết để giữ vững 60 FPS
+      }
+    }
+    this._isCulled = false;
+
+    // 1. CẬP NHẬT GIÓ
+    const wind = externalWind || this.windSystem;
+    if (wind && wind.update) {
+      if (!externalWind) wind.update(dt);
+      this._windGust = wind.gust;
+      this._windStrength = wind.windStrength;
+      this._windFactor = this._windStrength + this._windGust * 1.4;
+    } else {
+      this._windGust = Math.sin(this._currentTime * 0.45) * 0.2;
+      this._windStrength = 0.65;
+      this._windFactor = 0.65 + this._windGust;
+    }
+
+    const t = this._currentTime;
+    const wf = this._windFactor;
+    const gust = this._windGust;
+
+    // ========================================================================
+    // 1. HOẠT HỌA GIÀN HOA GIẤY ĐỎ TRÊN BAN CÔNG CHUỒNG CỌP (SWAY EASING)
+    // ========================================================================
+    const bCount = this.bougainvilleas.length;
+    for (let i = 0; i < bCount; i++) {
+      const b = this.bougainvilleas[i];
+      const pt = (t + b.phase) * b.speed;
+
+      // Tổng hòa các hàm sóng hình sin (Harmonic Wave Easing)
+      const waveX = (Math.sin(pt * 1.85) * 0.7 + Math.sin(pt * 3.7) * 0.3) * b.swayAmpX;
+      const waveZ = (Math.cos(pt * 1.45) * 0.75 + Math.cos(pt * 2.9) * 0.25) * b.swayAmpZ;
+      const waveY = Math.sin(pt * 1.1) * b.swayAmpY;
+
+      b.target.rotation.x = b.initRotX + waveX * wf;
+      b.target.rotation.z = b.initRotZ + waveZ * wf;
+      b.target.rotation.y = b.initRotY + waveY * wf;
+
+      if (b.applyLift) {
+        const liftY = Math.sin(pt * 2.2) * b.liftAmpY;
+        b.target.position.y = b.initPosY + liftY * wf;
+      }
+    }
+
+    // ========================================================================
+    // 2. HOẠT HỌA DÂY PHƠI & QUẦN ÁO PHẤP PHỚI DỌC HÀNH LANG (FLUTTER ANIMATION)
+    // ========================================================================
+    const cCount = this.clotheslines.length;
+    for (let i = 0; i < cCount; i++) {
+      const line = this.clotheslines[i];
+      const lt = t + line.phase;
+
+      // Dây phơi thép võng đung đưa quanh trục X
+      const lineSway = Math.sin(lt * 2.2) * 0.028 * wf;
+      line.target.rotation.x = line.initRotX + lineSway;
+
+      // Các món quần áo treo trên dây
+      const items = line.items;
+      const itemCount = items.length;
+      for (let j = 0; j < itemCount; j++) {
+        const it = items[j];
+        const itemT = t + it.phase;
+
+        // Góc vung quanh dây thép (Swing angle) kết hợp độ xô đẩy của luồng gió
+        const swingX = Math.sin(itemT * 2.6) * it.swingAmp * wf + gust * 0.22;
+
+        // Hiệu ứng sóng nếp vải rung phấp phới ở mép dưới vạt áo (High-frequency ripple)
+        const flutterY = Math.sin(itemT * it.flutterFreq) * it.flutterAmp * wf;
+        const flutterZ = Math.cos(itemT * (it.flutterFreq * 0.82)) * (it.flutterAmp * 0.75) * wf;
+
+        it.mesh.rotation.x = it.initRotX + swingX;
+        it.mesh.rotation.y = it.initRotY + flutterY;
+        it.mesh.rotation.z = it.initRotZ + flutterZ;
+      }
+    }
+
+    // ========================================================================
+    // 3. HOẠT HỌA QUẠT TAI VOI LIÊN XÔ TRONG PHÒNG KHÁCH CĂN HỘ 204
+    // ========================================================================
+    const fCount = this.elephantFans.length;
+    for (let i = 0; i < fCount; i++) {
+      const fan = this.elephantFans[i];
+      if (!fan.isRunning) continue;
+
+      // 3.1. Cánh quạt quay tròn tốc độ cao 60 FPS
+      fan.bladeRotation += fan.bladeSpeed * dt;
+      if (fan.bladeRotation > 6283.18) fan.bladeRotation -= 6283.18; // Giữ biên độ số thực chính xác
+      if (fan.blades) {
+        fan.blades.rotation[fan.bladeAxis] = fan.bladeRotation;
+      }
+
+      // 3.2. Đầu quạt quay tút-năng (Sweep Oscillation)
+      // Áp dụng Easing hàm Sin mượt mà: đạo hàm tại hai biên cực đại = 0 -> giảm tốc đệm êm ái
+      const sweepAngle = Math.sin((t / fan.sweepPeriod) * 6.2831853 + fan.phase) * fan.sweepAmp;
+      if (fan.head) {
+        fan.head.rotation.y = fan.initHeadRotY + sweepAngle;
+      }
+    }
+
+    // ========================================================================
+    // 4. HOẠT HỌA LỒNG CHIM SƠN CA KHUYÊN TRE NGOÀI BAN CÔNG CHUỒNG CỌP
+    // ========================================================================
+    const bcCount = this.birdcages.length;
+    for (let i = 0; i < bcCount; i++) {
+      const bc = this.birdcages[i];
+      const bct = t * bc.pendulumFreq + bc.phase;
+
+      // Con lắc hình cầu 3D (Spherical Pendulum): Lắc lư trục X, Z và tự xoắn dây trục Y
+      const pitchX = (Math.sin(bct) * 0.8 + Math.sin(bct * 2.1) * 0.2) * bc.pendulumAmpX * wf;
+      const rollZ = (Math.cos(bct * 0.92) * 0.8 + Math.cos(bct * 1.84) * 0.2) * bc.pendulumAmpZ * wf;
+      const yawTwist = Math.sin(t * 0.85 + bc.phase) * bc.yawTwistAmp;
+
+      bc.cage.rotation.x = bc.initRotX + pitchX;
+      bc.cage.rotation.z = bc.initRotZ + rollZ;
+      bc.cage.rotation.y = bc.initRotY + yawTwist;
+
+      // Hoạt ảnh chú chim sơn ca / khuyên tre bên trong lồng
+      if (bc.bird) {
+        bc.birdTimer += dt;
+        if (bc.birdTimer > bc.birdHopCooldown) {
+          bc.birdTimer = 0.0;
+          bc.birdHopCooldown = 2.4 + (Math.sin(t * 1.5) * 0.5 + 0.5) * 2.2;
+        }
+
+        // Nhịp nhảy ngắn 0.18s
+        let hopY = 0.0;
+        let headRot = 0.0;
+        if (bc.birdTimer < 0.18) {
+          const hopProgress = bc.birdTimer / 0.18;
+          hopY = Math.sin(hopProgress * 3.14159) * 0.016;
+          headRot = Math.sin(hopProgress * 6.28318) * 0.35;
+        }
+
+        bc.bird.position.y = bc.initBirdPosY + hopY;
+        bc.bird.rotation.y = bc.initBirdRotY + headRot;
+      }
+    }
+  }
+
+  /**
+   * Giải phóng tài nguyên và làm sạch mảng
+   */
+  clear() {
+    this.bougainvilleas.length = 0;
+    this.clotheslines.length = 0;
+    this.elephantFans.length = 0;
+    this.birdcages.length = 0;
+  }
+}
+
+// ============================================================================
+// CÁC HÀM TIỆN ÍCH DỰNG ĐỒ HỌA MÔ HÌNH 3D PROCEDURAL KHU TẬP THỂ KIM LIÊN
+// ============================================================================
+
+/**
+ * Tạo giàn hoa giấy đỏ hồng 3D xum xuê buông rủ từ chuồng cọp
+ */
+export function createBougainvilleaCluster(options = {}) {
+  const group = new THREE.Group();
+  group.name = options.name || 'Bougainvillea_Cluster';
+
+  const width = options.width || 4.2;
+  const height = options.height || 1.1;
+  const depth = options.depth || 1.6;
+
+  // Vật liệu hoa giấy đỏ hồng rực rỡ và lá xanh
+  const flowerMat = new THREE.MeshStandardMaterial({
+    color: options.flowerColor || 0xc52233,
+    roughness: 0.65,
+    metalness: 0.05
+  });
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: options.leafColor || 0x2d6a4f,
+    roughness: 0.70,
+    metalness: 0.02
+  });
+
+  // Tán lá nền phía trên
+  const leafTop = new THREE.Mesh(new THREE.BoxGeometry(width, 0.35, depth), leafMat);
+  leafTop.position.set(0, 0, 0);
+  group.add(leafTop);
+
+  // Các chùm hoa rủ phân tầng
+  const clusterCount = 5;
+  const spacing = width / (clusterCount + 1);
+  for (let i = 0; i < clusterCount; i++) {
+    const cx = -width / 2 + spacing * (i + 1) + (Math.sin(i * 1.7) * 0.15);
+    const dropLen = 0.5 + (i % 2 === 0 ? 0.35 : 0.15);
+    const dropMesh = new THREE.Mesh(new THREE.BoxGeometry(spacing * 0.85, dropLen, 0.4), flowerMat);
+    dropMesh.position.set(cx, -dropLen * 0.5, depth / 2 + 0.1);
+    group.add(dropMesh);
+  }
+
+  return group;
+}
+
+/**
+ * Tạo dây phơi quần áo thời bao cấp giăng dọc hành lang / chuồng cọp
+ */
+export function createHangingClotheslineMesh(options = {}) {
+  const group = new THREE.Group();
+  group.name = options.name || 'Clothesline_Hanging';
+
+  const length = options.length || 3.6;
+  const wireMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.4, metalness: 0.8 });
+
+  // Sợi dây thép phơi đồ
+  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, length, 8), wireMat);
+  wire.rotation.z = Math.PI / 2;
+  wire.name = 'ClothesWire';
+  group.add(wire);
+
+  // Danh sách các món quần áo phơi
+  const clothesConfigs = [
+    { name: 'AoMayO_White', color: 0xf5f5f0, w: 0.55, h: 0.65, d: 0.04, offset: -length * 0.35 },
+    { name: 'KhanMat_Blue', color: 0x3a7ca5, w: 0.40, h: 0.50, d: 0.03, offset: -length * 0.12 },
+    { name: 'QuanAu_Green', color: 0x2d4739, w: 0.45, h: 0.85, d: 0.05, offset: length * 0.12 },
+    { name: 'AoHoa_Pink', color: 0xd9727f, w: 0.52, h: 0.60, d: 0.04, offset: length * 0.35 }
+  ];
+
+  const clothesGroups = [];
+  for (let i = 0; i < clothesConfigs.length; i++) {
+    const cfg = clothesConfigs[i];
+    const clothGroup = new THREE.Group();
+    clothGroup.name = cfg.name;
+    clothGroup.position.set(cfg.offset, 0, 0);
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: cfg.color,
+      roughness: 0.85,
+      metalness: 0.02
+    });
+    // Đặt pivot tại mép trên kẹp vào dây thép (position y = -h/2)
+    const clothMesh = new THREE.Mesh(new THREE.BoxGeometry(cfg.w, cfg.h, cfg.d), mat);
+    clothMesh.position.set(0, -cfg.h / 2, 0);
+    clothMesh.castShadow = true;
+    clothGroup.add(clothMesh);
+
+    group.add(clothGroup);
+    clothesGroups.push(clothGroup);
+  }
+
+  group.clothesItems = clothesGroups;
+  return group;
+}
+
+/**
+ * Tạo mô hình 3D Quạt tai voi Liên Xô huyền thoại trong phòng khách căn hộ 204
+ */
+export function createElephantEarFanMesh(options = {}) {
+  const fanRoot = new THREE.Group();
+  fanRoot.name = options.name || 'ElephantEar_SovietFan';
+
+  const baseColor = options.baseColor || 0x224838; // Xanh ngọc bích Liên Xô đậm
+  const bladeColor = options.bladeColor || 0x3fa986; // Cánh cao su dẻo xanh ngọc tươi
+  const chromeColor = 0xb0b8b5;
+
+  const baseMat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.45, metalness: 0.35 });
+  const bladeMat = new THREE.MeshStandardMaterial({ color: bladeColor, roughness: 0.35, metalness: 0.15 });
+  const metalMat = new THREE.MeshStandardMaterial({ color: chromeColor, roughness: 0.25, metalness: 0.85 });
+
+  // 1. Chân đế quạt đặt cố định
+  const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.18, 16), baseMat);
+  fanBase.position.y = 0.09;
+  fanBase.name = 'FanBase';
+  fanRoot.add(fanBase);
+
+  // 2. Đầu quạt xoay tút-năng (FanHead)
+  const fanHead = new THREE.Group();
+  fanHead.name = 'FanHead';
+  fanHead.position.set(0, 0.22, 0);
+
+  // Cổ quạt nối với chân đế
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.10, 8), metalMat);
+  neck.position.y = -0.05;
+  fanHead.add(neck);
+
+  // Bầu động cơ phía sau
+  const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.16, 16), baseMat);
+  motor.rotation.x = Math.PI / 2;
+  motor.position.set(0, 0.02, -0.06);
+  fanHead.add(motor);
+
+  // Trục motor nhô ra phía trước
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.08, 8), metalMat);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.set(0, 0.02, 0.04);
+  fanHead.add(shaft);
+
+  // 3. Cụm 3 cánh quạt cao su mềm (FanBlades)
+  const fanBlades = new THREE.Group();
+  fanBlades.name = 'FanBlades';
+  fanBlades.position.set(0, 0.02, 0.08);
+
+  // Tâm trục quạt (Hub)
+  const hub = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), baseMat);
+  fanBlades.add(hub);
+
+  // 3 cánh quạt cao su mềm dáng tai voi uốn cong đặc trưng
+  for (let i = 0; i < 3; i++) {
+    const angle = (i * Math.PI * 2) / 3;
+    const bladeArm = new THREE.Group();
+    bladeArm.rotation.z = angle;
+
+    // Cánh quạt hình dẹp xòe rộng như tai voi
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.26, 0.012), bladeMat);
+    blade.position.set(0.02, 0.14, 0);
+    blade.rotation.x = 0.24; // Góc nghiêng đón gió
+    blade.rotation.y = 0.12;
+    bladeArm.add(blade);
+
+    fanBlades.add(bladeArm);
+  }
+
+  fanHead.add(fanBlades);
+  fanRoot.add(fanHead);
+
+  fanRoot.head = fanHead;
+  fanRoot.blades = fanBlades;
+  fanRoot.base = fanBase;
+
+  return fanRoot;
+}
+
+/**
+ * Tạo mô hình 3D Lồng chim sơn ca khuyên tre tinh xảo ngoài ban công chuồng cọp
+ */
+export function createBambooBirdcageMesh(options = {}) {
+  const root = new THREE.Group();
+  root.name = options.name || 'Bamboo_Birdcage';
+
+  const bambooColor = options.bambooColor || 0xcda250; // Màu nan tre già ngả vàng
+  const brassColor = 0xd4af37; // Móc đồng
+  const birdColor = 0x5a7d36; // Lông chim khuyên xanh olive
+
+  const bambooMat = new THREE.MeshStandardMaterial({ color: bambooColor, roughness: 0.6, metalness: 0.1 });
+  const brassMat = new THREE.MeshStandardMaterial({ color: brassColor, roughness: 0.3, metalness: 0.8 });
+  const birdMat = new THREE.MeshStandardMaterial({ color: birdColor, roughness: 0.7, metalness: 0.05 });
+
+  // Điểm treo móc trên cùng (Pivot con lắc)
+  const hook = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.008, 8, 16), brassMat);
+  hook.rotation.y = Math.PI / 2;
+  hook.position.y = 0;
+  root.add(hook);
+
+  // Thân lồng chim (Birdcage body) treo buông từ móc
+  const cage = new THREE.Group();
+  cage.name = 'Birdcage';
+  cage.position.set(0, 0, 0);
+
+  // Dây treo từ móc xuống nóc lồng
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.18, 6), brassMat);
+  string.position.y = -0.09;
+  cage.add(string);
+
+  // Nóc vòm lồng tre
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), bambooMat);
+  dome.position.y = -0.22;
+  cage.add(dome);
+
+  // Đáy lồng tròn
+  const bottom = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.25, 0.03, 16), bambooMat);
+  bottom.position.y = -0.65;
+  cage.add(bottom);
+
+  // Các thanh nan tre bao quanh
+  const barCount = 12;
+  for (let i = 0; i < barCount; i++) {
+    const a = (i * Math.PI * 2) / barCount;
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.43, 6), bambooMat);
+    bar.position.set(Math.cos(a) * 0.23, -0.435, Math.sin(a) * 0.23);
+    cage.add(bar);
+  }
+
+  // Cầu đậu bằng tre cho chim
+  const perch = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.36, 6), bambooMat);
+  perch.rotation.z = Math.PI / 2;
+  perch.position.set(0, -0.48, 0);
+  cage.add(perch);
+
+  // Cóng sứ đựng nước uống
+  const waterCup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.045, 8), new THREE.MeshStandardMaterial({ color: 0x225588, roughness: 0.2 }));
+  waterCup.position.set(0.14, -0.46, 0.08);
+  cage.add(waterCup);
+
+  // Chú chim sơn ca / khuyên nhỏ đậu trên cầu (Songbird)
+  const bird = new THREE.Group();
+  bird.name = 'Songbird';
+  bird.position.set(0, -0.44, 0);
+
+  // Thân chim
+  const birdBody = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), birdMat);
+  birdBody.scale.set(0.8, 1.0, 1.4);
+  bird.add(birdBody);
+
+  // Đầu chim
+  const birdHead = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), birdMat);
+  birdHead.position.set(0, 0.025, 0.032);
+  bird.add(birdHead);
+
+  // Mỏ chim
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.016, 6), brassMat);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, 0.025, 0.052);
+  bird.add(beak);
+
+  // Đuôi chim
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.006, 0.06), birdMat);
+  tail.position.set(0, -0.01, -0.05);
+  tail.rotation.x = -0.25;
+  bird.add(tail);
+
+  cage.add(bird);
+  root.add(cage);
+
+  root.cage = cage;
+  root.bird = bird;
+
+  return root;
+}
+
+// ============================================================================
 // HỆ THỐNG RETARGETING HOẠT HỌA HUMANOID / MIXAMO CHUYÊN SÂU
 // ============================================================================
 

@@ -216,7 +216,7 @@ export class PlayerController {
     } catch (e) {}
 
     // Vị trí xuất phát thông thoáng trên đường dạo ven hồ Gươm dẫn thẳng lên Cầu Kim Quy
-    this.characterGroup.position.set(20.0, 0.5, -20.0);
+    this.characterGroup.position.set(16.5, 0.5, -16.5);
     this.characterGroup.rotation.y = 0.785; // 45 độ theo trục cầu
     this.characterGroup.quaternion.setFromAxisAngle(this._worldUp, 0.785);
     this.scene.add(this.characterGroup);
@@ -889,7 +889,7 @@ export class PlayerController {
     const currentToken = this._loadToken;
 
     // Giữ nguyên tọa độ và góc xoay hiện tại
-    let curPos = new THREE.Vector3(20.0, 0.5, -20.0);
+    let curPos = new THREE.Vector3(16.5, 0.5, -16.5);
     if (this.characterGroup && (Math.abs(this.characterGroup.position.x) > 0.1 || Math.abs(this.characterGroup.position.z) > 0.1)) {
       curPos = this.characterGroup.position.clone();
     }
@@ -1716,14 +1716,31 @@ export class PlayerController {
     }
 
     if (this._groundHits.length > 0 || bridgeGroundY !== null) {
-      let groundY = (this._groundHits.length > 0) ? this._groundHits[0].point.y : 0;
+      // HỆ THỐNG DÒ TÌM MẶT SÀN ĐA TẦNG (MULTI-LEVEL FLOOR & STAIR DETECTION):
+      // Khi nhân vật ở các độ cao khác nhau (leo cầu thang, đứng ở Tầng 1, 2, 3, 4, ban công chuồng cọp),
+      // chọn hit mặt sàn gần và dưới chân nhất (hit.point.y <= charPos.y + 0.65) thay vì luôn lấy _groundHits[0],
+      // giúp nhân vật di chuyển đa tầng tự nhiên, không bị snap nhầm sàn tầng trên hay rơi xuyên sàn.
+      let bestHit = null;
+      for (let i = 0; i < this._groundHits.length; i++) {
+        const hit = this._groundHits[i];
+        if (hit.point.y <= charPos.y + 0.65) {
+          if (!bestHit || hit.point.y > bestHit.point.y) {
+            bestHit = hit;
+          }
+        }
+      }
+      if (!bestHit && this._groundHits.length > 0) {
+        bestHit = this._groundHits[0];
+      }
+
+      let groundY = bestHit ? bestHit.point.y : 0;
       if (bridgeGroundY !== null) {
         // Khi bước lên thềm đảo/đền thờ thì luôn lấy độ cao lớn hơn, tuyệt đối không bị kéo sụt xuống gầm sàn
-        groundY = (this._groundHits.length === 0) ? bridgeGroundY : Math.max(groundY, bridgeGroundY);
+        groundY = (!bestHit) ? bridgeGroundY : Math.max(groundY, bridgeGroundY);
       }
       // Nâng nhẹ chân khi đứng trên sàn Tháp Rùa, tam cấp hoặc sân đảo để đế giày luôn hiển thị trọn vẹn trên mặt gạch đá
-      if (this._groundHits.length > 0 && this._groundHits[0].object) {
-        const hitName = this._groundHits[0].object.name || '';
+      if (bestHit && bestHit.object) {
+        const hitName = bestHit.object.name || '';
         if (hitName === 'thapRuaInteriorFloor') {
           groundY = Math.max(groundY + 0.045, 2.060);
         } else if (hitName === 'thapRuaPlinth' || hitName === 'thapRuaStep') {

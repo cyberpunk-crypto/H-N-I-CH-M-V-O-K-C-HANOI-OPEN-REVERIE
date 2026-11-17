@@ -73,6 +73,44 @@ export const SPECIAL_LANDMARKS = [
       // Bên trong Chính Điện Chùa Đỏ (111 đến 121, z = -77 đến -63)
       return (pos.x >= 111 && pos.x <= 121 && pos.z >= -77 && pos.z <= -63);
     }
+  },
+  {
+    id: 'sanh_tap_the_a1',
+    name: 'Sảnh Nhà Tập Thể A1 Kim Liên',
+    title: 'Sảnh Đón Nhà Tập Thể A1 Kim Liên',
+    body: 'Khu nhà lắp ghép tấm lớn 5 tầng đầu tiên của Thủ Đô, lối lên cầu thang bộ granito mài rêu phong in bóng thời gian.',
+    icon: 'building',
+    check: (pos) => {
+      // Sảnh tầng 1 nhà A1 (bao quát từ cửa vòm X: -65 đến sảnh X: -45, Z: -68 đến -45)
+      return (pos.x >= -70 && pos.x <= -38 && pos.z >= -70 && pos.z <= -45 && (pos.y < 3.2 || !pos.y));
+    }
+  },
+  {
+    id: 'can_ho_204_bao_cap',
+    name: 'Căn Hộ Mẫu 204 Thời Bao Cấp',
+    title: 'Căn Hộ Mẫu 204 Thời Bao Cấp',
+    body: 'Không gian sinh hoạt điển hình thập niên 1980 với tem phiếu, phích Rạng Đông, quạt tai voi và chiếc đài cassette hoài niệm.',
+    icon: 'home',
+    check: (pos) => {
+      // Căn hộ 204 tầng 2 tại X = -62, Y = 3.8, Z = -62
+      const inX = (pos.x >= -68 && pos.x <= -56);
+      const inZ = (pos.z >= -68 && pos.z <= -56);
+      const inY = (pos.y >= 2.5 || pos.y === undefined);
+      return inX && inZ && inY;
+    }
+  },
+  {
+    id: 'chuong_cop_hoang_hon',
+    name: 'Ban Công Chuồng Cọp Ngắm Hoàng Hôn',
+    title: 'Ban Công Chuồng Cọp Hoàng Hôn',
+    body: 'Lồng sắt cơi nới đặc trưng nâng niu giàn hoa giấy đỏ rực rỡ và lồng chim tre, ngắm trọn vẹn hoàng hôn buông xuống ngõ phố xưa.',
+    icon: 'sunset',
+    check: (pos) => {
+      // Ban công chuồng cọp cơi nới nhô ra hướng Z: -56 đến -50, X: -68 đến -54
+      const inX = (pos.x >= -68 && pos.x <= -54);
+      const inZ = (pos.z >= -56 && pos.z <= -50);
+      return inX && inZ;
+    }
   }
 ];
 
@@ -201,6 +239,16 @@ export class ToastNotification {
         return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
       case 'camera':
         return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>`;
+      case 'building':
+        return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-2h4v2zm0-4H7v-2h4v2zm0-4H7V7h4v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z"/></svg>`;
+      case 'home':
+        return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`;
+      case 'sunset':
+        return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M12.005 5.5a4.5 4.5 0 0 0-4.5 4.5h9a4.5 4.5 0 0 0-4.5-4.5zM3 18h18v2H3v-2zm2-4h14v2H5v-2zm7-11.5a1 1 0 0 1 1 1V4a1 1 0 1 1-2 0v-.5a1 1 0 0 1 1-1zM5.22 4.22a1 1 0 0 1 1.42 0l.7.7a1 1 0 0 1-1.41 1.42l-.71-.71a1 1 0 0 1 0-1.41zm13.56 0a1 1 0 0 1 0 1.41l-.7.71a1 1 0 0 1-1.42-1.42l.71-.7a1 1 0 0 1 1.41 0z"/></svg>`;
+      case 'cassette':
+        return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-2 14H6l1-2h10l1 2zm-6-4c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm6-5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-12 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/></svg>`;
+      case 'water':
+        return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
       default:
         return `<svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
     }
@@ -219,7 +267,7 @@ export class ToastNotification {
     toast.innerHTML = `
       <div class="toast-stamp-badge">HANOI &bull; TEM BƯU CHÍNH</div>
       <div class="toast-main-row">
-        <div class="toast-icon-wrapper">
+        <div class="toast-icon-wrapper icon-${iconType}">
           ${this.getIconSvg(iconType)}
         </div>
         <div class="toast-content-wrapper">

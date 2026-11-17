@@ -345,7 +345,7 @@ export class UIManager {
       if (!promptContainer) return;
 
       if (payload.canInteract) {
-        promptContainer.style.display = 'block';
+        promptContainer.style.display = 'flex';
         if (promptTextEl) {
           promptTextEl.innerHTML = `<span class="keycap">${payload.actionKey || 'E'}</span> ${payload.promptText || 'Tương tác'}`;
         }
