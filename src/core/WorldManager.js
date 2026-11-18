@@ -8080,50 +8080,78 @@ getTheHucBridgeInfo(x, y, z) {
 
     const time = performance.now() * 0.001;
 
-    // 0. CULLING CẤP PHÂN KHU TỐI ƯU 60 FPS (Không bao giờ ẩn Cầu Long Biên)
+    // 0. CULLING CẤP PHÂN KHU TỐI ƯU 60 FPS (Loại bỏ triệt để hiện tượng vẽ chồng 4 phân khu cùng lúc)
     if (playerPos) {
       const px = playerPos.x;
       const pz = playerPos.z;
 
-      // CẦU LONG BIÊN (Zone 3) là kỳ quan chân trời của Thủ Đô Hà Nội:
-      // Toàn bộ 252m dầm thép đã được gộp tối ưu chỉ ~35 draw calls -> LUÔN HIỆN 100%
-      // Giúp người chơi đứng từ xa khắp Phố Cổ, Hồ Gươm đều thấy nhịp cầu hùng vĩ
-      // và triệt tiêu 100% hiện tượng giật lag / khựng hình khi lại gần hay chạy trên cầu
-      if (this.zone3Group) this.zone3Group.visible = true;
+      // Cầu Long Biên (Zone 3 - Dầm thép di sản ~35 draw calls):
+      // Luôn hiển thị trừ khi người chơi ở quá sâu góc Tây-Nam Kim Liên
+      if (this.zone3Group) {
+        const dLongBienSq = (px < 0 ? px * px : (px > 250 ? (px - 250) * (px - 250) : 0)) + Math.pow(Math.max(0, Math.abs(pz - 60) - 15), 2);
+        this.zone3Group.visible = (dLongBienSq <= 280 * 280);
+      }
 
-      // Phố Cổ (Zone 2) - Trung tâm kết nối, luôn hiện trừ khi đi rất xa ra giữa sông Hồng (px > 120m)
+      // Phố Cổ (Zone 2 - Tâm X=-50, Z=50):
+      // Ẩn khi người chơi ở sâu trong Hồ Gươm (X > 75, Z < -45) hoặc bờ đông sông Hồng
       if (this.zone2Group) {
-        this.zone2Group.visible = (px <= 120.0);
+        const dZ2Sq = (px - (-50)) * (px - (-50)) + (pz - 50) * (pz - 50);
+        const maxDistZ2 = this.zone2Group.visible ? (180 * 180) : (165 * 165);
+        this.zone2Group.visible = (px <= 140.0) && (dZ2Sq <= maxDistZ2);
       }
 
-      // Hồ Gươm (Zone 1 - 766 mesh):
-      // Chỉ ẩn khi người chơi đã lên cầu Long Biên đi sâu ra ngoài sông Hồng (pz >= 50m && px >= 50m)
-      // Giúp dạo chơi ở Phố Cổ và dốc dẫn không bao giờ bị khựng hình do bật/tắt Hồ Gươm
+      // Hồ Gươm (Zone 1 - 766 mesh - Tâm X=80, Z=-80):
+      // Ẩn tức thì khi người chơi ở sâu trong Khu Tập Thể Kim Liên (px < -28 && pz < -20)
+      // hoặc khi đã đi sâu ra giữa/cuối Cầu Long Biên (pz >= 50 && px >= 50)
       if (this.zone1Group) {
-        this.zone1Group.visible = !(pz >= 50.0 && px >= 50.0);
+        const inDeepKimLien = (px < -28.0 && pz < -20.0);
+        const onFarBridge = (pz >= 50.0 && px >= 50.0);
+        if (inDeepKimLien || onFarBridge) {
+          this.zone1Group.visible = false;
+        } else {
+          const dZ1Sq = (px - 80) * (px - 80) + (pz - (-80)) * (pz - (-80));
+          const maxDistZ1 = this.zone1Group.visible ? (190 * 190) : (175 * 175);
+          this.zone1Group.visible = (dZ1Sq <= maxDistZ1);
+        }
       }
 
-      // Khu Tập Thể (Zone 4): Chỉ ẩn khi người chơi ở trên cầu Long Biên hoặc bờ đông Gia Lâm (pz >= 50m)
+      // Khu Tập Thể Kim Liên (Zone 4 - Tâm X=-65, Z=-60):
+      // Ẩn tức thì khi người chơi ở sâu trong Hồ Gươm (px > 25 && pz < -20)
+      // hoặc trên Cầu Long Biên (pz >= 45)
       if (this.zone4Group) {
-        this.zone4Group.visible = (pz < 50.0);
+        const inDeepHoGuom = (px > 25.0 && pz < -20.0);
+        const onBridge = (pz >= 45.0);
+        if (inDeepHoGuom || onBridge) {
+          this.zone4Group.visible = false;
+        } else {
+          const dZ4Sq = (px - (-65)) * (px - (-65)) + (pz - (-60)) * (pz - (-60));
+          const maxDistZ4 = this.zone4Group.visible ? (165 * 165) : (150 * 150);
+          this.zone4Group.visible = (dZ4Sq <= maxDistZ4);
+        }
       }
     }
 
-    // 0b. Culling khoảng cách siêu nhẹ đa tầng (Throttling mỗi 6 frames, giảm 65% Draw Calls)
-    if (playerPos && this._cullableObjects) {
-      if (this._cullCounter === undefined) this._cullCounter = 0;
-      this._cullCounter++;
-      if (this._cullCounter === 1 || this._cullCounter % 6 === 0) {
-        const px = playerPos.x;
-        const pz = playerPos.z;
-        for (let i = 0; i < this._cullableObjects.length; i++) {
-          const item = this._cullableObjects[i];
-          const dx = px - item.posX;
-          const dz = pz - item.posZ;
-          const d2 = dx * dx + dz * dz;
-          item.mesh.visible = (d2 <= item.cullDistSq);
+    // 0b. Culling khoảng cách siêu nhẹ chia đều từng frame (Zero Frame Spikes / Flat 60 FPS)
+    if (playerPos && this._cullableObjects && this._cullableObjects.length > 0) {
+      const len = this._cullableObjects.length;
+      const batchSize = Math.min(len, 65);
+      if (this._cullIndex === undefined) this._cullIndex = 0;
+
+      const px = playerPos.x;
+      const pz = playerPos.z;
+
+      for (let k = 0; k < batchSize; k++) {
+        const idx = (this._cullIndex + k) % len;
+        const item = this._cullableObjects[idx];
+        if (item.mesh.parent && item.mesh.parent.visible === false) {
+          continue;
         }
+        const dx = px - item.posX;
+        const dz = pz - item.posZ;
+        const d2 = dx * dx + dz * dz;
+        item.mesh.visible = (d2 <= item.cullDistSq);
       }
+      this._cullIndex = (this._cullIndex + batchSize) % len;
     }
 
     // 1. Cập nhật các vật thể có animation

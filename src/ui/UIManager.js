@@ -123,6 +123,15 @@ export class UIManager {
       });
     }
 
+    // Nút bật/tắt chế độ mượt 60 FPS
+    const btnTurbo = document.getElementById('btnToggleTurboFpsHud');
+    if (btnTurbo) {
+      btnTurbo.addEventListener('click', (e) => {
+        btnTurbo.blur();
+        this.togglePerformanceMode();
+      });
+    }
+
     // Nút đổi nhân vật / tạo lại nhân vật
     const btnRecreate = document.getElementById('btnRecreateCharacterHud');
     if (btnRecreate) {
@@ -286,7 +295,38 @@ export class UIManager {
           }
         }
       }
+      // Phím P chuyển đổi chế độ Siêu Mượt 60 FPS
+      else if (key === 'p') {
+        this.togglePerformanceMode();
+      }
     });
+  }
+
+  togglePerformanceMode() {
+    this._isTurbo = !this._isTurbo;
+    const mode = this._isTurbo ? 'performance' : 'balanced';
+    if (window.gameEngine && typeof window.gameEngine.setPerformanceMode === 'function') {
+      window.gameEngine.setPerformanceMode(mode);
+    }
+    const btnTurbo = document.getElementById('btnToggleTurboFpsHud');
+    const textEl = document.getElementById('turboFpsText');
+    if (btnTurbo) {
+      if (this._isTurbo) {
+        btnTurbo.classList.add('active');
+        if (textEl) textEl.textContent = '⚡ Siêu Mượt';
+      } else {
+        btnTurbo.classList.remove('active');
+        if (textEl) textEl.textContent = '60 FPS Mượt';
+      }
+    }
+    if (this.toast) {
+      this.toast.show({
+        title: this._isTurbo ? '⚡ Kích Hoạt Siêu Mượt' : '✨ Chế Độ Cân Bằng',
+        message: this._isTurbo ? 'Đã tối ưu hóa GPU, giảm tải tối đa và duy trì 60+ FPS ổn định!' : 'Đã khôi phục đồ họa sắc nét chuẩn mực!',
+        type: 'info',
+        duration: 2500
+      });
+    }
   }
 
   bindCoreHudEvents() {
