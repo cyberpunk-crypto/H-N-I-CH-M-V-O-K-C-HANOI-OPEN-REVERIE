@@ -12,6 +12,7 @@ import { ToastNotification } from './ToastNotification.js';
 import { AudioBGMController } from './AudioBGMController.js';
 import { DialogueModal } from './DialogueModal.js?v=3.9';
 import { ChatBoxHUD } from './ChatBoxHUD.js';
+import { SettingsModal } from './SettingsModal.js';
 import { CHARACTERS } from './CharacterCreation.js';
 
 export class UIManager {
@@ -20,6 +21,7 @@ export class UIManager {
     this.viewfinder = null;
     this.minimap = null;
     this.scrapbook = null;
+    this.settings = null;
     this.toast = null;
     this.audioController = null;
     this.dialogue = null;
@@ -58,6 +60,11 @@ export class UIManager {
     // 5. Cuốn Album Ký Ức Hà Nội
     this.scrapbook = new ScrapbookModal({
       container: document.getElementById('scrapbookContainer') || document.body
+    });
+
+    // 5b. Bảng Bánh Răng Cài Đặt & Hướng Dẫn Điều Khiển (Canva Vintage)
+    this.settings = new SettingsModal({
+      container: document.getElementById('settingsContainer') || document.body
     });
 
     // 6. Hộp thoại NPC & Thuyết minh Lịch sử & Quầy hàng xưa
@@ -129,6 +136,17 @@ export class UIManager {
       btnTurbo.addEventListener('click', (e) => {
         btnTurbo.blur();
         this.togglePerformanceMode();
+      });
+    }
+
+    // Nút Bánh Răng Cài Đặt & Hướng Dẫn Điều Khiển
+    const btnSettings = document.getElementById('btnSettingsHud');
+    if (btnSettings) {
+      btnSettings.addEventListener('click', (e) => {
+        btnSettings.blur();
+        if (this.settings) {
+          this.settings.toggle();
+        }
       });
     }
 
@@ -293,6 +311,12 @@ export class UIManager {
           } else {
             this.scrapbook.openAlbum();
           }
+        }
+      }
+      // Phím Escape hoặc O mở / đóng Bảng Cài Đặt & Hướng Dẫn
+      else if (key === 'escape' || key === 'o') {
+        if (this.settings) {
+          this.settings.toggle();
         }
       }
       // Phím P chuyển đổi chế độ Siêu Mượt 60 FPS

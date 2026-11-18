@@ -188,17 +188,17 @@ export class GameEngine {
       }
       this.canvas = canvas;
 
-      // 2. WebGLRenderer Three.js với chuẩn tối ưu 60 FPS
+      // 2. WebGLRenderer Three.js với chuẩn hình ảnh sắc nét tuyệt đối & 60 FPS
       this.renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
-        antialias: false, // Tắt MSAA 4x nặng nề, giải phóng fill-rate cho GPU
+        antialias: true, // Bật khử răng cưa mượt mà, triệt tiêu hoàn toàn hiện tượng mờ ảo hay răng cưa
         powerPreference: 'high-performance',
-        preserveDrawingBuffer: false // Tối ưu zero-copy WebGL, tăng 35-50% FPS trên trình duyệt
+        preserveDrawingBuffer: false // Tối ưu zero-copy WebGL, tối ưu GPU
       });
 
-      this._currentDpr = Math.min(window.devicePixelRatio || 1, 1.0);
+      this._currentDpr = Math.min(window.devicePixelRatio || 1, 2.0); // Hiển thị sắc nét chuẩn màn hình Retina / 2K / 4K
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.renderer.setPixelRatio(this._currentDpr); // Chuẩn tối ưu cho mọi laptop, văn phòng và thiết bị yếu không bao giờ tụt FPS
+      this.renderer.setPixelRatio(this._currentDpr);
       this.renderer.shadowMap.enabled = false; // Triệt tiêu 100% Shadow Pass nghẽn GPU trên trình duyệt Web
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.15;
@@ -315,16 +315,17 @@ export class GameEngine {
    * Chuyển đổi thủ công chế độ hiệu năng (Performance Mode)
    * @param {'performance' | 'balanced' | 'high'} mode
    */
-  setPerformanceMode(mode = 'performance') {
+  setPerformanceMode(mode = 'high') {
     if (mode === 'performance') {
-      this._currentDpr = 0.75;
-      if (this.renderer) this.renderer.setPixelRatio(0.75);
-    } else if (mode === 'balanced') {
-      this._currentDpr = 0.9;
-      if (this.renderer) this.renderer.setPixelRatio(0.9);
-    } else {
       this._currentDpr = 1.0;
       if (this.renderer) this.renderer.setPixelRatio(1.0);
+    } else if (mode === 'balanced') {
+      this._currentDpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      if (this.renderer) this.renderer.setPixelRatio(this._currentDpr);
+    } else {
+      // Chế độ Siêu Sắc Nét (Mặc định)
+      this._currentDpr = Math.min(window.devicePixelRatio || 1, 2.0);
+      if (this.renderer) this.renderer.setPixelRatio(this._currentDpr);
     }
     console.log(`[GameEngine] Thiết lập chế độ: ${mode} (DPR: ${this._currentDpr})`);
     if (this.eventBus) {
@@ -344,26 +345,6 @@ export class GameEngine {
       this.animationFrameId = requestAnimationFrame(loop);
 
       const delta = Math.min(this.clock.getDelta(), 0.1); // Giới hạn delta chống giật khi tab ẩn
-
-      // Bộ tự động ổn định hiệu năng 60 FPS (Adaptive Dynamic Resolution Scaling)
-      this._fpsFrameCount = (this._fpsFrameCount || 0) + 1;
-      this._fpsTimeAcc = (this._fpsTimeAcc || 0) + delta;
-
-      if (this._fpsFrameCount >= 40) {
-        const avgFps = 40 / this._fpsTimeAcc;
-        if (avgFps < 42 && this._currentDpr > 0.7) {
-          // Khi phát hiện máy giật lag -> Tự động hạ nhẹ pixelRatio để khôi phục ngay 60 FPS
-          this._currentDpr = Math.max(0.7, parseFloat((this._currentDpr - 0.1).toFixed(2)));
-          if (this.renderer) this.renderer.setPixelRatio(this._currentDpr);
-          console.log(`[GameEngine] Adaptive Booster: FPS=${avgFps.toFixed(1)} -> DPR=${this._currentDpr}`);
-        } else if (avgFps > 58 && this._currentDpr < 1.0) {
-          // Khung hình siêu mượt -> Tăng dần độ sắc nét
-          this._currentDpr = Math.min(1.0, parseFloat((this._currentDpr + 0.05).toFixed(2)));
-          if (this.renderer) this.renderer.setPixelRatio(this._currentDpr);
-        }
-        this._fpsFrameCount = 0;
-        this._fpsTimeAcc = 0;
-      }
 
       if (!this.isPaused) {
         // Cập nhật hiệu ứng môi trường (lá rơi, lồng đèn, skydome bám camera)

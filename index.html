@@ -96,12 +96,12 @@
           <span class="hotkey-chip">B</span>
         </button>
 
-        <button type="button" id="btnToggleTurboFpsHud" class="btn-hud-tool" title="Tối ưu mượt 60 FPS / Giảm lag (Phím P)">
+        <button type="button" id="btnSettingsHud" class="btn-hud-tool btn-hud-gear" title="Cài Đặt & Hướng Dẫn Điều Khiển (Phím Esc / O)">
           <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
-            <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
           </svg>
-          <span id="turboFpsText">60 FPS Mượt</span>
-          <span class="hotkey-chip">P</span>
+          <span>Cài Đặt</span>
+          <span class="hotkey-chip">Esc</span>
         </button>
 
         <button type="button" id="btnRecreateCharacterHud" class="btn-hud-tool" title="Đổi Nhân Vật 3D Khám Phá Hà Nội (Trước Gương Ký Ức)">
@@ -119,61 +119,10 @@
         <span id="interactionPromptText"><span class="keycap">E</span> Tương tác</span>
       </div>
     </div>
-
-    <!-- Thanh phím tắt góc dưới chuẩn GTA V -->
-    <footer class="hud-bottom-bar hud-interactive">
-      <div class="control-hints-row">
-        <div class="control-hint-item">
-          <div class="keycap-group">
-            <span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span>
-          </div>
-          <span>Di chuyển</span>
-        </div>
-        <div class="control-hint-item">
-          <span class="keycap">Shift</span>
-          <span>Chạy nhanh</span>
-        </div>
-        <div class="control-hint-item">
-          <span class="keycap">Space</span>
-          <span>Nhảy</span>
-        </div>
-        <div class="control-hint-item">
-          <div class="keycap-group">
-            <span class="keycap">C</span><span class="keycap">V</span>
-          </div>
-          <span>Đổi góc nhìn</span>
-        </div>
-        <div class="control-hint-item highlight-gold">
-          <span class="keycap">F</span>
-          <span>Chụp ảnh film</span>
-        </div>
-        <div class="control-hint-item">
-          <span class="keycap">E</span>
-          <span>Tương tác / Trà đá</span>
-        </div>
-        <div class="control-hint-item">
-          <div class="keycap-group">
-            <span class="keycap">Tab</span><span class="keycap">M</span>
-          </div>
-          <span>Bản đồ</span>
-        </div>
-        <div class="control-hint-item">
-          <span class="keycap">B</span>
-          <span>Album Ký Ức</span>
-        </div>
-        <div class="control-hint-item highlight-gold">
-          <span class="keycap">P</span>
-          <span>Tối ưu 60 FPS</span>
-        </div>
-        <div class="control-hint-item">
-          <span class="keycap">Enter</span>
-          <span>Kênh Chat</span>
-        </div>
-      </div>
-    </footer>
   </div>
 
   <!-- Các Containers cho các Modals & Widgets -->
+  <div id="settingsContainer"></div>
   <div id="minimapContainer"></div>
   <div id="scrapbookContainer"></div>
   <div id="dialogueContainer"></div>

@@ -4934,24 +4934,145 @@ getTheHucBridgeInfo(x, y, z) {
     guardNorth.rotation.z = rampAngle;
     zoneGroup.add(guardNorth);
 
-    // Mạn Nam (Z = 55.0):
-    const guardSouth = createBoxBeam(rampHypot, 1.2, 0.5, stonePierMat);
-    guardSouth.position.set(-30.0 + rampLen / 2, 0.5 + rampRise / 2 + 0.5, 55.0);
+    // Mạn Nam (Z = 55.0) - MỞ LỐI ĐI THÔNG THOÁNG NỐI SANG CẦU THÊ HÚC & HỒ GƯƠM:
+    // Đoạn cao (X = -10.0 -> 20.0, dài 30m): Lan can đá bảo vệ an toàn trên cao
+    const guardSouthLen = 30.0;
+    const guardSouthRise = (guardSouthLen / rampLen) * rampRise; // ~6.21m
+    const guardSouthHypot = Math.hypot(guardSouthLen, guardSouthRise);
+    const guardSouth = createBoxBeam(guardSouthHypot, 1.2, 0.5, stonePierMat);
+    guardSouth.name = 'guardSouthHigh';
+    guardSouth.position.set(-10.0 + guardSouthLen / 2, 0.5 + (20.0 / rampLen) * rampRise + guardSouthRise / 2 + 0.5, 55.0);
     guardSouth.rotation.z = rampAngle;
     zoneGroup.add(guardSouth);
 
+    // Trụ cổng đá hoa văn đánh dấu lối rẽ sang Cầu Thê Húc & Hồ Gươm (Portal Pillars)
+    const pillarMat = this.materials.agedBrick || stonePierMat;
+    const pillar1 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.2, 0.9), pillarMat);
+    pillar1.position.set(-10.0, 3.2, 55.0);
+    zoneGroup.add(pillar1);
+    this._addBoxObstacle(-10.0, 55.0, 1.0, 1.0, 2.0, 4.5);
+
+    const pillar2 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.9), pillarMat);
+    pillar2.position.set(-28.0, 1.4, 55.0);
+    zoneGroup.add(pillar2);
+    this._addBoxObstacle(-28.0, 55.0, 1.0, 1.0, 0.5, 2.5);
+
+    // CẦU THANG ĐÁ TAM CẤP RỘNG THÊNH THANG NỐI TỪ DỐC DẪN XUỐNG ĐƯỜNG DẠO BỘ (Long Bien Stairway)
+    // Tọa độ X: [-26.0 -> -12.0], Z đi từ 55.0 xuống 50.0, Y hạ êm ái từ 1.05m -> 0.38m
+    const stairwayGroup = new THREE.Group();
+    stairwayGroup.name = 'LongBienToTheHucStairway';
+    this.longBienStairway = stairwayGroup;
+
+    const numStairs = 4;
+    const stairLenX = 14.0;
+    for (let s = 0; s < numStairs; s++) {
+      const stepProg = s / (numStairs - 1);
+      const stepY = 1.05 - stepProg * 0.67; // 1.05 -> 0.38
+      const stepZ = 54.2 - s * 1.15;        // 54.2 -> 50.75
+      const stepMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(stairLenX, 0.24, 1.35),
+        this.materials.mossStone || stonePierMat
+      );
+      stepMesh.position.set(-19.0, stepY, stepZ);
+      stepMesh.name = `longBienStair_${s}`;
+      stepMesh._isBaseGround = true;
+      stepMesh.receiveShadow = true;
+      stairwayGroup.add(stepMesh);
+      this.colliders.push(stepMesh);
+    }
+    zoneGroup.add(stairwayGroup);
+
     // Phân đoạn vật cản lan can theo độ dốc thực tế (5 đoạn x 10m):
-    // Triệt tiêu hoàn toàn khối hộp ảo 13m che tầm nhìn và làm giật camera/khựng bước chân
+    // Chỉ kích hoạt vật cản mạn Nam cho k >= 2 (X >= -10.0), để ngỏ k = 0, 1 cho người chơi đi lại tự do sang Cầu Thê Húc
     const segCount = 5;
     const segLen = rampLen / segCount;
     for (let k = 0; k < segCount; k++) {
       const segMidX = -30.0 + (k + 0.5) * segLen;
       const t = (segMidX - (-30.0)) / rampLen;
       const segFloorY = 0.5 + t * rampRise;
-      // Lan can mạn Bắc & Nam cao 1.2m theo mặt sàn thực tế tại từng đoạn
+      // Lan can mạn Bắc luôn có để tránh rơi sang ray ngoài
       this._addBoxObstacle(segMidX, 67.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
-      this._addBoxObstacle(segMidX, 55.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
+      // Mạn Nam: CHỈ đặt vật cản đoạn cao (k >= 2), giải phóng hoàn toàn lối đi sang Cầu Thê Húc (k = 0, 1)
+      if (k >= 2) {
+        this._addBoxObstacle(segMidX, 55.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
+      }
     }
+
+    // =========================================================================
+    // 🚶 ĐẠI LỘ DẠO BỘ VEN ĐÊ NỐI CẦU LONG BIÊN VỚI CẦU THÊ HÚC & HỒ GƯƠM
+    // (Long Bien - The Huc Heritage Promenade)
+    // Bản đường lát đá xanh cổ rộng 6.2m, phẳng phiu (Y = 0.38), kết nối liền mạch từ
+    // bậc đá Cầu Long Biên (X = -19, Z = 50) dẫn thẳng sang Quảng trường Cầu Thê Húc (X = 164, Z = -36)
+    // =========================================================================
+    const promenadePoints = [
+      { x: -19.0, z: 50.0 }, // Chân cầu thang Cầu Long Biên
+      { x: -5.0,  z: 42.0 }, // Cung chuyển tiếp qua đầu phố Cổ
+      { x: 25.0,  z: 30.0 }, // Đoạn qua bờ cỏ công viên
+      { x: 65.0,  z: 15.0 }, // Đoạn vòng ngoài đê
+      { x: 105.0, z: -2.0 }, // Đoạn tiếp giáp phố Hàng Dầu - Đinh Tiên Hoàng
+      { x: 138.0, z: -20.0 },// Đoạn tiếp giáp Đài Nghiên
+      { x: 164.0, z: -36.0 } // Nhập vào Quảng trường Cầu Thê Húc
+    ];
+
+    const promMat = this.materials.mossStone || stonePierMat;
+    for (let p = 0; p < promenadePoints.length - 1; p++) {
+      const pA = promenadePoints[p];
+      const pB = promenadePoints[p + 1];
+      const pMidX = (pA.x + pB.x) / 2;
+      const pMidZ = (pA.z + pB.z) / 2;
+      const pDist = Math.hypot(pB.x - pA.x, pB.z - pA.z);
+      const pAngle = Math.atan2(pB.z - pA.z, pB.x - pA.x);
+
+      const promSlab = new THREE.Mesh(
+        new THREE.BoxGeometry(pDist + 0.8, 0.25, 6.2),
+        promMat
+      );
+      promSlab.name = `promenade_LB_TH_${p}`;
+      promSlab._isBaseGround = true;
+      promSlab.receiveShadow = true;
+      promSlab.position.set(pMidX, 0.38, pMidZ);
+      promSlab.rotation.y = -pAngle;
+      zoneGroup.add(promSlab);
+      this.colliders.push(promSlab);
+
+      // Đèn lồng phố cổ / Đèn đường đồng thau dọc đường dạo
+      if (p % 2 === 0) {
+        const lampPost = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.12, 3.2, 8),
+          this.materials.agedBrass || darkSteelMat
+        );
+        const perpAngle = pAngle + Math.PI / 2;
+        lampPost.position.set(pMidX + Math.cos(perpAngle) * 3.6, 1.8, pMidZ + Math.sin(perpAngle) * 3.6);
+        zoneGroup.add(lampPost);
+
+        const lantern = new THREE.Mesh(
+          new THREE.BoxGeometry(0.4, 0.5, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0xffe6a3, emissive: 0xffaa33, emissiveIntensity: 0.6 })
+        );
+        lantern.position.set(lampPost.position.x, 3.4, lampPost.position.z);
+        zoneGroup.add(lantern);
+      }
+    }
+
+    // Biển chỉ dẫn di sản tại chân dốc Cầu Long Biên
+    const signLbToTh = createBoxBeam(1.8, 0.9, 0.1, new THREE.MeshStandardMaterial({ color: 0x422312, roughness: 0.7 }));
+    signLbToTh.position.set(-18.0, 1.8, 48.0);
+    zoneGroup.add(signLbToTh);
+
+    // Điểm tương tác: Biển chỉ đường Cầu Long Biên ↔ Cầu Thê Húc
+    this.interactables.push({
+      id: 'signpost_lb_thehuc',
+      name: 'Biển Chỉ Dẫn Di Sản',
+      position: new THREE.Vector3(-18.0, 1.0, 48.0),
+      promptText: 'Đọc Biển Chỉ Dẫn Tuyến Đi Bộ Di Sản',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('CORE:NOTIFICATION', {
+            message: '⛩️ Lối đi bộ thênh thang kết nối trực tiếp Cầu Long Biên (1902) và Cầu Thê Húc - Đền Ngọc Sơn.'
+          });
+        }
+      }
+    });
 
     // Thềm đá tiếp giáp êm ái dưới chân dốc dẫn tại Phố Cổ (X = -32.0 -> -30.0)
     const rampApron = createBoxBeam(3.0, 0.2, roadWidth, stonePierMat);
@@ -8086,31 +8207,30 @@ getTheHucBridgeInfo(x, y, z) {
       const pz = playerPos.z;
 
       // Cầu Long Biên (Zone 3 - Dầm thép di sản ~35 draw calls):
-      // Luôn hiển thị trừ khi người chơi ở quá sâu góc Tây-Nam Kim Liên
+      // Luôn hiển thị bao quát khắp thành phố và từ Cầu Thê Húc / Hồ Gươm nhìn sang
       if (this.zone3Group) {
         const dLongBienSq = (px < 0 ? px * px : (px > 250 ? (px - 250) * (px - 250) : 0)) + Math.pow(Math.max(0, Math.abs(pz - 60) - 15), 2);
-        this.zone3Group.visible = (dLongBienSq <= 280 * 280);
+        this.zone3Group.visible = (dLongBienSq <= 360 * 360);
       }
 
       // Phố Cổ (Zone 2 - Tâm X=-50, Z=50):
-      // Ẩn khi người chơi ở sâu trong Hồ Gươm (X > 75, Z < -45) hoặc bờ đông sông Hồng
+      // Ẩn khi người chơi ở quá xa hoặc bờ đông sông Hồng
       if (this.zone2Group) {
         const dZ2Sq = (px - (-50)) * (px - (-50)) + (pz - 50) * (pz - 50);
-        const maxDistZ2 = this.zone2Group.visible ? (180 * 180) : (165 * 165);
-        this.zone2Group.visible = (px <= 140.0) && (dZ2Sq <= maxDistZ2);
+        const maxDistZ2 = this.zone2Group.visible ? (220 * 220) : (195 * 195);
+        this.zone2Group.visible = (dZ2Sq <= maxDistZ2);
       }
 
       // Hồ Gươm (Zone 1 - 766 mesh - Tâm X=80, Z=-80):
-      // Ẩn tức thì khi người chơi ở sâu trong Khu Tập Thể Kim Liên (px < -28 && pz < -20)
-      // hoặc khi đã đi sâu ra giữa/cuối Cầu Long Biên (pz >= 50 && px >= 50)
+      // Chỉ ẩn khi người chơi ở sâu trong Khu Tập Thể Kim Liên (px < -28 && pz < -20).
+      // Luôn hiển thị thông suốt khi người chơi ở trên Cầu Long Biên, Ga Long Biên và đại lộ đi bộ sang Cầu Thê Húc
       if (this.zone1Group) {
         const inDeepKimLien = (px < -28.0 && pz < -20.0);
-        const onFarBridge = (pz >= 50.0 && px >= 50.0);
-        if (inDeepKimLien || onFarBridge) {
+        if (inDeepKimLien) {
           this.zone1Group.visible = false;
         } else {
           const dZ1Sq = (px - 80) * (px - 80) + (pz - (-80)) * (pz - (-80));
-          const maxDistZ1 = this.zone1Group.visible ? (190 * 190) : (175 * 175);
+          const maxDistZ1 = this.zone1Group.visible ? (350 * 350) : (310 * 310);
           this.zone1Group.visible = (dZ1Sq <= maxDistZ1);
         }
       }
