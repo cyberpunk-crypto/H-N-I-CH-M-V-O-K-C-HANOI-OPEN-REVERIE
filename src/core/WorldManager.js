@@ -8322,8 +8322,14 @@ getTheHucBridgeInfo(x, y, z) {
         const targetX = fish.centerX + Math.cos(fish.orbitAngle) * r;
         const targetZ = fish.centerZ + Math.sin(fish.orbitAngle) * r;
 
-        // KIỂM TRA BẢO VỆ CHẮC CHẮN: Cá CHỈ bơi trong lòng nước mở, tuyệt đối không xuất hiện trên bờ, đảo hay cầu
-        const inSafeWater = this.isPointInOpenLakeWater(targetX, targetZ);
+        // KIỂM TRA BẢO VỆ CHẮC CHẮN: Cá CHỈ bơi trong lòng nước mở (Cập nhật định kỳ 0.4s để tối ưu CPU)
+        if (fish._checkTimer === undefined || fish._checkTimer > 0.4) {
+          fish._inSafeWater = this.isPointInOpenLakeWater(targetX, targetZ);
+          fish._checkTimer = (i % 5) * 0.08;
+        } else {
+          fish._checkTimer += delta;
+        }
+        const inSafeWater = fish._inSafeWater !== undefined ? fish._inSafeWater : true;
         fish.group.visible = inSafeWater;
 
         if (inSafeWater) {

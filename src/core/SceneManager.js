@@ -27,7 +27,7 @@ export class SceneManager {
   _initFog() {
     const fogColor = new THREE.Color(0xf5e6d3); // Sắc thu vàng nhạt tự nhiên, không ám cam đục
     this.scene.background = fogColor;
-    this.scene.fog = new THREE.Fog(fogColor.getHex(), 80, 360); // Tối ưu 60 FPS: Hòa quyện sương thu chân trời ở 80m - 360m, tối ưu GPU và triệt tiêu giật lag
+    this.scene.fog = new THREE.Fog(fogColor.getHex(), 75, 230); // Tối ưu 60 FPS: Hòa quyện sương thu chân trời ở 75m - 230m, giảm tải tối đa GPU và triệt tiêu giật lag
   }
 
   /**
@@ -203,19 +203,21 @@ export class SceneManager {
   update(delta, camera) {
     const time = this.clock.getElapsedTime();
 
-    // 1. Cập nhật lá vàng rơi đung đưa trong gió
-    if (this.leafPoints && this.leafVelocities) {
+    // 1. Cập nhật lá vàng rơi đung đưa trong gió (Cập nhật xen kẽ mỗi 2 frame để giảm nghẽn bus PCIe GPU)
+    this._leafFrame = (this._leafFrame || 0) + 1;
+    if (this._leafFrame % 2 === 0 && this.leafPoints && this.leafVelocities) {
       const posAttr = this.leafPoints.geometry.attributes.position;
       const positions = posAttr.array;
+      const dtEffective = delta * 2.0;
 
       for (let i = 0; i < this.leafVelocities.length; i++) {
         const vel = this.leafVelocities[i];
         const idx = i * 3;
 
         // Rơi kết hợp dao động lượn hình sin
-        positions[idx + 0] += (vel.vx + Math.sin(time * 1.5 + vel.swayPhase) * 0.4) * delta * 5.0;
-        positions[idx + 1] += vel.vy * delta * 5.0;
-        positions[idx + 2] += (vel.vz + Math.cos(time * 1.2 + vel.swayPhase) * 0.3) * delta * 5.0;
+        positions[idx + 0] += (vel.vx + Math.sin(time * 1.5 + vel.swayPhase) * 0.4) * dtEffective * 5.0;
+        positions[idx + 1] += vel.vy * dtEffective * 5.0;
+        positions[idx + 2] += (vel.vz + Math.cos(time * 1.2 + vel.swayPhase) * 0.3) * dtEffective * 5.0;
 
         // Reset lên trời khi chạm đất
         if (positions[idx + 1] <= 0.2) {
