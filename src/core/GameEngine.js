@@ -188,17 +188,17 @@ export class GameEngine {
       }
       this.canvas = canvas;
 
-      // 2. WebGLRenderer Three.js với chuẩn hình ảnh sắc nét tuyệt đối & 60 FPS
+      // 2. WebGLRenderer Three.js với chuẩn tối ưu 60 FPS & sắc nét 1:1 tuyệt đối
       this.renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
-        antialias: true, // Bật khử răng cưa mượt mà, triệt tiêu hoàn toàn hiện tượng mờ ảo hay răng cưa
+        antialias: true, // Khử răng cưa mịn màng
         powerPreference: 'high-performance',
         preserveDrawingBuffer: false // Tối ưu zero-copy WebGL, tối ưu GPU
       });
 
-      this._currentDpr = Math.min(window.devicePixelRatio || 1, 2.0); // Hiển thị sắc nét chuẩn màn hình Retina / 2K / 4K
+      this._currentDpr = 1.0; // Chuẩn 1:1 pixel gốc màn hình Full HD / 2K, không upscaling mờ ảo, không lag GPU
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.renderer.setPixelRatio(this._currentDpr);
+      this.renderer.setPixelRatio(1.0);
       this.renderer.shadowMap.enabled = false; // Triệt tiêu 100% Shadow Pass nghẽn GPU trên trình duyệt Web
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.15;
@@ -315,17 +315,17 @@ export class GameEngine {
    * Chuyển đổi thủ công chế độ hiệu năng (Performance Mode)
    * @param {'performance' | 'balanced' | 'high'} mode
    */
-  setPerformanceMode(mode = 'high') {
+  setPerformanceMode(mode = 'balanced') {
     if (mode === 'performance') {
       this._currentDpr = 1.0;
       if (this.renderer) this.renderer.setPixelRatio(1.0);
-    } else if (mode === 'balanced') {
-      this._currentDpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    } else if (mode === 'high') {
+      this._currentDpr = Math.min(window.devicePixelRatio || 1, 1.5);
       if (this.renderer) this.renderer.setPixelRatio(this._currentDpr);
     } else {
-      // Chế độ Siêu Sắc Nét (Mặc định)
-      this._currentDpr = Math.min(window.devicePixelRatio || 1, 2.0);
-      if (this.renderer) this.renderer.setPixelRatio(this._currentDpr);
+      // Chế độ Cân Bằng (Mặc định) - Sắc nét 1:1 pixel gốc, 60 FPS mượt mà
+      this._currentDpr = 1.0;
+      if (this.renderer) this.renderer.setPixelRatio(1.0);
     }
     console.log(`[GameEngine] Thiết lập chế độ: ${mode} (DPR: ${this._currentDpr})`);
     if (this.eventBus) {

@@ -150,25 +150,25 @@ export class SettingsModal {
           <!-- TAB 2: ĐỒ HỌA & ĐỘ SẮC NÉT -->
           <div class="settings-tab-pane" id="tabPaneGraphics" style="display: none;">
             <div class="graphics-options-list">
-              <label class="graphics-option-card active" data-quality="high">
-                <input type="radio" name="graphicsQualityRadio" value="high" checked>
+              <label class="graphics-option-card active" data-quality="balanced">
+                <input type="radio" name="graphicsQualityRadio" value="balanced" checked>
                 <div class="opt-content">
                   <div class="opt-title-row">
-                    <span class="opt-name">✨ Siêu Sắc Nét 4K (Khuyên Dùng)</span>
-                    <span class="badge-tag">Sắc Nét Tuyệt Đối</span>
+                    <span class="opt-name">⚖️ Sắc Nét & Cực Mượt 60 FPS (Khuyên Dùng)</span>
+                    <span class="badge-tag">Chuẩn 60 FPS</span>
                   </div>
-                  <p class="opt-info">Độ phân giải bản địa Retina/2K/4K, bật bộ lọc khử răng cưa mượt mà, màu sắc ACES Filmic trong trẻo không mờ ảo.</p>
+                  <p class="opt-info">Độ phân giải 1:1 pixel gốc sắc nét tuyệt đối, không mờ ảo, đảm bảo tốc độ mượt mà 60 FPS không bao giờ giật lag.</p>
                 </div>
               </label>
 
-              <label class="graphics-option-card" data-quality="balanced">
-                <input type="radio" name="graphicsQualityRadio" value="balanced">
+              <label class="graphics-option-card" data-quality="high">
+                <input type="radio" name="graphicsQualityRadio" value="high">
                 <div class="opt-content">
                   <div class="opt-title-row">
-                    <span class="opt-name">⚖️ Cân Bằng (Balanced)</span>
-                    <span class="badge-tag">Chuẩn 60 FPS</span>
+                    <span class="opt-name">✨ Siêu Nét Retina / 4K</span>
+                    <span class="badge-tag">Card Đồ Họa Rời</span>
                   </div>
-                  <p class="opt-info">Độ phân giải 1.25x mượt mà, tối ưu hóa cho máy tính xách tay và màn hình Full HD.</p>
+                  <p class="opt-info">Độ phân giải cao cấp cho máy tính có GPU rời mạnh mẽ.</p>
                 </div>
               </label>
 

@@ -8207,45 +8207,57 @@ getTheHucBridgeInfo(x, y, z) {
       const pz = playerPos.z;
 
       // Cầu Long Biên (Zone 3 - Dầm thép di sản ~35 draw calls):
-      // Luôn hiển thị bao quát khắp thành phố và từ Cầu Thê Húc / Hồ Gươm nhìn sang
+      // Hiển thị khi người chơi trên cầu, đường dạo bộ hoặc nhìn từ Cầu Thê Húc / Hồ Gươm
       if (this.zone3Group) {
-        const dLongBienSq = (px < 0 ? px * px : (px > 250 ? (px - 250) * (px - 250) : 0)) + Math.pow(Math.max(0, Math.abs(pz - 60) - 15), 2);
-        this.zone3Group.visible = (dLongBienSq <= 360 * 360);
+        const inDeepKimLien = (px < -28.0 && pz < -20.0);
+        if (inDeepKimLien) {
+          this.zone3Group.visible = false;
+        } else {
+          const dLongBienSq = (px < 0 ? px * px : (px > 250 ? (px - 250) * (px - 250) : 0)) + Math.pow(Math.max(0, Math.abs(pz - 60) - 15), 2);
+          const maxDistZ3 = this.zone3Group.visible ? (220 * 220) : (195 * 195);
+          this.zone3Group.visible = (dLongBienSq <= maxDistZ3);
+        }
       }
 
       // Phố Cổ (Zone 2 - Tâm X=-50, Z=50):
-      // Ẩn khi người chơi ở quá xa hoặc bờ đông sông Hồng
+      // Ẩn khi người chơi ở sâu trong Hồ Gươm (X > 30, Z < -30) hoặc ra xa trên Cầu Long Biên (X > 120)
       if (this.zone2Group) {
-        const dZ2Sq = (px - (-50)) * (px - (-50)) + (pz - 50) * (pz - 50);
-        const maxDistZ2 = this.zone2Group.visible ? (220 * 220) : (195 * 195);
-        this.zone2Group.visible = (dZ2Sq <= maxDistZ2);
+        const inDeepHoGuom = (px > 30.0 && pz < -30.0);
+        const onFarBridge = (px > 120.0 && pz > 45.0);
+        if (inDeepHoGuom || onFarBridge) {
+          this.zone2Group.visible = false;
+        } else {
+          const dZ2Sq = (px - (-50)) * (px - (-50)) + (pz - 50) * (pz - 50);
+          const maxDistZ2 = this.zone2Group.visible ? (150 * 150) : (135 * 135);
+          this.zone2Group.visible = (px <= 120.0) && (dZ2Sq <= maxDistZ2);
+        }
       }
 
       // Hồ Gươm (Zone 1 - 766 mesh - Tâm X=80, Z=-80):
-      // Chỉ ẩn khi người chơi ở sâu trong Khu Tập Thể Kim Liên (px < -28 && pz < -20).
-      // Luôn hiển thị thông suốt khi người chơi ở trên Cầu Long Biên, Ga Long Biên và đại lộ đi bộ sang Cầu Thê Húc
+      // Chỉ ẩn khi người chơi ở sâu trong Khu Tập Thể Kim Liên (px < -28 && pz < -20)
+      // hoặc ở sâu trong Phố Cổ (px < -35 && pz > 40).
+      // Luôn hiển thị thông suốt khi người chơi ở trên Cầu Long Biên (Z ~ 60, X = 0..270) và đại lộ đi bộ sang Cầu Thê Húc
       if (this.zone1Group) {
         const inDeepKimLien = (px < -28.0 && pz < -20.0);
-        if (inDeepKimLien) {
+        const inDeepPhoCo = (px < -35.0 && pz > 40.0);
+        if (inDeepKimLien || inDeepPhoCo) {
           this.zone1Group.visible = false;
         } else {
           const dZ1Sq = (px - 80) * (px - 80) + (pz - (-80)) * (pz - (-80));
-          const maxDistZ1 = this.zone1Group.visible ? (350 * 350) : (310 * 310);
+          const maxDistZ1 = this.zone1Group.visible ? (210 * 210) : (185 * 185);
           this.zone1Group.visible = (dZ1Sq <= maxDistZ1);
         }
       }
 
       // Khu Tập Thể Kim Liên (Zone 4 - Tâm X=-65, Z=-60):
-      // Ẩn tức thì khi người chơi ở sâu trong Hồ Gươm (px > 25 && pz < -20)
-      // hoặc trên Cầu Long Biên (pz >= 45)
+      // Ẩn tức thì khi người chơi ở bất kỳ đâu ngoài Kim Liên (px > 0 || pz > 0)
       if (this.zone4Group) {
-        const inDeepHoGuom = (px > 25.0 && pz < -20.0);
-        const onBridge = (pz >= 45.0);
-        if (inDeepHoGuom || onBridge) {
+        const outsideKimLien = (px > 0.0 || pz > 0.0);
+        if (outsideKimLien) {
           this.zone4Group.visible = false;
         } else {
           const dZ4Sq = (px - (-65)) * (px - (-65)) + (pz - (-60)) * (pz - (-60));
-          const maxDistZ4 = this.zone4Group.visible ? (165 * 165) : (150 * 150);
+          const maxDistZ4 = this.zone4Group.visible ? (130 * 130) : (115 * 115);
           this.zone4Group.visible = (dZ4Sq <= maxDistZ4);
         }
       }
@@ -8254,7 +8266,7 @@ getTheHucBridgeInfo(x, y, z) {
     // 0b. Culling khoảng cách siêu nhẹ chia đều từng frame (Zero Frame Spikes / Flat 60 FPS)
     if (playerPos && this._cullableObjects && this._cullableObjects.length > 0) {
       const len = this._cullableObjects.length;
-      const batchSize = Math.min(len, 65);
+      const batchSize = Math.min(len, 130);
       if (this._cullIndex === undefined) this._cullIndex = 0;
 
       const px = playerPos.x;
