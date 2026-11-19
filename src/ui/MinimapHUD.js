@@ -155,20 +155,56 @@ export class MinimapHUD {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Tâm Hồ Gươm (Vòng tròn mặt nước xanh)
-    ctx.fillStyle = 'rgba(46, 134, 193, 0.4)';
+    // Tâm Hồ Gươm (Vòng tròn mặt nước xanh lục thủy thanh bình)
+    ctx.fillStyle = 'rgba(46, 134, 193, 0.45)';
     ctx.beginPath();
-    ctx.arc(w * 0.75, h * 0.75, 20, 0, Math.PI * 2);
+    ctx.arc(w * 0.75, h * 0.75, 22, 0, Math.PI * 2);
     ctx.fill();
 
-    // Chữ viết tắt 4 phân khu
-    ctx.fillStyle = 'rgba(244, 235, 217, 0.75)';
-    ctx.font = '10px Courier Prime';
+    // Vệt nước Sông Hồng uốn lượn góc Đông Bắc
+    ctx.strokeStyle = 'rgba(138, 64, 38, 0.4)';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(w * 0.85, h * 0.15, 36, Math.PI * 0.6, Math.PI * 1.4);
+    ctx.stroke();
+
+    // VÒNG TRÒN LA BÀN HOÀN CHỈNH & CHỈ HƯỚNG 0° (BẮC)
+    // Loại bỏ hoàn toàn chữ Phố Cổ, Long Biên, Tập Thể, Hồ Gươm theo đúng yêu cầu
+    const centerX = w / 2;
+    const centerY = h / 2;
+    const dialRadius = w / 2 - 10;
+
+    // Vành la bàn mạ vàng thanh mảnh
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, dialRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Vạch chia độ quanh vòng la bàn (mỗi 30 độ và 90 độ)
+    for (let deg = 0; deg < 360; deg += 30) {
+      const rad = (deg - 90) * (Math.PI / 180);
+      const isMajor = (deg % 90 === 0);
+      const tickLen = isMajor ? 6 : 3;
+      const x1 = centerX + Math.cos(rad) * (dialRadius - tickLen);
+      const y1 = centerY + Math.sin(rad) * (dialRadius - tickLen);
+      const x2 = centerX + Math.cos(rad) * dialRadius;
+      const y2 = centerY + Math.sin(rad) * dialRadius;
+
+      ctx.strokeStyle = isMajor ? 'rgba(255, 215, 0, 0.9)' : 'rgba(212, 175, 55, 0.45)';
+      ctx.lineWidth = isMajor ? 1.5 : 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    // Biểu tượng chữ "0°" ở đỉnh La bàn (Bắc)
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 12px "Courier Prime", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('PHỐ CỔ', w * 0.25, h * 0.25);
-    ctx.fillText('LONG BIÊN', w * 0.75, h * 0.25);
-    ctx.fillText('TẬP THỂ', w * 0.25, h * 0.75);
-    ctx.fillText('HỒ GƯƠM', w * 0.75, h * 0.75);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('0°', centerX, 13);
   }
 
   bindEvents() {

@@ -276,6 +276,9 @@ export class UIManager {
 
   updateQuickSwitcherActiveState(charId) {
     this.currentCharacterId = charId;
+    if (this.settings && typeof this.settings.updateActiveCharacter === 'function') {
+      this.settings.updateActiveCharacter(charId);
+    }
     const quickBar = document.getElementById('quickCharacterBar');
     if (!quickBar) return;
 
@@ -390,11 +393,27 @@ export class UIManager {
       }
     });
 
-    // Cập nhật tên phân khu khi di chuyển
+    // Cập nhật tên phân khu khi di chuyển & tự động ẩn sau 4.5 giây theo đúng yêu cầu
+    const zoneBadgeEl = document.getElementById('hudZoneBadge') || document.querySelector('.player-zone-badge');
+    let zoneFadeTimer = null;
+
+    const triggerZoneBadgeFade = () => {
+      if (!zoneBadgeEl) return;
+      zoneBadgeEl.classList.remove('zone-badge-hidden');
+      clearTimeout(zoneFadeTimer);
+      zoneFadeTimer = setTimeout(() => {
+        zoneBadgeEl.classList.add('zone-badge-hidden');
+      }, 4500);
+    };
+
+    // Hiển thị chào mừng ban đầu rồi tự động ẩn sau 4.5 giây
+    triggerZoneBadgeFade();
+
     GameEventBus.on('CORE:ZONE_ENTERED', (payload) => {
       if (zoneNameEl && payload.zoneName) {
         zoneNameEl.textContent = payload.zoneName;
       }
+      triggerZoneBadgeFade();
     });
 
     // Lắng nghe sự kiện mở hộp thoại NPC từ Core

@@ -216,9 +216,9 @@ export class PlayerController {
     } catch (e) {}
 
     // Vị trí xuất phát thông thoáng trên đường dạo ven hồ Gươm dẫn thẳng lên Cầu Kim Quy
-    this.characterGroup.position.set(16.5, 0.5, -16.5);
-    this.characterGroup.rotation.y = 0.785; // 45 độ theo trục cầu
-    this.characterGroup.quaternion.setFromAxisAngle(this._worldUp, 0.785);
+    this.characterGroup.position.set(20.0, 0.55, -20.0);
+    this.characterGroup.rotation.y = 2.356; // 135 độ dọc theo trục cầu Kim Quy hướng ra Tháp Rùa
+    this.characterGroup.quaternion.setFromAxisAngle(this._worldUp, 2.356);
     this.scene.add(this.characterGroup);
 
     this.currentCharacterId = savedCharId;
@@ -1524,12 +1524,12 @@ export class PlayerController {
       }
     }
 
-    // Căn góc Camera ban đầu theo trục Cầu Kim Quy (yaw = 0.785 rad / 45 độ)
+    // Căn góc Camera ban đầu theo trục Cầu Kim Quy ra Tháp Rùa (yaw = -0.785 rad)
     if (!this._initialCameraYawSet) {
       this._initialCameraYawSet = true;
       if (window._GameCoreInstance && window._GameCoreInstance.cameraController) {
-        window._GameCoreInstance.cameraController.yaw = 0.785;
-        window._GameCoreInstance.cameraController.targetYaw = 0.785;
+        window._GameCoreInstance.cameraController.yaw = -0.785;
+        window._GameCoreInstance.cameraController.targetYaw = -0.785;
       }
     }
 

@@ -151,15 +151,15 @@ export class WorldManager {
           return;
         }
 
-        // Tier culling (Đồng bộ chuẩn xác với dải sương mù hoàng hôn 65m - 155m):
-        // Tier 1: Chi tiết nhỏ / đồ vật vỉa hè / đèn lồng / ghế đá (maxDim < 3.2m): hiện trong 68m (triệt tiêu pop-in trước mắt)
-        // Tier 2: Công trình vừa / cây cối / gian hàng phố cổ (3.2m <= maxDim < 12m): hiện trong 125m (trong làn sương mù đậm)
-        // Tier 3: Tòa nhà lớn / Khối kiến trúc đồ sộ (maxDim >= 12m): hiện trọn vẹn trong 160m (tầm nhìn camera)
-        let cullDistSq = 25600; // 160m * 160m
-        if (maxDim < 3.2) {
-          cullDistSq = 4624; // 68m * 68m
-        } else if (maxDim < 12.0) {
-          cullDistSq = 15625; // 125m * 125m
+        // Tier culling tối ưu 60 FPS (Đồng bộ chuẩn xác với dải sương mù hoàng hôn 55m - 145m):
+        // Tier 1: Chi tiết nhỏ / đồ vật vỉa hè / đèn lồng / ghế đẩu / biển hiệu (maxDim < 2.5m): 45m (cullDistSq = 2025)
+        // Tier 2: Công trình vừa / cây cối / gian hàng phố cổ (2.5m <= maxDim < 8.0m): 75m (cullDistSq = 5625)
+        // Tier 3: Tòa nhà lớn / Khối kiến trúc đồ sộ (maxDim >= 8.0m): 120m (cullDistSq = 14400)
+        let cullDistSq = 14400; // 120m * 120m
+        if (maxDim < 2.5) {
+          cullDistSq = 2025; // 45m * 45m
+        } else if (maxDim < 8.0) {
+          cullDistSq = 5625; // 75m * 75m
         }
 
         this._cullableObjects.push({
@@ -170,6 +170,17 @@ export class WorldManager {
         });
       }
     });
+
+    // Initial instant culling pass tại vị trí spawn (20.0, -20.0):
+    // Triệt tiêu hoàn toàn hiện tượng nghẽn GPU ở frame 0!
+    const initSpawnX = 20.0;
+    const initSpawnZ = -20.0;
+    for (let i = 0; i < this._cullableObjects.length; i++) {
+      const item = this._cullableObjects[i];
+      const dx = initSpawnX - item.posX;
+      const dz = initSpawnZ - item.posZ;
+      item.mesh.visible = (dx * dx + dz * dz <= item.cullDistSq);
+    }
 
     for (let i = 0; i < this.colliders.length; i++) {
       const col = this.colliders[i];
@@ -760,6 +771,21 @@ getTheHucBridgeInfo(x, y, z) {
       alphaTest: 0.2,
       roughness: 0.55,
       side: THREE.DoubleSide
+    });
+
+    // 12b. Tác phẩm Mỹ thuật Di sản Canva AI 3D: Cầu Thê Húc, Đền Ngọc Sơn & Tháp Bút
+    const canvaTheHucTex = this._loadTextureWithFallback(
+      'assets/textures/canva_thehuc_ngocson.png',
+      (ctx, w, h) => {
+        ctx.fillStyle = '#bf2c28';
+        ctx.fillRect(0, 0, w, h);
+      },
+      1, 1
+    );
+    this.materials.canvaTheHucArt = new THREE.MeshStandardMaterial({
+      map: canvaTheHucTex,
+      roughness: 0.45,
+      metalness: 0.15
     });
 
     // 12. Gỗ nâu cà phê cóc
@@ -2099,9 +2125,16 @@ getTheHucBridgeInfo(x, y, z) {
       }
     }
 
-    // 2. LAN CAN ĐÁ HOA SEN CỔ KÍNH UỐN QUANH BỜ HỒ (HỆ THỐNG RÀO CHẮN MỸ THUẬT VEN BỜ)
+    // 2. LAN CAN ĐÁ HOA SEN CỔ KÍNH UỐN QUANH BỜ HỒ (HỆ THỐNG RÀO CHẮN MỸ THUẬT VEN BỜ - MERGED 60 FPS)
     const balusterMat = this.materials.mossStone;
     const postCount = 64;
+    const lakeBalusterGeoms = [];
+    const _bMat = new THREE.Matrix4();
+    const _bQuat = new THREE.Quaternion();
+    const _bPos = new THREE.Vector3();
+    const _bScale = new THREE.Vector3(1, 1, 1);
+    const _yUp = new THREE.Vector3(0, 1, 0);
+
     for (let i = 0; i < postCount; i++) {
       const angle = (i / postCount) * Math.PI * 2;
       // Chừa lối dẫn lên Cầu Thê Húc (0.38 - 0.88 rad) VÀ Cầu Kim Quy dẫn ra Tháp Rùa (2.10 - 2.62 rad)
@@ -2113,14 +2146,19 @@ getTheHucBridgeInfo(x, y, z) {
       const pz = -80 + Math.sin(angle) * 85;
 
       if (!isBridgeOpening) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.95, 8), balusterMat);
-        post.position.set(px, 0.475, pz);
-        zoneGroup.add(post);
+        // Cột trụ đá
+        const postGeo = new THREE.CylinderGeometry(0.18, 0.22, 0.95, 8);
+        _bPos.set(px, 0.475, pz);
+        _bMat.compose(_bPos, _bQuat.set(0, 0, 0, 1), _bScale.set(1, 1, 1));
+        postGeo.applyMatrix4(_bMat);
+        lakeBalusterGeoms.push(postGeo);
 
-        const lotusBud = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), balusterMat);
-        lotusBud.scale.set(0.8, 1.25, 0.8);
-        lotusBud.position.set(px, 1.05, pz);
-        zoneGroup.add(lotusBud);
+        // Búp sen
+        const lotusGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        _bPos.set(px, 1.05, pz);
+        _bMat.compose(_bPos, _bQuat.set(0, 0, 0, 1), _bScale.set(0.8, 1.25, 0.8));
+        lotusGeo.applyMatrix4(_bMat);
+        lakeBalusterGeoms.push(lotusGeo);
 
         this._addBoxObstacle(px, pz, 1.1, 1.1, 0, 1.3);
 
@@ -2136,12 +2174,22 @@ getTheHucBridgeInfo(x, y, z) {
           const midZ = (pz + nextPz) / 2;
           const segRot = Math.atan2(nextPz - pz, nextPx - px);
 
-          const railBeam = new THREE.Mesh(new THREE.BoxGeometry(segDist + 0.1, 0.42, 0.22), balusterMat);
-          railBeam.position.set(midX, 0.52, midZ);
-          railBeam.rotation.y = -segRot;
-          zoneGroup.add(railBeam);
+          const railBeamGeo = new THREE.BoxGeometry(segDist + 0.1, 0.42, 0.22);
+          _bPos.set(midX, 0.52, midZ);
+          _bQuat.setFromAxisAngle(_yUp, -segRot);
+          _bMat.compose(_bPos, _bQuat, _bScale.set(1, 1, 1));
+          railBeamGeo.applyMatrix4(_bMat);
+          lakeBalusterGeoms.push(railBeamGeo);
         }
       }
+    }
+    if (lakeBalusterGeoms.length > 0) {
+      const mergedBalusters = BufferGeometryUtils.mergeGeometries(lakeBalusterGeoms, false);
+      const balustersMesh = new THREE.Mesh(mergedBalusters, balusterMat);
+      balustersMesh.name = 'lakeBalustersMerged';
+      balustersMesh.castShadow = true;
+      balustersMesh.receiveShadow = true;
+      zoneGroup.add(balustersMesh);
     }
 
     // 3. ĐẢO RÙA TỰ NHIÊN & THÁP RÙA 3 TẦNG VÒM GOTHIC - CÓ THỂ BƯỚC VÀO TRONG (WALKABLE INTERIOR)
@@ -3073,6 +3121,15 @@ getTheHucBridgeInfo(x, y, z) {
     const kimQuySegments = 22;
     const kimQuyPts = kimQuyCurve.getPoints(kimQuySegments);
 
+    const kimQuyStoneGeoms = [];
+    const kimQuyIronGeoms = [];
+    const kimQuyLanternGeoms = [];
+    const _kqMat = new THREE.Matrix4();
+    const _kqQuat = new THREE.Quaternion();
+    const _kqEuler = new THREE.Euler();
+    const _kqPos = new THREE.Vector3();
+    const _kqScale = new THREE.Vector3(1, 1, 1);
+
     for (let i = 0; i < kimQuySegments; i++) {
       const p1 = kimQuyPts[i];
       const p2 = kimQuyPts[i + 1];
@@ -3097,21 +3154,27 @@ getTheHucBridgeInfo(x, y, z) {
 
       for (let side of [-2.05, 2.05]) {
         // Cột đá lan can
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.90, 8), this.materials.mossStone);
-        post.position.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
-        zoneGroup.add(post);
+        const postGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.90, 8);
+        _kqPos.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
+        _kqMat.compose(_kqPos, _kqQuat.set(0, 0, 0, 1), _kqScale);
+        postGeo.applyMatrix4(_kqMat);
+        kimQuyStoneGeoms.push(postGeo);
 
         // Búp sen đá trên đỉnh cột
-        const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), this.materials.mossStone);
-        lotus.position.set(mid.x + perpX * side, mid.y + 1.15, mid.z + perpZ * side);
-        zoneGroup.add(lotus);
+        const lotusGeo = new THREE.SphereGeometry(0.11, 8, 8);
+        _kqPos.set(mid.x + perpX * side, mid.y + 1.15, mid.z + perpZ * side);
+        _kqMat.compose(_kqPos, _kqQuat.set(0, 0, 0, 1), _kqScale);
+        lotusGeo.applyMatrix4(_kqMat);
+        kimQuyStoneGeoms.push(lotusGeo);
 
         // Tay vịn đá nối liền
-        const railBeam = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.08, 0.22, 0.18), this.materials.mossStone);
-        railBeam.position.set(mid.x + perpX * side, mid.y + 0.85, mid.z + perpZ * side);
-        railBeam.rotation.y = -angleY;
-        railBeam.rotation.z = anglePitch;
-        zoneGroup.add(railBeam);
+        const railBeamGeo = new THREE.BoxGeometry(segLength + 0.08, 0.22, 0.18);
+        _kqPos.set(mid.x + perpX * side, mid.y + 0.85, mid.z + perpZ * side);
+        _kqEuler.set(0, -angleY, anglePitch, 'YXZ');
+        _kqQuat.setFromEuler(_kqEuler);
+        _kqMat.compose(_kqPos, _kqQuat, _kqScale);
+        railBeamGeo.applyMatrix4(_kqMat);
+        kimQuyStoneGeoms.push(railBeamGeo);
 
         // Đăng ký obstacle gọn gàng trên đúng gờ lan can (không lấn vào lòng mặt cầu 3.8m)
         for (let s of [0.25, 0.75]) {
@@ -3125,17 +3188,17 @@ getTheHucBridgeInfo(x, y, z) {
       // Đèn lồng đồng thau cổ điển chiếu sáng lung linh dọc cầu (cách mỗi 3 nhịp)
       if (i % 3 === 1) {
         for (let side of [-2.05, 2.05]) {
-          const lampPost = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.6, 6), this.materials.darkIron);
-          lampPost.position.set(mid.x + perpX * side, mid.y + 1.0, mid.z + perpZ * side);
-          zoneGroup.add(lampPost);
+          const lampGeo = new THREE.CylinderGeometry(0.04, 0.05, 1.6, 6);
+          _kqPos.set(mid.x + perpX * side, mid.y + 1.0, mid.z + perpZ * side);
+          _kqMat.compose(_kqPos, _kqQuat.set(0, 0, 0, 1), _kqScale);
+          lampGeo.applyMatrix4(_kqMat);
+          kimQuyIronGeoms.push(lampGeo);
 
-          const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshStandardMaterial({
-            color: 0xffe082,
-            emissive: 0xffaa00,
-            emissiveIntensity: 0.8
-          }));
-          lantern.position.set(mid.x + perpX * side, mid.y + 1.8, mid.z + perpZ * side);
-          zoneGroup.add(lantern);
+          const lanternGeo = new THREE.SphereGeometry(0.14, 8, 8);
+          _kqPos.set(mid.x + perpX * side, mid.y + 1.8, mid.z + perpZ * side);
+          _kqMat.compose(_kqPos, _kqQuat.set(0, 0, 0, 1), _kqScale);
+          lanternGeo.applyMatrix4(_kqMat);
+          kimQuyLanternGeoms.push(lanternGeo);
         }
       }
     }
@@ -3144,10 +3207,37 @@ getTheHucBridgeInfo(x, y, z) {
     for (let t of [0.18, 0.36, 0.54, 0.72, 0.90]) {
       const pierPt = kimQuyCurve.getPoint(t);
       const pierH = pierPt.y + 0.2;
-      const pierMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, pierH, 3.6), this.materials.mossStone);
-      pierMesh.position.set(pierPt.x, pierH / 2, pierPt.z);
-      pierMesh.castShadow = true;
-      zoneGroup.add(pierMesh);
+      const pierGeo = new THREE.BoxGeometry(2.4, pierH, 3.6);
+      _kqPos.set(pierPt.x, pierH / 2, pierPt.z);
+      _kqMat.compose(_kqPos, _kqQuat.set(0, 0, 0, 1), _kqScale);
+      pierGeo.applyMatrix4(_kqMat);
+      kimQuyStoneGeoms.push(pierGeo);
+    }
+
+    if (kimQuyStoneGeoms.length > 0) {
+      const mergedKqStone = BufferGeometryUtils.mergeGeometries(kimQuyStoneGeoms, false);
+      const kqStoneMesh = new THREE.Mesh(mergedKqStone, this.materials.mossStone);
+      kqStoneMesh.name = 'KimQuy_mergedStoneDecor';
+      kqStoneMesh.castShadow = true;
+      kqStoneMesh.receiveShadow = true;
+      zoneGroup.add(kqStoneMesh);
+    }
+    if (kimQuyIronGeoms.length > 0) {
+      const mergedKqIron = BufferGeometryUtils.mergeGeometries(kimQuyIronGeoms, false);
+      const kqIronMesh = new THREE.Mesh(mergedKqIron, this.materials.darkIron);
+      kqIronMesh.name = 'KimQuy_mergedIronDecor';
+      zoneGroup.add(kqIronMesh);
+    }
+    if (kimQuyLanternGeoms.length > 0) {
+      const mergedKqLanterns = BufferGeometryUtils.mergeGeometries(kimQuyLanternGeoms, false);
+      const kqLanternMat = new THREE.MeshStandardMaterial({
+        color: 0xffe082,
+        emissive: 0xffaa00,
+        emissiveIntensity: 0.8
+      });
+      const kqLanternMesh = new THREE.Mesh(mergedKqLanterns, kqLanternMat);
+      kqLanternMesh.name = 'KimQuy_mergedLanterns';
+      zoneGroup.add(kqLanternMesh);
     }
 
     // 3. QUẢNG TRƯỜNG ĐÁ TIẾP ĐẢO (ISLAND LANDING PLAZA) TẠI (68, 0.85, -68)
@@ -3337,6 +3427,14 @@ getTheHucBridgeInfo(x, y, z) {
     const deckSegments = 16;
     const theHucPts = theHucCurve.getPoints(deckSegments);
 
+    const theHucRedGeoms = [];
+    const theHucGoldGeoms = [];
+    const _thMat = new THREE.Matrix4();
+    const _thQuat = new THREE.Quaternion();
+    const _thEuler = new THREE.Euler();
+    const _thPos = new THREE.Vector3();
+    const _thScale = new THREE.Vector3(1, 1, 1);
+
     for (let i = 0; i < deckSegments; i++) {
       const p1 = theHucPts[i];
       const p2 = theHucPts[i + 1];
@@ -3360,31 +3458,39 @@ getTheHucBridgeInfo(x, y, z) {
 
       for (let side of [-1.92, 1.92]) {
         // Cột trụ son đỏ
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.95, 8), this.materials.theHucRed);
-        post.position.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
-        zoneGroup.add(post);
+        const postGeo = new THREE.CylinderGeometry(0.10, 0.12, 0.95, 8);
+        _thPos.set(mid.x + perpX * side, mid.y + 0.65, mid.z + perpZ * side);
+        _thMat.compose(_thPos, _thQuat.set(0, 0, 0, 1), _thScale);
+        postGeo.applyMatrix4(_thMat);
+        theHucRedGeoms.push(postGeo);
 
         // Búp sen thếp vàng trên đỉnh cột cầu
-        const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), this.materials.templeGold);
-        lotus.position.set(mid.x + perpX * side, mid.y + 1.15, mid.z + perpZ * side);
-        zoneGroup.add(lotus);
+        const lotusGeo = new THREE.SphereGeometry(0.11, 8, 8);
+        _thPos.set(mid.x + perpX * side, mid.y + 1.15, mid.z + perpZ * side);
+        _thMat.compose(_thPos, _thQuat.set(0, 0, 0, 1), _thScale);
+        lotusGeo.applyMatrix4(_thMat);
+        theHucGoldGeoms.push(lotusGeo);
 
         // Tay vịn lan can gỗ đỏ
-        const handRail = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.06, 0.12, 0.10), this.materials.theHucRed);
-        handRail.position.set(mid.x + perpX * side, mid.y + 0.92, mid.z + perpZ * side);
-        handRail.rotation.y = -angleY;
-        handRail.rotation.z = anglePitch;
-        zoneGroup.add(handRail);
+        const handRailGeo = new THREE.BoxGeometry(segLength + 0.06, 0.12, 0.10);
+        _thPos.set(mid.x + perpX * side, mid.y + 0.92, mid.z + perpZ * side);
+        _thEuler.set(0, -angleY, anglePitch, 'YXZ');
+        _thQuat.setFromEuler(_thEuler);
+        _thMat.compose(_thPos, _thQuat, _thScale);
+        handRailGeo.applyMatrix4(_thMat);
+        theHucRedGeoms.push(handRailGeo);
 
         // Song tiện gỗ tiện dọc
         for (let st = -1; st <= 1; st++) {
-          const slat = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 6), this.materials.theHucRed);
-          slat.position.set(
+          const slatGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.55, 6);
+          _thPos.set(
             mid.x + perpX * side + Math.cos(angleY) * (st * 0.45),
             mid.y + 0.55,
             mid.z + perpZ * side + Math.sin(angleY) * (st * 0.45)
           );
-          zoneGroup.add(slat);
+          _thMat.compose(_thPos, _thQuat.set(0, 0, 0, 1), _thScale);
+          slatGeo.applyMatrix4(_thMat);
+          theHucRedGeoms.push(slatGeo);
         }
 
         // Rào chắn bảo vệ liên tục khép kín (Solid continuous barrier - ZERO GAPS)
@@ -3400,11 +3506,13 @@ getTheHucBridgeInfo(x, y, z) {
 
       // Hai dầm cong gỗ chịu lực chạy dọc bên dưới đỡ mặt cầu
       for (let bs of [-1.4, 1.4]) {
-        const stringer = new THREE.Mesh(new THREE.BoxGeometry(segLength + 0.1, 0.35, 0.22), this.materials.theHucRed);
-        stringer.position.set(mid.x + perpX * bs, mid.y - 0.12, mid.z + perpZ * bs);
-        stringer.rotation.y = -angleY;
-        stringer.rotation.z = anglePitch;
-        zoneGroup.add(stringer);
+        const stringerGeo = new THREE.BoxGeometry(segLength + 0.1, 0.35, 0.22);
+        _thPos.set(mid.x + perpX * bs, mid.y - 0.12, mid.z + perpZ * bs);
+        _thEuler.set(0, -angleY, anglePitch, 'YXZ');
+        _thQuat.setFromEuler(_thEuler);
+        _thMat.compose(_thPos, _thQuat, _thScale);
+        stringerGeo.applyMatrix4(_thMat);
+        theHucRedGeoms.push(stringerGeo);
       }
     }
 
@@ -3412,12 +3520,28 @@ getTheHucBridgeInfo(x, y, z) {
     theHucPts.forEach(pt => {
       const pierH = pt.y + 0.25;
       for (let side of [-1.5, 1.5]) {
-        const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, pierH, 8), this.materials.theHucRed);
-        pile.position.set(pt.x + (side * 0.6), pierH / 2, pt.z + (side * 0.8));
-        pile.castShadow = true;
-        zoneGroup.add(pile);
+        const pileGeo = new THREE.CylinderGeometry(0.14, 0.16, pierH, 8);
+        _thPos.set(pt.x + (side * 0.6), pierH / 2, pt.z + (side * 0.8));
+        _thMat.compose(_thPos, _thQuat.set(0, 0, 0, 1), _thScale);
+        pileGeo.applyMatrix4(_thMat);
+        theHucRedGeoms.push(pileGeo);
       }
     });
+
+    if (theHucRedGeoms.length > 0) {
+      const mergedTheHucRed = BufferGeometryUtils.mergeGeometries(theHucRedGeoms, false);
+      const theHucRedMesh = new THREE.Mesh(mergedTheHucRed, this.materials.theHucRed);
+      theHucRedMesh.name = 'TheHuc_mergedRedDecor';
+      theHucRedMesh.castShadow = true;
+      theHucRedMesh.receiveShadow = true;
+      zoneGroup.add(theHucRedMesh);
+    }
+    if (theHucGoldGeoms.length > 0) {
+      const mergedTheHucGold = BufferGeometryUtils.mergeGeometries(theHucGoldGeoms, false);
+      const theHucGoldMesh = new THREE.Mesh(mergedTheHucGold, this.materials.templeGold);
+      theHucGoldMesh.name = 'TheHuc_mergedGoldDecor';
+      zoneGroup.add(theHucGoldMesh);
+    }
 
     // 3. DỐC HẠ THOẢI ĐẦU CẦU PHÍA ĐẢO QUA ĐẮC NGUYỆT LÂU VÀO SÂN ĐỀN NGỌC SƠN - BẢN RỘNG 3.8M
     const islandRampGeo = new THREE.BoxGeometry(11.0, 0.28, 3.8);
@@ -3815,38 +3939,250 @@ getTheHucBridgeInfo(x, y, z) {
 
     zoneGroup.add(templeGroup);
 
-    // THÁP BÚT ("TẢ THANH THIÊN" - VIẾT LÊN TRỜI XANH) ĐẦU CẦU THÊ HÚC (Trên Núi Ngọc Bội ven bờ)
+    // =========================================================================
+    // 🖌️ THÁP BÚT ("TẢ THANH THIÊN") & ĐÀI NGHIÊN (TAM CÓC ĐỘI NGHIÊN) MỌC TỪ LÒNG NƯỚC HỒ GƯƠM
+    // Tái hiện chuẩn xác theo tranh sơn dầu di sản Thăng Long: Chân Tháp Bút (Núi Ngọc Bội)
+    // và Cổng Thủy Môn Đài Nghiên ngâm chân vững chãi trong làn nước ngọc bích,
+    // lá súng và sen biếc nổi bồng bềnh, soi bóng mặt hồ cùng 15 nhịp Cầu Thê Húc son đỏ!
+    // =========================================================================
     const thapButGroup = new THREE.Group();
-    thapButGroup.position.set(172, 0, -28);
-    // Núi Ngọc Bội bằng các phiến đá xếp chồng tự nhiên
-    const ngocBoiMount = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, 2.2, 12), this.materials.mossStone);
-    ngocBoiMount.position.y = 1.1;
-    thapButGroup.add(ngocBoiMount);
-    this._addBoxObstacle(172, -28, 3.2, 3.2, 0, 15);
+    thapButGroup.name = 'ThapBut_DaiNghien_Complex';
+    thapButGroup.position.set(151, 0.08, -37);
 
-    // Tháp 5 tầng bằng đá thon dần lên cao
-    for (let f = 0; f < 5; f++) {
-      const rBot = 1.1 - f * 0.15;
-      const rTop = 0.95 - f * 0.15;
-      const tier = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, 1.5, 4), this.materials.mossStone);
-      tier.rotation.y = Math.PI / 4;
-      tier.position.y = 2.2 + 0.75 + f * 1.5;
-      thapButGroup.add(tier);
+    // 1. Núi Ngọc Bội (Đế đá tự nhiên cắm sâu xuống lòng hồ, mọc lên từ làn nước biếc Hồ Gươm)
+    // Chân đế đá chìm dưới nước hồ (Y = -1.2 -> Y = 0.08)
+    const ngocBoiUnderwater = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 5.0, 1.4, 14), this.materials.mossStone);
+    ngocBoiUnderwater.position.y = -0.5;
+    thapButGroup.add(ngocBoiUnderwater);
+
+    const ngocBoi1 = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 4.4, 1.2, 12), this.materials.mossStone);
+    ngocBoi1.position.y = 0.6;
+    thapButGroup.add(ngocBoi1);
+    const ngocBoi2 = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 3.5, 1.0, 10), this.materials.mossStone);
+    ngocBoi2.position.y = 1.6;
+    thapButGroup.add(ngocBoi2);
+    const ngocBoi3 = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.7, 0.8, 8), this.materials.mossStone);
+    ngocBoi3.position.y = 2.4;
+    thapButGroup.add(ngocBoi3);
+    this._addBoxObstacle(151, -37, 4.4, 4.4, 0, 16);
+
+    // Hoa súng & lá sen nổi bồng bềnh quanh chân Tháp Bút dưới làn nước biếc
+    const lilyMat = new THREE.MeshStandardMaterial({ color: 0x225530, roughness: 0.5 });
+    const flowerMat = new THREE.MeshStandardMaterial({ color: 0xd93850, roughness: 0.35 });
+    for (let lp = 0; lp < 8; lp++) {
+      const lpAngle = (lp / 8) * Math.PI * 2 + 0.25;
+      const lpDist = 3.8 + (lp % 3) * 0.45;
+      const lilyPad = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.02, 10), lilyMat);
+      lilyPad.position.set(Math.cos(lpAngle) * lpDist, 0.02, Math.sin(lpAngle) * lpDist);
+      thapButGroup.add(lilyPad);
+      if (lp % 2 === 0) {
+        const lilyFlower = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.22, 6), flowerMat);
+        lilyFlower.position.set(lilyPad.position.x, 0.12, lilyPad.position.z);
+        thapButGroup.add(lilyFlower);
+      }
     }
-    // Ngòi bút nhọn hướng thẳng lên trời xanh
-    const penTip = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.8, 8), this.materials.mossStone);
-    penTip.position.y = 10.6;
-    thapButGroup.add(penTip);
 
-    // ĐÀI NGHIÊN ĐÁ NÂNG BỞI 3 CHÚ CÓC ĐÁ
-    const daiNghien = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 1.0), this.materials.mossStone);
-    daiNghien.position.set(168, 2.8, -31);
-    thapButGroup.add(daiNghien);
+    // 2. Thân Tháp Bút 5 Tầng bằng đá vuông vức thon dần lên cao:
+    const tierDims = [
+      { w: 2.1, h: 1.5, y: 3.55 },
+      { w: 1.8, h: 1.5, y: 5.05 },
+      { w: 1.5, h: 1.5, y: 6.55 }, // Tầng 3 khắc chữ Hán "TẢ THANH THIÊN"
+      { w: 1.25, h: 1.4, y: 8.0 },
+      { w: 1.0, h: 1.3, y: 9.35 }
+    ];
+    for (let f = 0; f < tierDims.length; f++) {
+      const td = tierDims[f];
+      const tierMesh = new THREE.Mesh(new THREE.BoxGeometry(td.w, td.h, td.w), this.materials.mossStone);
+      tierMesh.position.y = td.y;
+      tierMesh.castShadow = true;
+      thapButGroup.add(tierMesh);
+
+      // Gờ chỉ đá nhô ra ngăn cách các tầng (Cornice)
+      const cornice = new THREE.Mesh(new THREE.BoxGeometry(td.w + 0.28, 0.16, td.w + 0.28), this.materials.thapRuaPlinth || this.materials.mossStone);
+      cornice.position.y = td.y + td.h / 2 + 0.08;
+      thapButGroup.add(cornice);
+
+      // Tầng 3: Khắc 3 chữ đại tự "TẢ THANH THIÊN" (Viết lên trời xanh) hướng về phía Hồ Gươm (phía Tây)
+      if (f === 2) {
+        const tablet = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, 1.1, 0.75),
+          new THREE.MeshStandardMaterial({ color: 0x22110c, roughness: 0.6 })
+        );
+        tablet.position.set(-td.w / 2 - 0.05, td.y, 0);
+        thapButGroup.add(tablet);
+
+        // Chữ "TẢ THANH THIÊN" thếp vàng rực rỡ
+        const goldStroke = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.9, 0.55),
+          this.materials.templeGold || new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3 })
+        );
+        goldStroke.position.set(-td.w / 2 - 0.09, td.y, 0);
+        thapButGroup.add(goldStroke);
+      }
+    }
+
+    // 3. ĐỈNH THÁP BÚT: CÂY BÚT LÔNG VẼ LÊN TRỜI XANH CHÂN THỰC & SỐNG ĐỘNG
+    // Đế búp sen đỡ cán bút
+    const lotusBase = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.42, 0.45, 12), this.materials.mossStone);
+    lotusBase.position.y = 10.25;
+    thapButGroup.add(lotusBase);
+
+    // Cán bút lông (Thân bút thanh thoát bằng đá trầm)
+    const brushShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 2.2, 16), this.materials.mossStone);
+    brushShaft.position.y = 11.55;
+    brushShaft.castShadow = true;
+    thapButGroup.add(brushShaft);
+
+    // Khâu đồng giữ lông bút (Brass Ferrule chạm khắc hoa văn)
+    const ferrule = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.29, 0.24, 0.38, 16),
+      this.materials.agedBrass || new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.35, metalness: 0.7 })
+    );
+    ferrule.position.y = 12.8;
+    thapButGroup.add(ferrule);
+
+    // Bầu bút lông (Phình nhẹ tự nhiên)
+    const brushBulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 16, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.4 })
+    );
+    brushBulb.scale.set(0.95, 1.35, 0.95);
+    brushBulb.position.y = 13.2;
+    thapButGroup.add(brushBulb);
+
+    // Ngòi bút nhọn (Đầu lông vuốt mực đen tuyền hướng thẳng lên bầu trời xanh)
+    const penTip = new THREE.Mesh(
+      new THREE.ConeGeometry(0.31, 1.85, 16),
+      new THREE.MeshStandardMaterial({ color: 0x0f0f0f, roughness: 0.25, metalness: 0.1 })
+    );
+    penTip.position.y = 14.4;
+    penTip.castShadow = true;
+    thapButGroup.add(penTip);
     zoneGroup.add(thapButGroup);
+
+    // 4. ĐÀI NGHIÊN ĐÁ & THỦY CỔNG CUỐN (Nghiên mực nửa quả đào đặt trên cổng cuốn đá ngâm chân dưới nước)
+    // Chân móng trụ cổng ngập sâu trong nước Hồ Gươm
+    const gatePillarsBase = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.2, 1.6), this.materials.mossStone);
+    gatePillarsBase.position.set(155.0, -0.4, -40.0);
+    zoneGroup.add(gatePillarsBase);
+
+    const gateArch = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 1.4), this.materials.mossStone);
+    gateArch.position.set(155.0, 1.4, -40.0);
+    zoneGroup.add(gateArch);
+
+    // 3 Chú Cóc Đá (Tam Cóc Đội Nghiên: 1 cóc trước, 2 cóc sau nâng đỡ đài nghiên)
+    const frogMat = this.materials.mossStone;
+    const frogSpots = [
+      { x: 154.5, z: -40.0 },
+      { x: 155.5, z: -39.6 },
+      { x: 155.5, z: -40.4 }
+    ];
+    for (let f = 0; f < frogSpots.length; f++) {
+      const fs = frogSpots[f];
+      const frogBody = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), frogMat);
+      frogBody.scale.set(1.1, 0.7, 0.9);
+      frogBody.position.set(fs.x, 2.85, fs.z);
+      zoneGroup.add(frogBody);
+    }
+
+    // Nghiên Mực Đá hình nửa quả đào xẻ ngang khoét lòng
+    const inkSlabPeach = new THREE.Mesh(new THREE.SphereGeometry(0.95, 16, 12), this.materials.mossStone);
+    inkSlabPeach.scale.set(1.4, 0.45, 1.0);
+    inkSlabPeach.position.set(155.0, 3.25, -40.0);
+    zoneGroup.add(inkSlabPeach);
+
+    // Lòng nghiên mực tráng men đen nhánh sâu thẳm
+    const inkWell = new THREE.Mesh(
+      new THREE.BoxGeometry(0.95, 0.08, 0.65),
+      new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.1, metalness: 0.8 })
+    );
+    inkWell.position.set(155.0, 3.42, -40.0);
+    zoneGroup.add(inkWell);
+
+    this._addBoxObstacle(155.0, -40.0, 3.4, 1.8, 0, 4.5);
+
+    // 5. GIÁ VẼ & BỨC HỌA SƠN DẦU DI SẢN: CẦU THÊ HÚC & ĐỀN NGỌC SƠN
+    // Tác phẩm tranh sơn dầu cổ điển Hà Nội hoài niệm, nghiên bút trầm mặc soi bóng nước
+    const easelGroup = new THREE.Group();
+    easelGroup.name = 'HeritageOilPaintingInstallation';
+    easelGroup.position.set(164.0, 0.38, -30.0);
+    easelGroup.rotation.y = 0.55; // Hướng ra Hồ Gươm và cụm Nghiên Bút dưới nước
+
+    // Chân giá vẽ bằng gỗ
+    const easelWoodMat = this.materials.retroWood || new THREE.MeshStandardMaterial({ color: 0x5a3923 });
+    const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 6), easelWoodMat);
+    leg1.position.set(-0.55, 1.1, 0);
+    leg1.rotation.z = -0.15;
+    easelGroup.add(leg1);
+
+    const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 6), easelWoodMat);
+    leg2.position.set(0.55, 1.1, 0);
+    leg2.rotation.z = 0.15;
+    easelGroup.add(leg2);
+
+    const leg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.3, 6), easelWoodMat);
+    leg3.position.set(0, 1.05, -0.6);
+    leg3.rotation.x = 0.28;
+    easelGroup.add(leg3);
+
+    // Khung tranh mạ vàng hoàng gia lưu giữ tác phẩm sơn dầu
+    const frameGold = new THREE.Mesh(
+      new THREE.BoxGeometry(1.65, 1.25, 0.08),
+      this.materials.templeGold || new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3 })
+    );
+    frameGold.position.set(0, 1.45, 0.04);
+    frameGold.rotation.x = -0.12;
+    easelGroup.add(frameGold);
+
+    // Mặt tranh sơn dầu di sản Thăng Long (Texture canva_thehuc_ngocson.png)
+    const canvaCanvas = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.48, 1.08),
+      this.materials.canvaTheHucArt
+    );
+    canvaCanvas.position.set(0, 1.45, 0.09);
+    canvaCanvas.rotation.x = -0.12;
+    easelGroup.add(canvaCanvas);
+
+    // Bảng chú thích tác phẩm di sản
+    const plaque = new THREE.Mesh(
+      new THREE.BoxGeometry(0.65, 0.22, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x24120a, roughness: 0.6 })
+    );
+    plaque.position.set(0, 0.72, 0.1);
+    easelGroup.add(plaque);
+    zoneGroup.add(easelGroup);
+    this._addBoxObstacle(164.0, -30.0, 1.8, 1.4, 0, 2.5);
+
+    // Tương tác ngắm tranh sơn dầu di sản Thăng Long
+    this.interactables.push({
+      position: new THREE.Vector3(164.0, 0.5, -28.5),
+      radius: 2.5,
+      promptText: 'Chiêm ngưỡng Kiệt Tác Tranh Sơn Dầu Thăng Long',
+      actionKey: 'E',
+      onInteract: () => {
+        if (this.eventBus) {
+          this.eventBus.emit('UI:OPEN_DIALOGUE', {
+            name: 'Kiệt Tác Hội Họa Sơn Dầu &bull; Cầu Thê Húc & Đền Ngọc Sơn',
+            role: 'Tranh sơn dầu hoài niệm Thăng Long cổ kính',
+            avatar: '🎨',
+            greeting: '"Bức họa sơn dầu di sản tái hiện trọn vẹn Cầu Thê Húc đỏ son 15 nhịp, Đắc Nguyệt Lâu, Đền Ngọc Sơn và cụm Nghiên Bút trầm mặc soi bóng mặt nước Hồ Gươm trong sắc thu huyền ảo."',
+            monumentTitle: 'Kiệt Tác Hội Họa Sơn Dầu Di Sản',
+            historyText: `
+              <p>Tác phẩm hội họa sơn dầu cổ điển khắc họa nét cọ truyền thống Việt Nam: sắc son đỏ rực rỡ của Cầu Thê Húc, bóng liễu rủ mặt hồ xanh ngọc bích, và đặc biệt là ngọn Tháp Bút cùng Đài Nghiên sừng sững vươn lên từ làn nước biếc Hồ Gươm.</p>
+              <p>Nghiên bút soi bóng nước thiêng hội tụ linh khí ngàn năm văn hiến Thăng Long - Hà Nội.</p>
+              <p><a href="https://www.canva.com/M/MAHbXhXn470?utm_source=OC-AZb1vOWcedZR&utm_campaign=agent_connector_create_image_asset_opened" target="_blank" style="color:#d4af37;text-decoration:underline;font-weight:bold;">[Mở Kiệt Tác Tranh Sơn Dầu Chi Tiết]</a></p>
+            `,
+            dialogueOptions: [
+              { text: 'Bức tranh sơn dầu này mô tả góc nhìn nào?', reply: 'Góc nhìn từ bờ đông nhìn qua cụm Tháp Bút - Đài Nghiên vươn lên từ mặt nước, dẫn qua Cầu Thê Húc 15 nhịp đỏ son vào Đắc Nguyệt Lâu giữa sắc thu Hà Nội.' }
+            ]
+          });
+        }
+      }
+    });
 
     // BIA KỶ NIỆM LỊCH SỬ THÁP BÚT - ĐÀI NGHIÊN & CẦU THÊ HÚC
     this.interactables.push({
-      position: new THREE.Vector3(167, 0.5, -32),
+      position: new THREE.Vector3(162, 0.5, -34),
       radius: 2.8,
       promptText: 'Chiêm ngưỡng Di Tích Tháp Bút & Cầu Thê Húc',
       actionKey: 'E',
@@ -3859,9 +4195,9 @@ getTheHucBridgeInfo(x, y, z) {
             greeting: '"Bạn đang đứng trước cửa đền Ngọc Sơn – nơi hội tụ hồn thiêng sông núi giữa lòng Hà Nội."',
             monumentTitle: 'Tháp Bút Tả Thanh Thiên & Cầu Thê Húc',
             historyText: `
-              <p><strong>Tháp Bút (Năm 1865):</strong> Do danh sĩ Nguyễn Văn Siêu khởi xướng xây dựng trên núi Ngọc Bội. Trên thân tháp tạc ba chữ Hán đại tự <em>"TẢ THANH THIÊN"</em> (Viết lên trời xanh), ngụ ý khí phách và tâm hồn chính đại quang minh của bậc trượng phu.</p>
-              <p><strong>Đài Nghiên:</strong> Đặt trên cửa cuốn dẫn vào cầu, hình nửa quả đào xẻ ngang khoét lõm, được ba con cóc đá đội trên lưng như biểu tượng của sự uyên bác và vĩnh cửu.</p>
-              <p><strong>Cầu Thê Húc:</strong> Có nghĩa là <em>"Nơi đón ánh sáng ban mai tinh khôi nhất của mặt trời"</em>, nối liền bờ đông với hòn Đảo Ngọc rợp bóng cổ thụ.</p>
+              <p><strong>Tháp Bút (Năm 1865):</strong> Do danh sĩ Nguyễn Văn Siêu khởi xướng xây dựng trên núi Ngọc Bội, vươn cao từ mép nước Hồ Gươm. Trên thân tháp tạc ba chữ Hán đại tự <em>"TẢ THANH THIÊN"</em> (Viết lên trời xanh), ngụ ý khí phách và tâm hồn chính đại quang minh của bậc trượng phu.</p>
+              <p><strong>Đài Nghiên:</strong> Đặt trên cửa cuốn dẫn vào cầu ngâm chân trong nước hồ, hình nửa quả đào xẻ ngang khoét lõm, được ba con cóc đá đội trên lưng như biểu tượng của sự uyên bác và vĩnh cửu.</p>
+              <p><strong>Cầu Thê Húc:</strong> Có nghĩa là <em>"Nơi đón ánh sáng ban mai tinh khôi nhất của mặt trời"</em>, 15 nhịp uốn cong như cánh tôm son đỏ nối liền bờ đông với hòn Đảo Ngọc rợp bóng cổ thụ.</p>
             `,
             dialogueOptions: [
               { text: 'Ai là người thiết kế cây cầu Thê Húc màu đỏ này?', reply: 'Cụ Nguyễn Văn Siêu đã cho dựng cây cầu gỗ 15 nhịp sơn màu đỏ son rực rỡ tượng trưng cho vầng thái dương chiếu rọi mặt nước hồ.' },
@@ -4814,8 +5150,11 @@ getTheHucBridgeInfo(x, y, z) {
     // 2. PHÂN TÁCH HOÀN TOÀN HỒ GƯƠM & SÔNG HỒNG (ĐÊ SÔNG HỒNG & LÒNG SÔNG TRŨNG)
     // Sông Hồng nằm trũng ở Y = -1.5m, tuyệt đối không có mặt phẳng đỏ ở mặt đất!
     // =========================================================================
-    // Mặt nước Sông Hồng phù sa đỏ sẫm tự nhiên nằm dưới lòng sông (x: 75 -> 280, z: 0 -> 250, Y = -1.5)
-    const riverGeo = new THREE.PlaneGeometry(210, 260);
+    // Mặt nước Sông Hồng phù sa đỏ sẫm tự nhiên nằm dưới lòng sông (x: 75 -> 280, z: 45 -> 250, Y = -1.5)
+    // Chỉ giới hạn từ Z = 45.0 đến 250.0 để giải phóng hoàn toàn hành lang Cầu Long Biên - Cầu Thê Húc (Z <= 45.0)
+    const riverLen = 205.0;
+    const riverCenterZ = 45.0 + riverLen / 2; // 147.5
+    const riverGeo = new THREE.PlaneGeometry(210, riverLen);
     riverGeo.rotateX(-Math.PI / 2);
     const riverMat = new THREE.MeshStandardMaterial({
       color: 0x7a3a24,
@@ -4825,25 +5164,25 @@ getTheHucBridgeInfo(x, y, z) {
       opacity: 0.94
     });
     const riverMesh = new THREE.Mesh(riverGeo, riverMat);
-    riverMesh.position.set(180.0, -1.5, 125.0);
+    riverMesh.position.set(180.0, -1.5, riverCenterZ);
     zoneGroup.add(riverMesh);
 
-    // BỜ KÈ ĐÊ SÔNG HỒNG LỊCH SỬ (Đê Trần Nhật Duật / Yên Phụ) tại x = 75.0, chạy suốt z = 0 -> 250
-    // Ngăn cách hoàn toàn thành phố và Hồ Gươm với lòng Sông Hồng
-    const dikeBody = createBoxBeam(8.0, 3.5, 260.0, stonePierMat);
+    // BỜ KÈ ĐÊ SÔNG HỒNG LỊCH SỬ (Đê Trần Nhật Duật / Yên Phụ) tại x = 75.0, CHỈ chạy dọc ven sông từ Z = 45.0 đến 250.0
+    // Tuyệt đối KHÔNG chắn ngang đường đi bộ từ Cầu Long Biên sang Cầu Thê Húc
+    const dikeBody = createBoxBeam(8.0, 3.5, riverLen, stonePierMat);
     dikeBody.name = 'dikeBody';
     dikeBody._isBaseGround = true;
-    dikeBody.position.set(75.0, 0.25, 125.0);
+    dikeBody.position.set(75.0, 0.25, riverCenterZ);
     zoneGroup.add(dikeBody);
     this.colliders.push(dikeBody);
 
     // Mái dốc đê cỏ xanh phía sông (Grass Dike Slope)
-    const dikeSlopeGeo = new THREE.BoxGeometry(10.0, 0.5, 260.0);
+    const dikeSlopeGeo = new THREE.BoxGeometry(10.0, 0.5, riverLen);
     const dikeGrassMat = new THREE.MeshStandardMaterial({ color: 0x4a5d3e, roughness: 0.95 });
     const dikeSlope = new THREE.Mesh(dikeSlopeGeo, dikeGrassMat);
     dikeSlope.name = 'dikeSlope';
     dikeSlope._isBaseGround = true;
-    dikeSlope.position.set(81.0, -0.65, 125.0);
+    dikeSlope.position.set(81.0, -0.65, riverCenterZ);
     dikeSlope.rotation.z = -0.32;
     zoneGroup.add(dikeSlope);
     this.colliders.push(dikeSlope);
@@ -4934,56 +5273,20 @@ getTheHucBridgeInfo(x, y, z) {
     guardNorth.rotation.z = rampAngle;
     zoneGroup.add(guardNorth);
 
-    // Mạn Nam (Z = 55.0) - MỞ LỐI ĐI THÔNG THOÁNG NỐI SANG CẦU THÊ HÚC & HỒ GƯƠM:
-    // Đoạn cao (X = -10.0 -> 20.0, dài 30m): Lan can đá bảo vệ an toàn trên cao
-    const guardSouthLen = 30.0;
-    const guardSouthRise = (guardSouthLen / rampLen) * rampRise; // ~6.21m
-    const guardSouthHypot = Math.hypot(guardSouthLen, guardSouthRise);
+    // Mạn Nam (Z = 55.0) - LAN CAN ĐÁ BẢO VỆ CHẠY SUỐT TỪ X = -30.0 ĐẾN X = 28.0 (58M TOÀN DẢI):
+    // Đã xóa bỏ hoàn toàn tất cả cầu thang phụ bên trái Cầu Long Biên theo đúng yêu cầu;
+    // Cầu Long Biên giữ nguyên cấu trúc đường dẫn viaduct nguyên bản từ Phố Cổ lên thẳng ga.
+    const guardSouthLen = rampLen;
+    const guardSouthRise = rampRise;
+    const guardSouthHypot = rampHypot;
     const guardSouth = createBoxBeam(guardSouthHypot, 1.2, 0.5, stonePierMat);
-    guardSouth.name = 'guardSouthHigh';
-    guardSouth.position.set(-10.0 + guardSouthLen / 2, 0.5 + (20.0 / rampLen) * rampRise + guardSouthRise / 2 + 0.5, 55.0);
+    guardSouth.name = 'guardSouthFull';
+    guardSouth.position.set(-30.0 + guardSouthLen / 2, 0.5 + guardSouthRise / 2 + 0.5, 55.0);
     guardSouth.rotation.z = rampAngle;
     zoneGroup.add(guardSouth);
+    this._addBoxObstacle(-30.0 + guardSouthLen / 2, 55.0, guardSouthLen, 0.6, 0.5, 0.5 + guardSouthRise + 1.2);
 
-    // Trụ cổng đá hoa văn đánh dấu lối rẽ sang Cầu Thê Húc & Hồ Gươm (Portal Pillars)
-    const pillarMat = this.materials.agedBrick || stonePierMat;
-    const pillar1 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.2, 0.9), pillarMat);
-    pillar1.position.set(-10.0, 3.2, 55.0);
-    zoneGroup.add(pillar1);
-    this._addBoxObstacle(-10.0, 55.0, 1.0, 1.0, 2.0, 4.5);
-
-    const pillar2 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.9), pillarMat);
-    pillar2.position.set(-28.0, 1.4, 55.0);
-    zoneGroup.add(pillar2);
-    this._addBoxObstacle(-28.0, 55.0, 1.0, 1.0, 0.5, 2.5);
-
-    // CẦU THANG ĐÁ TAM CẤP RỘNG THÊNH THANG NỐI TỪ DỐC DẪN XUỐNG ĐƯỜNG DẠO BỘ (Long Bien Stairway)
-    // Tọa độ X: [-26.0 -> -12.0], Z đi từ 55.0 xuống 50.0, Y hạ êm ái từ 1.05m -> 0.38m
-    const stairwayGroup = new THREE.Group();
-    stairwayGroup.name = 'LongBienToTheHucStairway';
-    this.longBienStairway = stairwayGroup;
-
-    const numStairs = 4;
-    const stairLenX = 14.0;
-    for (let s = 0; s < numStairs; s++) {
-      const stepProg = s / (numStairs - 1);
-      const stepY = 1.05 - stepProg * 0.67; // 1.05 -> 0.38
-      const stepZ = 54.2 - s * 1.15;        // 54.2 -> 50.75
-      const stepMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(stairLenX, 0.24, 1.35),
-        this.materials.mossStone || stonePierMat
-      );
-      stepMesh.position.set(-19.0, stepY, stepZ);
-      stepMesh.name = `longBienStair_${s}`;
-      stepMesh._isBaseGround = true;
-      stepMesh.receiveShadow = true;
-      stairwayGroup.add(stepMesh);
-      this.colliders.push(stepMesh);
-    }
-    zoneGroup.add(stairwayGroup);
-
-    // Phân đoạn vật cản lan can theo độ dốc thực tế (5 đoạn x 10m):
-    // Chỉ kích hoạt vật cản mạn Nam cho k >= 2 (X >= -10.0), để ngỏ k = 0, 1 cho người chơi đi lại tự do sang Cầu Thê Húc
+    // Phân đoạn vật cản lan can bảo vệ theo độ dốc thực tế (5 đoạn x 11.6m khép kín toàn bộ):
     const segCount = 5;
     const segLen = rampLen / segCount;
     for (let k = 0; k < segCount; k++) {
@@ -4992,29 +5295,30 @@ getTheHucBridgeInfo(x, y, z) {
       const segFloorY = 0.5 + t * rampRise;
       // Lan can mạn Bắc luôn có để tránh rơi sang ray ngoài
       this._addBoxObstacle(segMidX, 67.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
-      // Mạn Nam: CHỈ đặt vật cản đoạn cao (k >= 2), giải phóng hoàn toàn lối đi sang Cầu Thê Húc (k = 0, 1)
-      if (k >= 2) {
-        this._addBoxObstacle(segMidX, 55.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
-      }
+      // Mạn Nam: Bọc bảo vệ toàn bộ suốt dải viaduct, tuyệt đối không có khe hở hay cầu thang phụ
+      this._addBoxObstacle(segMidX, 55.0, segLen + 0.2, 0.8, segFloorY - 0.4, segFloorY + 1.6);
     }
 
     // =========================================================================
-    // 🚶 ĐẠI LỘ DẠO BỘ VEN ĐÊ NỐI CẦU LONG BIÊN VỚI CẦU THÊ HÚC & HỒ GƯƠM
-    // (Long Bien - The Huc Heritage Promenade)
-    // Bản đường lát đá xanh cổ rộng 6.2m, phẳng phiu (Y = 0.38), kết nối liền mạch từ
-    // bậc đá Cầu Long Biên (X = -19, Z = 50) dẫn thẳng sang Quảng trường Cầu Thê Húc (X = 164, Z = -36)
+    // 🚶 ĐẠI LỘ DẠO BỘ DI SẢN NỐI CẦU LONG BIÊN VỚI CẦU THÊ HÚC & HỒ GƯƠM (7.5M RỘNG THÊNH THANG)
+    // (Long Bien - The Huc Grand Heritage Avenue)
+    // Bản đường lát đá xanh cổ rộng 7.5m, phẳng phiu (Y = 0.38), kết nối liền mạch từ
+    // Ga Long Biên (X = 25, Z = 42) dẫn thẳng sang Quảng trường Cầu Thê Húc (X = 164, Z = -36)
+    // Toàn bộ đại lộ chạy 100% TRÊN ĐẤT LIỀN VỈA HÈ ĐINH TIÊN HOÀNG (R >= 98m so với tâm Hồ Gươm (80, -80))
+    // TRIỆT TIÊU 100% LỖI ĐƯỜNG ĐI XUYÊN NƯỚC, trả lại mặt hồ trong trẻo tuyệt đối quanh Cầu Thê Húc!
     // =========================================================================
     const promenadePoints = [
-      { x: -19.0, z: 50.0 }, // Chân cầu thang Cầu Long Biên
-      { x: -5.0,  z: 42.0 }, // Cung chuyển tiếp qua đầu phố Cổ
-      { x: 25.0,  z: 30.0 }, // Đoạn qua bờ cỏ công viên
-      { x: 65.0,  z: 15.0 }, // Đoạn vòng ngoài đê
-      { x: 105.0, z: -2.0 }, // Đoạn tiếp giáp phố Hàng Dầu - Đinh Tiên Hoàng
-      { x: 138.0, z: -20.0 },// Đoạn tiếp giáp Đài Nghiên
-      { x: 164.0, z: -36.0 } // Nhập vào Quảng trường Cầu Thê Húc
+      { x: 25.0,  z: 42.0 },  // Dưới chân vòm cầu cạn Ga Long Biên (Mặt đất Y = 0.38)
+      { x: 60.0,  z: 32.0 },  // Cung đường dạo bộ ven công viên
+      { x: 95.0,  z: 22.0 },  // Đoạn tiếp giáp đường Trần Nhật Duật - Hàng Đậu
+      { x: 135.0, z: 8.0 },   // Đoạn tiếp giáp phố Đinh Tiên Hoàng
+      { x: 172.0, z: -14.0 }, // Vỉa hè phía Đông ngoài ranh hồ (R = 113m)
+      { x: 175.0, z: -36.0 }, // Tiếp giáp chân Núi Ngọc Bội & Tháp Bút trên bờ Đông
+      { x: 164.0, z: -36.0 }  // Tiếp giáp Quảng trường Đền Ngọc Sơn & Cầu Thê Húc
     ];
 
     const promMat = this.materials.mossStone || stonePierMat;
+    const avenueWidth = 7.5;
     for (let p = 0; p < promenadePoints.length - 1; p++) {
       const pA = promenadePoints[p];
       const pB = promenadePoints[p + 1];
@@ -5024,7 +5328,7 @@ getTheHucBridgeInfo(x, y, z) {
       const pAngle = Math.atan2(pB.z - pA.z, pB.x - pA.x);
 
       const promSlab = new THREE.Mesh(
-        new THREE.BoxGeometry(pDist + 0.8, 0.25, 6.2),
+        new THREE.BoxGeometry(pDist + 0.6, 0.25, avenueWidth),
         promMat
       );
       promSlab.name = `promenade_LB_TH_${p}`;
@@ -5035,14 +5339,14 @@ getTheHucBridgeInfo(x, y, z) {
       zoneGroup.add(promSlab);
       this.colliders.push(promSlab);
 
-      // Đèn lồng phố cổ / Đèn đường đồng thau dọc đường dạo
+      // Đèn lồng phố cổ / Đèn đường đồng thau dọc đường dạo (đặt ngoài mép vỉa hè 4.2m)
       if (p % 2 === 0) {
         const lampPost = new THREE.Mesh(
           new THREE.CylinderGeometry(0.08, 0.12, 3.2, 8),
           this.materials.agedBrass || darkSteelMat
         );
         const perpAngle = pAngle + Math.PI / 2;
-        lampPost.position.set(pMidX + Math.cos(perpAngle) * 3.6, 1.8, pMidZ + Math.sin(perpAngle) * 3.6);
+        lampPost.position.set(pMidX + Math.cos(perpAngle) * 4.2, 1.8, pMidZ + Math.sin(perpAngle) * 4.2);
         zoneGroup.add(lampPost);
 
         const lantern = new THREE.Mesh(
@@ -5054,16 +5358,16 @@ getTheHucBridgeInfo(x, y, z) {
       }
     }
 
-    // Biển chỉ dẫn di sản tại chân dốc Cầu Long Biên
+    // Biển chỉ dẫn di sản dưới chân Cầu Long Biên
     const signLbToTh = createBoxBeam(1.8, 0.9, 0.1, new THREE.MeshStandardMaterial({ color: 0x422312, roughness: 0.7 }));
-    signLbToTh.position.set(-18.0, 1.8, 48.0);
+    signLbToTh.position.set(26.0, 1.8, 39.5);
     zoneGroup.add(signLbToTh);
 
     // Điểm tương tác: Biển chỉ đường Cầu Long Biên ↔ Cầu Thê Húc
     this.interactables.push({
       id: 'signpost_lb_thehuc',
       name: 'Biển Chỉ Dẫn Di Sản',
-      position: new THREE.Vector3(-18.0, 1.0, 48.0),
+      position: new THREE.Vector3(26.0, 1.0, 39.5),
       promptText: 'Đọc Biển Chỉ Dẫn Tuyến Đi Bộ Di Sản',
       onInteract: () => {
         if (this.eventBus) {
@@ -5516,9 +5820,9 @@ getTheHucBridgeInfo(x, y, z) {
     // Điểm tương tác ngắm tranh Canva Masterpiece
     this.interactables.push({
       id: 'canva_long_bien_masterpiece',
-      name: 'Kiệt Tác Sơn Dầu Cầu Long Biên (Canva AI)',
+      name: 'Kiệt Tác Sơn Dầu Cầu Long Biên',
       position: new THREE.Vector3(35.0, PLATFORM_Y + 1.0, PLATFORM_Z + 0.5),
-      promptText: 'Chiêm ngưỡng Kiệt tác Sơn dầu Cầu Long Biên • Canva AI',
+      promptText: 'Chiêm ngưỡng Kiệt tác Sơn dầu Cầu Long Biên Cổ Kính',
       onInteract: () => {
         if (this.eventBus) {
           this.eventBus.emit('CORE:NOTIFICATION', {
@@ -8266,7 +8570,7 @@ getTheHucBridgeInfo(x, y, z) {
     // 0b. Culling khoảng cách siêu nhẹ chia đều từng frame (Zero Frame Spikes / Flat 60 FPS)
     if (playerPos && this._cullableObjects && this._cullableObjects.length > 0) {
       const len = this._cullableObjects.length;
-      const batchSize = Math.min(len, 130);
+      const batchSize = Math.min(len, 1200);
       if (this._cullIndex === undefined) this._cullIndex = 0;
 
       const px = playerPos.x;

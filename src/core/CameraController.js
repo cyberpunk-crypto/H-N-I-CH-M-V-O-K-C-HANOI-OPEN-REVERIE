@@ -21,11 +21,11 @@ export class CameraController {
     this.transitionDuration = 0.3; // 0.3s theo chuẩn Game Spec
     this.isRightMouseDown = false;
 
-    // Góc quay (Spherical Angles) - Căn góc ban đầu hướng theo trục Cầu Kim Quy (yaw = 0.785 rad / 45 độ)
-    this.yaw = 0.785;
-    this.pitch = 0.22; // Chúc xuống ~12 độ trong TPS
-    this.targetYaw = 0.785;
-    this.targetPitch = 0.22;
+    // Góc quay (Spherical Angles) - Căn góc ban đầu hướng theo trục Cầu Kim Quy (yaw = -0.785 rad)
+    this.yaw = -0.785;
+    this.pitch = 0.18; // Chúc xuống nhẹ ngắm trọn Tháp Rùa và mặt hồ
+    this.targetYaw = -0.785;
+    this.targetPitch = 0.18;
     this.smoothFactor = 0.22; // Độ phản hồi chuột nhạy bén, không bị trễ/lì lợm
 
     // Thông số TPS Spring-Arm

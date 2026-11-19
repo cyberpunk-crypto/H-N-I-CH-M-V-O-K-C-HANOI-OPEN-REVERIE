@@ -43,7 +43,7 @@
   <div id="gameHudLayer" class="game-hud-layer hidden">
     <!-- Thanh trạng thái góc trên -->
     <header class="hud-top-bar hud-interactive">
-      <div class="player-zone-badge">
+      <div class="player-zone-badge" id="hudZoneBadge">
         <div class="zone-emblem" id="hudPlayerAvatarBadge">
           <svg style="width:20px;height:20px;fill:currentColor" viewBox="0 0 24 24">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -56,59 +56,13 @@
       </div>
 
       <div class="hud-top-actions">
-        <!-- Bộ chuyển nhanh 4 nhân vật Việt Nam độc bản (Nữ Sinh, Cô Gái Phố Thị, Nam Trí Thức, Chàng Trai) -->
-        <div class="quick-character-bar" id="quickCharacterBar" title="Chuyển nhanh 4 nhân vật Việt Nam">
-          <button type="button" class="btn-quick-char active" data-char-id="char_nu_sinh_ao_dai" title="Nữ Sinh Tràng An • Áo Dài Trắng Nón Lá">
-            <img src="assets/characters/avatar_char_nu_sinh_ao_dai.png" alt="Nữ Sinh Tràng An">
-          </button>
-          <button type="button" class="btn-quick-char" data-char-id="char_co_gai_ao_ba_ba" title="Cô Gái Phố Thị • Áo Bà Ba Hồng Cánh Sen Khăn Rằn">
-            <img src="assets/characters/avatar_char_co_gai_ao_ba_ba.png" alt="Cô Gái Phố Thị">
-          </button>
-          <button type="button" class="btn-quick-char" data-char-id="char_nam_tri_thuc_suit" title="Nam Trí Thức Hà Nội • Âu Phục Suit Lịch Lãm">
-            <img src="assets/characters/avatar_char_nam_tri_thuc_suit.png" alt="Nam Trí Thức Hà Nội">
-          </button>
-          <button type="button" class="btn-quick-char" data-char-id="char_nam_ao_dai_gam" title="Chàng Trai Thăng Long • Áo Dài Gấm Xanh Hoàng Gia">
-            <img src="assets/characters/avatar_char_nam_ao_dai_gam.png" alt="Chàng Trai Thăng Long">
-          </button>
-        </div>
-
-        <button type="button" id="btnToggleCameraHud" class="btn-hud-tool" title="Chuyển góc nhìn máy ảnh (Phím C hoặc V)">
-          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
-            <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
-          </svg>
-          <span>Máy Ảnh</span>
-          <span class="hotkey-chip">C / V</span>
-        </button>
-
-        <button type="button" id="btnOpenMapHud" class="btn-hud-tool" title="Mở bản đồ du lịch Hà Nội (Phím Tab hoặc M)">
-          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
-            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
-          </svg>
-          <span>Bản Đồ</span>
-          <span class="hotkey-chip">Tab / M</span>
-        </button>
-
-        <button type="button" id="btnOpenScrapbookHud" class="btn-hud-tool" title="Mở Cuốn Album Ký Ức (Phím B)">
-          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
-            <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
-          </svg>
-          <span>Album Ký Ức</span>
-          <span class="hotkey-chip">B</span>
-        </button>
-
-        <button type="button" id="btnSettingsHud" class="btn-hud-tool btn-hud-gear" title="Cài Đặt & Hướng Dẫn Điều Khiển (Phím Esc / O)">
-          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
+        <!-- NÚT BÁNH RĂNG CÀI ĐẶT DUY NHẤT Ở GÓC PHẢI (Thu gọn toàn bộ Album, Bản Đồ, Máy Ảnh, Đổi Người & Ngày Đêm) -->
+        <button type="button" id="btnSettingsHud" class="btn-hud-tool btn-hud-gear" title="Cài Đặt & Hành Trình Khám Phá (Phím Esc / O)">
+          <svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24">
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
           </svg>
           <span>Cài Đặt</span>
           <span class="hotkey-chip">Esc</span>
-        </button>
-
-        <button type="button" id="btnRecreateCharacterHud" class="btn-hud-tool" title="Đổi Nhân Vật 3D Khám Phá Hà Nội (Trước Gương Ký Ức)">
-          <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-          <span>Đổi Nhân Vật</span>
         </button>
       </div>
     </header>
